@@ -18,3 +18,4 @@ View your app in AI Studio: https://ai.studio/apps/8981e2a6-9415-4031-8097-c2fad
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+# maxtronuz
