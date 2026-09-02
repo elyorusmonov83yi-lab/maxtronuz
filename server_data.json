@@ -1,0 +1,837 @@
+{
+  "categories": [
+    {
+      "id": "sensors",
+      "icon": "Activity",
+      "name": {
+        "uz_cyrl": "Датчик ва сенсорлар",
+        "uz": "Datchik va sensorlar",
+        "ru": "Датчики и сенсоры",
+        "en": "Sensors & Transmitters"
+      },
+      "description": {
+        "uz_cyrl": "Босим, ҳарорат ва сатҳни ўлчовчи юқори аниқликдаги саноат сенсорлари.",
+        "uz": "Bosim, harorat va sathni o'lchovchi yuqori aniqlikdagi sanoat sensorlari.",
+        "ru": "Высокоточные промышленные датчики давления, температуры и уровня.",
+        "en": "High-precision industrial sensors for pressure, temperature, and level measurement."
+      },
+      "count": 4,
+      "image": "",
+      "seoTitle": {
+        "uz_cyrl": "",
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "seoDescription": {
+        "uz_cyrl": "",
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "seoKeywords": {
+        "uz_cyrl": "",
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "ogImage": ""
+    },
+    {
+      "id": "geodesy",
+      "name": {
+        "uz_cyrl": "Геодезия ускуналари",
+        "uz": "Geodeziya uskunalari",
+        "ru": "Геодезическое оборудование",
+        "en": "Geodetic Equipment"
+      },
+      "description": {
+        "uz_cyrl": "Электрон тахеометрлар, нивелирлар ва юқори аниқликдаги GNSS RTK қабул қилувчилар.",
+        "uz": "Elektron taxeometrlar, nivellirlar va yuqori aniqlikdagi GNSS RTK qabul qiluvchilar.",
+        "ru": "Электронные тахеометры, нивелиры и высокоточные GNSS RTK приемники.",
+        "en": "Total stations, digital levels, and high-accuracy GNSS RTK surveying receivers."
+      },
+      "count": 4,
+      "icon": "Compass"
+    },
+    {
+      "id": "electrical",
+      "name": {
+        "uz_cyrl": "Электротехника ва назорат",
+        "uz": "Elektrotexnika va nazorat",
+        "ru": "Электроизмерительные приборы",
+        "en": "Electrical & Power Testing"
+      },
+      "description": {
+        "uz_cyrl": "Мультиметрлар, ток омбурлари, мегомметрлар ва электр тармоғи сифати анализаторлари.",
+        "uz": "Multimetrlar, tok omburlari, megommetrlar va elektr tarmog'i sifati analizatorlari.",
+        "ru": "Мультиметры, токоизмерительные клещи, мегомметры и анализаторы качества сети.",
+        "en": "Multimeters, clamp meters, insulation testers, and power quality analyzers."
+      },
+      "count": 4,
+      "icon": "Zap"
+    },
+    {
+      "id": "locators",
+      "name": {
+        "uz_cyrl": "Кабел ва қувур излагичлар",
+        "uz": "Kabel va quvur izlagichlar",
+        "ru": "Трассоискатели и кабелеискатели",
+        "en": "Pipe & Cable Locators"
+      },
+      "description": {
+        "uz_cyrl": "Ер ости коммуникациялари, кабел трассалари ва сув сизиб чиқишини аниқловчи ускуналар.",
+        "uz": "Yer osti kommunikatsiyalari, kabel trassalari va suv sizib chiqishini aniqlovchi uskunalar.",
+        "ru": "Локаторы подземных коммуникаций, трассопоисковые системы и акустические течеискатели.",
+        "en": "Underground utility locators, cable route tracers, and acoustic pipe leak detectors."
+      },
+      "count": 3,
+      "icon": "Radar"
+    },
+    {
+      "id": "thermal",
+      "name": {
+        "uz_cyrl": "Иссиқлик ва тепловизорлар",
+        "uz": "Issiqlik va teplovizorlar",
+        "ru": "Тепловизоры и пирометры",
+        "en": "Thermal Imaging & IR"
+      },
+      "description": {
+        "uz_cyrl": "Саноат тепловизорлари, оптик пирометрлар ва инфрақизил тасвирлаш тизимлари.",
+        "uz": "Sanoat teplovizorlari, optik pirometrlar va infraqizil tasvirlash tizimlari.",
+        "ru": "Промышленные тепловизоры, оптические пирометры и ИК-системы неразрушающего контроля.",
+        "en": "Industrial thermal cameras, precision optical pyrometers, and infrared diagnostic systems."
+      },
+      "count": 3,
+      "icon": "Flame"
+    },
+    {
+      "id": "ndt",
+      "name": {
+        "uz_cyrl": "Нодеструктив назорат (НК)",
+        "uz": "Nodestruktiv nazorat (NK)",
+        "ru": "Неразрушающий контроль (НК)",
+        "en": "Non-Destructive Testing"
+      },
+      "description": {
+        "uz_cyrl": "Ултратовушли қалинлик ўлчагичлар, дефектоскоплар ва қатлам қалинлигини ўлчагичлар.",
+        "uz": "Ultratovushli qalinlik o'lchagichlar, defektoskoplar va qatlam qalinligini o'lchagichlar.",
+        "ru": "Ультразвуковые толщиномеры, дефектоскопы и толщиномеры защитных покрытий.",
+        "en": "Ultrasonic thickness gauges, ultrasonic flaw detectors, and coating thickness gauges."
+      },
+      "count": 3,
+      "icon": "ShieldCheck"
+    },
+    {
+      "id": "ssss",
+      "icon": "Layers",
+      "image": "",
+      "name": {
+        "uz_cyrl": "Датчик ва сенсорлар",
+        "uz": "Датчик ва сенсорлар",
+        "ru": "Датчик ва сенсорлар",
+        "en": ""
+      },
+      "description": {
+        "uz_cyrl": "kkkk",
+        "uz": "kkkk",
+        "ru": "kkkk",
+        "en": ""
+      },
+      "count": 0,
+      "seoTitle": {
+        "uz_cyrl": "",
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "seoDescription": {
+        "uz_cyrl": "",
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "seoKeywords": {
+        "uz_cyrl": "",
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "ogImage": ""
+    }
+  ],
+  "products": [
+    {
+      "id": "mx-pt500",
+      "name": {
+        "uz_cyrl": "Прецизион босим датчиги",
+        "uz": "Pretsizion bosim datchigi",
+        "ru": "Прецизионный датчик давления",
+        "en": "Precision Pressure Transmitter"
+      },
+      "model": "MX-PT500 Pro",
+      "category": "sensors",
+      "tagline": {
+        "uz_cyrl": "Юқори аниқликдаги саноат босим датчиги",
+        "uz": "Yuqori aniqlikdagi sanoat bosim datchigi",
+        "ru": "Высокоточный промышленные датчик давления",
+        "en": "High-accuracy industrial pressure transmitter"
+      },
+      "description": {
+        "uz_cyrl": "Neft, gaz va kimyo sanoatida bosimni o'lchash uchun mo'ljallangan.",
+        "uz": "Neft, gaz va kimyo sanoatida bosimni o'lchash uchun mo'ljallangan.",
+        "ru": "Предназначен для измерения избыточного давления в нефтяной, газовой и химической промышленности.",
+        "en": "Designed for pressure measurement in oil, gas, and chemical industries."
+      },
+      "price": 4850000,
+      "oldPrice": 5300000,
+      "priceFormatted": {
+        "uz_cyrl": "4 850 000 сўм",
+        "uz": "4 850 000 so'm",
+        "ru": "4 850 000 сум",
+        "en": "4,850,000 UZS"
+      },
+      "inStock": true,
+      "isPopular": true,
+      "image": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80",
+      "specs": [
+        {
+          "label": {
+            "uz_cyrl": "Ўлчов диапозони",
+            "uz": "O'lchov diapazoni",
+            "ru": "Диапазон измерения",
+            "en": "Measurement Range"
+          },
+          "value": "0...60 MPa"
+        },
+        {
+          "label": {
+            "uz_cyrl": "Аниқлик синфи",
+            "uz": "Aniqlik sinfi",
+            "ru": "Класс точности",
+            "en": "Accuracy Class"
+          },
+          "value": "±0.075% FS"
+        },
+        {
+          "label": {
+            "uz_cyrl": "Иш ҳарорати",
+            "uz": "Ish harorati",
+            "ru": "Рабочая температура",
+            "en": "Operating Temp"
+          },
+          "value": "-40°C ... +120°C"
+        },
+        {
+          "label": {
+            "uz_cyrl": "Ҳимоя даражаси",
+            "uz": "Himoya darajasi",
+            "ru": "Степень защиты",
+            "en": "Protection"
+          },
+          "value": "IP67 / Exia IICT4"
+        }
+      ],
+      "features": {
+        "uz_cyrl": [
+          "Юқори барқарорлик ва ҳимоя",
+          "HART протоколи қўллаб-қувватланади",
+          "Zanglamaydigan po'lat korpus"
+        ],
+        "uz": [
+          "Yuqori barqarorlik va himoya",
+          "HART protokoli qo'llab-quvvatlanadi",
+          "Zanglamaydigan po'lat korpus"
+        ],
+        "ru": [
+          "Высокая стабильность",
+          "Поддержка протокола HART",
+          "Корпус из нержавеющей стали"
+        ],
+        "en": [
+          "High stability and protection",
+          "HART protocol supported",
+          "Stainless steel housing"
+        ]
+      }
+    },
+    {
+      "id": "mx-rtk100",
+      "name": {
+        "uz_cyrl": "GNSS RTK Geodezik Qabul Qiluvchi",
+        "uz": "GNSS RTK Geodezik Qabul Qiluvchi",
+        "ru": "GNSS RTK Приемник геодезический",
+        "en": "GNSS RTK Survey Receiver"
+      },
+      "model": "MX-RTK 1000",
+      "category": "geodesy",
+      "tagline": {
+        "uz_cyrl": "Yuqori aniqlikdagi ko'p chastotali GNSS RTK tizimi",
+        "uz": "Yuqori aniqlikdagi ko'p chastotali GNSS RTK tizimi",
+        "ru": "Высокоточная многочастотная GNSS RTK система",
+        "en": "High-precision multi-frequency GNSS RTK system"
+      },
+      "description": {
+        "uz_cyrl": "Geodezik o'lchashlar, kadastr va qurilish maydonchalarida santimetr aniqlikni ta'minlaydi.",
+        "uz": "Geodezik o'lchashlar, kadastr va qurilish maydonchalarida santimetr aniqlikni ta'minlaydi.",
+        "ru": "Обеспечивает сантиметровую точность при геодезических изысканиях и строительстве.",
+        "en": "Provides centimeter-level accuracy in surveying and construction."
+      },
+      "price": 38500000,
+      "oldPrice": 42000000,
+      "priceFormatted": {
+        "uz_cyrl": "38 500 000 сўм",
+        "uz": "38 500 000 so'm",
+        "ru": "38 500 000 сум",
+        "en": "38,500,000 UZS"
+      },
+      "inStock": true,
+      "isPopular": true,
+      "image": "https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80",
+      "specs": [
+        {
+          "label": {
+            "uz_cyrl": "Каналлар сони",
+            "uz": "Kanallar soni",
+            "ru": "Количество каналов",
+            "en": "Channels"
+          },
+          "value": "1408 каналов"
+        },
+        {
+          "label": {
+            "uz_cyrl": "Аниқлик (RTK)",
+            "uz": "Aniqlik (RTK)",
+            "ru": "Точность (RTK)",
+            "en": "Accuracy (RTK)"
+          },
+          "value": "8 мм + 1 ppm"
+        },
+        {
+          "label": {
+            "uz_cyrl": "Батарея вақти",
+            "uz": "Batareya vaqti",
+            "ru": "Время работы",
+            "en": "Battery Life"
+          },
+          "value": "24 соат узлуксиз"
+        }
+      ],
+      "features": {
+        "uz_cyrl": [
+          "IMU 60° nishabni kompensatsiya qilish",
+          "4G modem va Radio",
+          "IP68 chang va suvdan himoya"
+        ],
+        "uz": [
+          "IMU 60° nishabni kompensatsiya qilish",
+          "4G modem va Radio",
+          "IP68 chang va suvdan himoya"
+        ],
+        "ru": [
+          "Компенсация наклона IMU до 60°",
+          "Встроенный 4G модем и УКВ радио",
+          "Защита IP68"
+        ],
+        "en": [
+          "IMU tilt compensation up to 60°",
+          "Built-in 4G & Radio",
+          "IP68 rugged design"
+        ]
+      }
+    },
+    {
+      "id": "mx-el300",
+      "name": {
+        "uz_cyrl": "Raqamli Multimetr va Tarmoq Analizatori",
+        "uz": "Raqamli Multimetr va Tarmoq Analizatori",
+        "ru": "Цифровой мультиметр и анализатор сети",
+        "en": "Digital Multimeter & Power Analyzer"
+      },
+      "model": "MX-EL300 TrueRMS",
+      "category": "electrical",
+      "tagline": {
+        "uz_cyrl": "Professional elektr o'lchash va diagnostika",
+        "uz": "Professional elektr o'lchash va diagnostika",
+        "ru": "Профессиональные электроизмерения",
+        "en": "Professional electrical testing"
+      },
+      "description": {
+        "uz_cyrl": "Yuqori aniqlikdagi TrueRMS o'lchashlar, garmonik tahlil va ma'lumotlarni yozib olish.",
+        "uz": "Yuqori aniqlikdagi TrueRMS o'lchashlar, garmonik tahlil va ma'lumotlarni yozib olish.",
+        "ru": "Высокоточные измерения TrueRMS, гармонический анализ и регистрация данных.",
+        "en": "High-accuracy TrueRMS measurements, harmonic analysis, and data logging."
+      },
+      "price": 2450000,
+      "oldPrice": 2800000,
+      "priceFormatted": {
+        "uz_cyrl": "2 450 000 сўм",
+        "uz": "2 450 000 so'm",
+        "ru": "2 450 000 сум",
+        "en": "2,450,000 UZS"
+      },
+      "inStock": true,
+      "isPopular": false,
+      "image": "https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80",
+      "specs": [
+        {
+          "label": {
+            "uz_cyrl": "Kuchlanish",
+            "uz": "Kuchlanish",
+            "ru": "Напряжение",
+            "en": "Voltage"
+          },
+          "value": "1000V AC/DC"
+        },
+        {
+          "label": {
+            "uz_cyrl": "Xavfsizlik",
+            "uz": "Xavfsizlik",
+            "ru": "Категория безопасности",
+            "en": "Safety"
+          },
+          "value": "CAT IV 600V"
+        }
+      ],
+      "features": {
+        "uz_cyrl": [
+          "TrueRMS o'lchash",
+          "Bluetooth orqali ma'lumot uzatish",
+          "Katta yorug' ekran"
+        ],
+        "uz": [
+          "TrueRMS o'lchash",
+          "Bluetooth orqali ma'lumot uzatish",
+          "Katta yorug' ekran"
+        ],
+        "ru": [
+          "Измерение TrueRMS",
+          "Bluetooth интерфейс",
+          "Яркий дисплей"
+        ],
+        "en": [
+          "TrueRMS measurement",
+          "Bluetooth data link",
+          "Backlit display"
+        ]
+      }
+    }
+  ],
+  "certificates": [
+    {
+      "id": "cert-uzst",
+      "title": {
+        "uz_cyrl": "O'zstandart Davlat Reyestri Sertifikati",
+        "uz": "O'zstandart Davlat Reyestri Sertifikati",
+        "ru": "Сертификат Госреестра Узстандарт",
+        "en": "O'zstandart State Register Certificate"
+      },
+      "description": {
+        "uz_cyrl": "Barcha MAXTRON o'lchov vositalari O'zbekiston Respublikasi O'lchov vositalari Davlat reestriga kiritilgan.",
+        "uz": "Barcha MAXTRON o'lchov vositalari O'zbekiston Respublikasi O'lchov vositalari Davlat reestriga kiritilgan.",
+        "ru": "Все средства измерений MAXTRON внесены в Государственный реестр средств измерений РУз.",
+        "en": "All MAXTRON measuring instruments are registered in the State Register of Uzbekistan."
+      },
+      "certNumber": "UZ.ST.03.4812-2024",
+      "issueDate": "15.01.2024",
+      "validUntil": "15.01.2029",
+      "issuer": {
+        "uz_cyrl": "«O'zstandart» agentligi",
+        "uz": "«O'zstandart» agentligi",
+        "ru": "Агентство «Узстандарт»",
+        "en": "O'zstandart Agency"
+      },
+      "image": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
+      "pdfUrl": "#"
+    }
+  ],
+  "quotes": [
+    {
+      "companyName": "ddddd",
+      "contactPerson": "11111",
+      "phone": "+998 910081883",
+      "email": "info@kipo.uz",
+      "inn": "",
+      "selectedProductId": "mx-pt500",
+      "notes": "5555555",
+      "quantity": 1,
+      "id": "quote-1787950371123",
+      "createdAt": "2026-08-28T20:52:51.123Z",
+      "status": "new",
+      "productName": "[object Object] (MX-PT500 Pro)",
+      "totalEstimate": 4850000
+    }
+  ],
+  "settings": {
+    "home": {
+      "heroBadge": {
+        "uz_cyrl": "Завод таъминоти",
+        "uz": "Zavod taʼminoti",
+        "ru": "Заводские поставки",
+        "en": "Factory supply"
+      },
+      "heroTitle": {
+        "uz_cyrl": "Саноат ва Ўлчов Ускуналари",
+        "uz": "Sanoat va O'lchov Uskunalari",
+        "ru": "Промышленное оборудование",
+        "en": "Industrial Equipment"
+      },
+      "heroSubtitle": {
+        "uz_cyrl": "Тошкент омборимизда 200+ модел мавжуд.",
+        "uz": "Toshkent omborimizda 200+ model mavjud.",
+        "ru": "Более 200 моделей в наличии.",
+        "en": "200+ models in stock."
+      },
+      "ctaPhone": "+998 71 200-88-44",
+      "telegramUser": "@maxtron_uz",
+      "bannerNotice": {
+        "uz_cyrl": "Тезкор етказиш",
+        "uz": "Tezkor yetkazish",
+        "ru": "Быстрая доставка",
+        "en": "Fast delivery"
+      }
+    },
+    "about": {
+      "heroTitle": {
+        "uz": "Sanoat sohasida yetakchi hamkor",
+        "ru": "Ведущий партнер в промышленности"
+      },
+      "heroSubtitle": {
+        "uz": "MAXTRON — sertifikatlangan uskunalar.",
+        "ru": "MAXTRON — сертифицированное оборудование."
+      },
+      "storyText": {
+        "uz": "2018-yilda asos solingan.",
+        "ru": "Основана в 2018 году."
+      },
+      "yearsExp": "8+ yil",
+      "equipmentDelivered": "1,500+",
+      "warehouseItems": "200+",
+      "partnerClients": "500+",
+      "directorName": "Elyor Usmonov",
+      "directorTitle": {
+        "uz": "Bosh direktor",
+        "ru": "Генеральный директор"
+      },
+      "mainOfficeAddress": {
+        "uz": "Toshkent sh.",
+        "ru": "г. Ташкент"
+      }
+    },
+    "header": {
+      "logoText": "MAX",
+      "logoAccentText": "TRON",
+      "logoSubtitle": {
+        "uz_cyrl": "Саноат & Ўлчов Таъминоти",
+        "uz": "Sanoat & O'lchov Ta'minoti",
+        "ru": "Промышленно-измерительное оборудование",
+        "en": "Industrial & Measurement Solutions"
+      },
+      "logoImageUrl": "",
+      "topbarWarehouse": {
+        "uz_cyrl": "Тошкент омбори: 200+ модел мавжуд",
+        "uz": "Toshkent ombori: 200+ model mavjud",
+        "ru": "Склад в Ташкенте: 200+ моделей в наличии",
+        "en": "Tashkent Warehouse: 200+ models in stock"
+      },
+      "topbarDelivery": {
+        "uz_cyrl": "Ўзбекистон бўйлаб тезкор етказиш",
+        "uz": "O'zbekiston bo'ylab tezkor yetkazish",
+        "ru": "Экспресс-доставка по всему Узбекистану",
+        "en": "Fast express shipping across Uzbekistan"
+      },
+      "topbarSchedule": {
+        "uz_cyrl": "Душ-Шан: 09:00 - 18:00",
+        "uz": "Dush-Shan: 09:00 - 18:00",
+        "ru": "Пн-Сб: 09:00 - 18:00",
+        "en": "Mon-Sat: 09:00 - 18:00"
+      },
+      "phone": "+998 71 200-88-44",
+      "phoneSecondary": "+998 90 999-88-44",
+      "email": "info@maxtron.uz",
+      "telegramUser": "@maxtron_uz",
+      "telegramUrl": "https://t.me/maxtron_uz",
+      "instagramUrl": "https://instagram.com/maxtron.uz",
+      "youtubeUrl": "https://youtube.com/@maxtron"
+    },
+    "pages": [
+      {
+        "id": "page-delivery",
+        "slug": "yetkazib-berish-va-tolov",
+        "title": {
+          "uz_cyrl": "Етказиб бериш ва тўлов шартлари",
+          "uz": "Yetkazib berish va to‘lov shartlari",
+          "ru": "Условия доставки и оплаты",
+          "en": "Delivery and Payment Terms"
+        },
+        "subtitle": {
+          "uz_cyrl": "Ўзбекистон бўйлаб экспресс етказиб бериш ва қулай тўлов тизимлари",
+          "uz": "O‘zbekiston bo‘ylab ekspress yetkazib berish va qulay to‘lov tizimlari",
+          "ru": "Экспресс-доставка по всему Узбекистану и удобные формы оплаты",
+          "en": "Express delivery across Uzbekistan and flexible payment methods"
+        },
+        "content": {
+          "uz_cyrl": "MAXTRON компанияси Ўзбекистон ва Марказий Осиё бўйлаб барча турдаги саноат ва ўлчов ускуналарини хавфсиз ва тезкор етказиб беришни таъминлайди.\n\n### Етказиб бериш муддатлари:\n- **Тошкент шаҳри бўйлаб:** 24 соат ичида бепул етказилади.\n- **Вилоятлар марказига:** 1-3 иш куни ичида.\n- **Махсус буюртма ускуналар:** Заводдан 10-20 кун ичида олиб келинади.\n\n### Тўлов шакллари:\n1. Банк ўтказмаси орқали (Пластик/Корпоратив карта ёки р/с).\n2. ҚҚС (НДС) билан расмий шартнома асосида.\n3. Лизинг ва муддатли тўлов имконияти.",
+          "uz": "MAXTRON kompaniyasi O‘zbekiston va Markaziy Osiyo bo‘ylab barcha turdagi sanoat va o‘lchov uskunalarini xavfsiz va tezkor yetkazib berishni ta’minlaydi.\n\n### Yetkazib berish muddatlari:\n- **Toshkent shahri bo‘ylab:** 24 soat ichida bepul yetkaziladi.\n- **Viloyatlar markaziga:** 1-3 ish kuni ichida.\n- **Maxsus buyurtma uskunalar:** Zavoddan 10-20 kun ichida olib kelinadi.\n\n### To‘lov shakllari:\n1. Bank o‘tkazmasi orqali (Plastik/Korporativ karta yoki r/s).\n2. QQS (NDS) bilan rasmiy shartnoma asosida.\n3. Lizing va muddatli to‘lov imkoniyati.",
+          "ru": "Компания MAXTRON обеспечивает надежную и быструю доставку всех типов промышленного и измерительного оборудования по Узбекистану и Центральной Азии.\n\n### Сроки доставки:\n- **По г. Ташкент:** Бесплатная доставка в течение 24 часов.\n- **В областные центры:** От 1 до 3 рабочих дней.\n- **Спецоборудование под заказ:** Доставка с завода за 10-20 дней.\n\n### Формы оплаты:\n1. Безналичный расчет для юридических лиц (с НДС).\n2. Банковские карты и корпоративные переводы.\n3. Возможность покупки в лизинг.",
+          "en": "MAXTRON provides safe and fast delivery of all industrial and measurement equipment across Uzbekistan and Central Asia.\n\n### Delivery terms:\n- **Tashkent City:** Free delivery within 24 hours.\n- **Regional Centers:** 1 to 3 business days.\n- **Special Factory Orders:** Delivered within 10-20 days.\n\n### Payment Methods:\n1. Official bank wire transfer with VAT.\n2. Corporate cards and online banking.\n3. Leasing and flexible term agreements."
+        },
+        "isPublished": true,
+        "showInHeader": true,
+        "showInFooter": true,
+        "createdAt": "2026-08-28T15:11:21.486Z",
+        "updatedAt": "2026-08-28T15:11:21.486Z"
+      },
+      {
+        "id": "page-warranty",
+        "slug": "kafolat-va-servis",
+        "title": {
+          "uz_cyrl": "Кафолат ва сервис хизмати",
+          "uz": "Kafolat va servis xizmati",
+          "ru": "Гарантийное и сервисное обслуживание",
+          "en": "Warranty and Service Maintenance"
+        },
+        "subtitle": {
+          "uz_cyrl": "Расмий завод кафолати, техник кўрик ва метрологик қиёслаш хизматлари",
+          "uz": "Rasmiy zavod kafolati, texnik ko‘rik va metrologik qiyoslash xizmatlari",
+          "ru": "Официальная заводская гарантия, техподдержка и государственная поверка",
+          "en": "Official factory warranty, technical support, and state calibration"
+        },
+        "content": {
+          "uz_cyrl": "Барча MAXTRON ускуналарига 12 ойдан 36 ойгача расмий кафолат берилади.\n\n### Сервис маркази хизматлари:\n- **Метрология ва Сертификация:** Ускуналарни «Ўзстандарт» агентлигида қиёслашдан ўтказиш ва сертификат олишда тўлиқ ёрдам.\n- **Профилактика ва Таъмирлаш:** Сертификатланган мутахассислар томонидан техник хизмат кўрсатиш.\n- **Эҳтиёт қисмлар:** Завод оригиналь эҳтиёт қисмлари доимо Тошкент омборида мавжуд.",
+          "uz": "Barcha MAXTRON uskunalariga 12 oydan 36 oygacha rasmiy kafolat beriladi.\n\n### Servis markazi xizmatlari:\n- **Metrologiya va Sertifikatsiya:** Uskunalarni «O‘zstandart» agentligida qiyoslashdan o‘tkazish va sertifikat olishda to‘liq yordam.\n- **Profilaktika va Ta’mirlash:** Sertifikatlangan mutaxassislar tomonidan texnik xizmat ko‘rsatish.\n- **Ehtiyot qismlar:** Zavod original ehtiyot qismlari doimo Toshkent omborida mavjud.",
+          "ru": "На все оборудование MAXTRON предоставляется официальная гарантия от 12 до 36 месяцев.\n\n### Услуги сервисного центра:\n- **Метрология и поверка:** Помощь в прохождении первичной и периодической поверки в Узстандарте.\n- **Ремонт и ТО:** Регулярное обслуживание сертифицированными инженерами.\n- **Запчасти:** Заводские комплектующие всегда в наличии на складе.",
+          "en": "All MAXTRON equipment comes with an official factory warranty from 12 to 36 months.\n\n### Service Center Features:\n- **Metrology & Calibration:** Assistance with official state verification at Uzstandard.\n- **Maintenance & Repair:** Servicing by certified repair engineers.\n- **Spare Parts:** Genuine spare parts always available in our Tashkent warehouse."
+        },
+        "isPublished": true,
+        "showInHeader": true,
+        "showInFooter": true,
+        "createdAt": "2026-08-28T15:11:21.486Z",
+        "updatedAt": "2026-08-28T15:11:21.486Z"
+      },
+      {
+        "id": "page-rental",
+        "slug": "sanoat-uskunalari-ijarasi",
+        "title": {
+          "uz_cyrl": "Саноат ускуналари ижараси",
+          "uz": "Sanoat uskunalarini ijaraga berish",
+          "ru": "Аренда промышленного оборудования",
+          "en": "Industrial Equipment Rental"
+        },
+        "subtitle": {
+          "uz_cyrl": "Вақтинчалик лойиҳалар учун трассоискателлар ва тепловизорларни ижарага олиш",
+          "uz": "Vaqtinchalik loyihalar uchun trassoiskatellar va teplovizorlarni ijaraga olish",
+          "ru": "Аренда трассоискателей, тепловизоров и измерителей для краткосрочных проектов",
+          "en": "Short-term rental of cable locators, thermal cameras, and testing devices"
+        },
+        "content": {
+          "uz_cyrl": "Агар ускуна сизга қисқа муддатли қурилиш ёки қидирув ишлари учун зарур бўлса, уни харид қилмасдан ижарага олишингиз мумкин.\n\n### Ижара шартлари:\n- Мослашувчан ижара муддатлари (1 кундан 1 йилгача).\n- Барча ижарадаги ускуналар соз ва қиёсловдан ўтган.\n- Инженер томонидан ўргатиш ва консультация берилади.",
+          "uz": "Agar uskuna sizga qisqa muddatli qurilish yoki qidiruv ishlari uchun zarur bo‘lsa, uni xarid qilmasdan ijaraga olishingiz mumkin.\n\n### Ijara shartlari:\n- Moslashuvchan ijara muddatlari (1 kundan 1 yilgacha).\n- Barcha ijaradagi uskunalar soz va qiyoslashdan o‘tgan.\n- Inzhener tomonidan o‘rgatish va konsultatsiya beriladi.",
+          "ru": "Если оборудование требуется вам для разовых или краткосрочных работ, вы можете взять его в аренду.\n\n### Условия аренды:\n- Гибкие сроки (от 1 дня до 1 года).\n- Все приборы поверены и готовы к работе.\n- Обучение оператора и консультация инженера включены.",
+          "en": "If you need equipment for short-term construction or testing projects, rent directly from us.\n\n### Rental terms:\n- Flexible lease periods (1 day to 1 year).\n- Fully calibrated and certified devices.\n- On-site engineer support and training included."
+        },
+        "isPublished": true,
+        "showInHeader": false,
+        "showInFooter": true,
+        "createdAt": "2026-08-28T15:11:21.486Z",
+        "updatedAt": "2026-08-28T15:11:21.486Z"
+      },
+      {
+        "id": "page-metrology",
+        "slug": "metrologiya-va-qiyoslash",
+        "title": {
+          "uz_cyrl": "Метрология ва қиёслаш хизмати",
+          "uz": "Metrologiya va qiyoslash xizmati",
+          "ru": "Метрология и государственная поверка",
+          "en": "Metrology and State Calibration"
+        },
+        "subtitle": {
+          "uz_cyrl": "Ўзстандарт реестрига киритилган асбобларни расмий қиёслаш",
+          "uz": "O‘zstandart reestriga kiritilgan asboblarni rasmiy qiyoslash",
+          "ru": "Официальная государственная поверка приборов из реестра ГСИ РУз",
+          "en": "Official state calibration of measuring instruments in Uzbekistan"
+        },
+        "content": {
+          "uz_cyrl": "Саноат хавфсизлиги ва давлат стандарти талабларига мувофиқ, барча ўлчов воситалари давлат қиёсловидан ўтказилиши шарт.\n\n### Хизмат афзалликлари:\n- Тезкор қиёслаш (3-5 иш куни).\n- Давлат реестри сертификати тақдим этилади.\n- Мобиль лаборатория орқали объектнинг ўзида текшириш имконияти.",
+          "uz": "Sanoat xavfsizligi va davlat standarti talablariga muvofiq, barcha o‘lchov vositalari davlat qiyovidan o‘tkazilishi shart.\n\n### Xizmat afzalliklari:\n- Tezkor qiyoslash (3-5 ish kuni).\n- Davlat reestri sertifikati taqdim etiladi.\n- Mobil laboratoriya orqali ob’ektning o‘zida tekshirish imkoniyati.",
+          "ru": "Все средства измерений подлежат обязательной государственной поверке согласно законодательству РУз.\n\n### Преимущества услуги:\n- Быстрые сроки поверки (3-5 дней).\n- Выдача официального сертификата ГСИ.\n- Выезд мобильной метрологической лаборатории на объект.",
+          "en": "All measuring instruments are subject to mandatory state calibration under Uzbekistan regulations.\n\n### Our Advantages:\n- Fast turnaround (3-5 business days).\n- Official state register certificate included.\n- Mobile calibration team available on-site."
+        },
+        "isPublished": true,
+        "showInHeader": false,
+        "showInFooter": true,
+        "createdAt": "2026-08-28T15:11:21.486Z",
+        "updatedAt": "2026-08-28T15:11:21.486Z"
+      }
+    ],
+    "contact": {
+      "heroTitle": {
+        "uz_cyrl": "Биз билан боғланиш ва Сервис марказлари",
+        "uz": "Biz bilan bog'lanish va Servis markazlari",
+        "ru": "Свяжитесь с нами и сервисные центры",
+        "en": "Contact Us & Service Centers"
+      },
+      "heroSubtitle": {
+        "uz_cyrl": "Мутахассисларимиз ускуналарни танлаш, метрологик қиёслаш ва техник топшириқларни тузишда ёрдам беради.",
+        "uz": "Mutaxassislarimiz uskunalarni tanlash, metrologik qiyoslash va texnik topshiriqlarni tuzishda yordam beradi.",
+        "ru": "Наши сертифицированные инженеры помогут подобрать оборудование, пройти поверку и составить ТЗ.",
+        "en": "Our certified engineers assist in selecting equipment, metrological calibration, and drafting specifications."
+      },
+      "address": {
+        "uz_cyrl": "Тошкент ш., Юнусобод тумани, Амир Темур шоҳ кўчаси, 107Б",
+        "uz": "Toshkent sh., Yunusobod tumani, Amir Temur shoh ko'chasi, 107B",
+        "ru": "г. Ташкент, Юнусабадский р-н, проспект Амира Темура, 107Б",
+        "en": "Tashkent, Yunusabad dist., Amir Temur Ave, 107B"
+      },
+      "warehouseAddress": {
+        "uz_cyrl": "Тошкент ш., Сергели тумани, Янги Сергели кўчаси, Саноат парки №4",
+        "uz": "Toshkent sh., Sergeli tumani, Yangi Sergeli ko'chasi, Sanoat parki №4",
+        "ru": "г. Ташкент, Сергелийский р-н, ул. Янги Сергели, Промзона №4",
+        "en": "Tashkent, Sergeli dist., Yangi Sergeli st., Industrial Park №4"
+      },
+      "workingHours": {
+        "uz_cyrl": "Душанба — Шанба: 09:00 дан 18:00 гача (Якшанба дам олиш куни)",
+        "uz": "Dushanba — Shanba: 09:00 dan 18:00 gacha (Yakshanba dam olish kuni)",
+        "ru": "Понедельник — Суббота: с 09:00 до 18:00 (Воскресенье выходной)",
+        "en": "Monday — Saturday: 09:00 AM to 06:00 PM (Sunday closed)"
+      },
+      "phone": "+998 71 200-88-44",
+      "phoneSecondary": "+998 90 999-88-44",
+      "email": "sales@maxtron.uz",
+      "telegram": "@maxtron_uz",
+      "telegramUrl": "https://t.me/maxtron_uz",
+      "instagram": "maxtron.uz",
+      "instagramUrl": "https://instagram.com/maxtron.uz",
+      "youtubeUrl": "https://youtube.com/@maxtron",
+      "mapIframe": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2996.3475871239854!2d69.2818991765416!3d41.323048999999996!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x38ae8b49e89f81a7%3A0xbcf013f9f4a13e2f!2sAmir%20Temur%20Avenue%2C%20Tashkent!5e0!3m2!1sen!2suz!4v1700000000000!5m2!1sen!2suz"
+    },
+    "seo": {
+      "googleVerification": "",
+      "yandexVerification": "",
+      "bingVerification": "",
+      "googleAnalyticsId": "",
+      "yandexMetrikaId": "",
+      "siteName": "MAXTRON",
+      "defaultTitle": "MAXTRON — Саноат ва Ўлчов Ускуналари",
+      "defaultDescription": "Профессионал ўлчов ускуналари.",
+      "defaultKeywords": "maxtron",
+      "ogImageUrl": "",
+      "robotsTxt": "User-agent: *\nAllow: /",
+      "pageSeo": {
+        "home": {
+          "title": {
+            "uz_cyrl": "MAXTRON — Саноат ва Ўлчов Ускуналари Ўзбекистонда",
+            "uz": "MAXTRON — Sanoat va O'lchov Uskunalari O'zbekistonda",
+            "ru": "MAXTRON — Промышленные измерительные приборы и датчики в Ташкенте",
+            "en": "MAXTRON — Industrial Measuring Instruments & Sensors in Uzbekistan"
+          },
+          "description": {
+            "uz_cyrl": "Саноат корхоналари учун профессионал ўлчов ускуналари.",
+            "uz": "Sanoat korxonalari uchun professional o'lchov uskunalari.",
+            "ru": "Профессиональное оборудование для предприятий.",
+            "en": "Professional equipment."
+          },
+          "keywords": {
+            "uz_cyrl": "maxtron, o'lchov",
+            "uz": "maxtron, o'lchov",
+            "ru": "maxtron",
+            "en": "maxtron"
+          },
+          "ogImage": "",
+          "ogTitle": {
+            "uz_cyrl": "MAXTRON",
+            "uz": "MAXTRON",
+            "ru": "MAXTRON",
+            "en": "MAXTRON"
+          },
+          "ogDescription": {
+            "uz_cyrl": "200+ модел.",
+            "uz": "200+ model.",
+            "ru": "200+ моделей.",
+            "en": "200+ models."
+          }
+        },
+        "catalog": {
+          "title": {
+            "uz_cyrl": "Каталог — MAXTRON",
+            "uz": "Katalog — MAXTRON",
+            "ru": "Каталог — MAXTRON",
+            "en": "Catalog — MAXTRON"
+          },
+          "description": {
+            "uz_cyrl": "Uskunalar katalogi.",
+            "uz": "Uskunalar katalogi.",
+            "ru": "Каталог оборудования.",
+            "en": "Catalog."
+          },
+          "keywords": {
+            "uz_cyrl": "katalog",
+            "uz": "katalog",
+            "ru": "katalog",
+            "en": "catalog"
+          }
+        },
+        "certificates": {
+          "title": {
+            "uz_cyrl": "Сертификатлар — MAXTRON",
+            "uz": "Sertifikatlar — MAXTRON",
+            "ru": "Сертификаты — MAXTRON",
+            "en": "Certificates — MAXTRON"
+          },
+          "description": {
+            "uz_cyrl": "Sertifikatlar.",
+            "uz": "Sertifikatlar.",
+            "ru": "Сертификаты.",
+            "en": "Certificates."
+          },
+          "keywords": {
+            "uz_cyrl": "sertifikat",
+            "uz": "sertifikat",
+            "ru": "sertifikat",
+            "en": "certificate"
+          }
+        },
+        "about": {
+          "title": {
+            "uz_cyrl": "Биз ҳақимизда — MAXTRON",
+            "uz": "Biz haqimizda — MAXTRON",
+            "ru": "О компании — MAXTRON",
+            "en": "About — MAXTRON"
+          },
+          "description": {
+            "uz_cyrl": "Biz haqimizda.",
+            "uz": "Biz haqimizda.",
+            "ru": "О компании.",
+            "en": "About us."
+          },
+          "keywords": {
+            "uz_cyrl": "about",
+            "uz": "about",
+            "ru": "about",
+            "en": "about"
+          }
+        },
+        "contact": {
+          "title": {
+            "uz_cyrl": "Алоқа — MAXTRON",
+            "uz": "Aloqa — MAXTRON",
+            "ru": "Контакты — MAXTRON",
+            "en": "Contact — MAXTRON"
+          },
+          "description": {
+            "uz_cyrl": "Aloqa.",
+            "uz": "Aloqa.",
+            "ru": "Контакты.",
+            "en": "Contact."
+          },
+          "keywords": {
+            "uz_cyrl": "contact",
+            "uz": "contact",
+            "ru": "contact",
+            "en": "contact"
+          }
+        }
+      }
+    }
+  }
+}

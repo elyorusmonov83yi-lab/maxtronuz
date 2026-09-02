@@ -1,0 +1,6 @@
+{
+  "name": "MAXTRON — Электрон ва саноат ўлчов ускуналари",
+  "description": "Саноат ва ишлаб чиқариш учун профессионал электрон излаш, назорат ва ўлчов ускуналари каталоги ва расмий етказиб берувчиси.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
