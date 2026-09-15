@@ -12,7 +12,7 @@ export const db = mysql.createPool({
   database: process.env.DB_NAME,     // Faqat .env dan oladi
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 100
 });
 
 // Базага уланишни текшириш учун тест:
@@ -22,5 +22,6 @@ db.getConnection()
     conn.release();
   })
   .catch((err) => {
+
     console.error('❌ MariaDB уланишда хатолик:', err.message);
   });
