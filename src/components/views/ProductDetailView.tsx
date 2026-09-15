@@ -112,15 +112,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     return productsList.find((p) => {
       if (!p) return false;
 
-      const pId = String(typeof p.id === 'object' ? (p.id?.ru || p.id?.uz || '') : p.id).toLowerCase();
+      const pId = String(p.id || '').toLowerCase();
       if (pId && pId === currentIdentifier) return true;
 
       if (p.slug) {
-        if (typeof p.slug === 'string' && p.slug.toLowerCase() === currentIdentifier) return true;
-        if (typeof p.slug === 'object') {
-          const slugValues = Object.values(p.slug).map(v => String(v).toLowerCase().trim());
-          if (slugValues.includes(currentIdentifier)) return true;
-        }
+        const slugValues = Object.values(p.slug).map(v => String(v).toLowerCase().trim());
+        if (slugValues.includes(currentIdentifier)) return true;
       }
 
       const slugUz = getSafeProductSlug(p, 'uz').toLowerCase();
@@ -128,7 +125,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
       if (slugUz === currentIdentifier || slugRu === currentIdentifier) return true;
 
       if (p.model) {
-        const modelStr = String(typeof p.model === 'object' ? (p.model?.ru || p.model?.uz || '') : p.model)
+        const modelStr = String(p.model)
           .toLowerCase()
           .replace(/\s+/g, '-');
         if (modelStr === currentIdentifier || currentIdentifier.includes(modelStr)) return true;
@@ -179,7 +176,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     );
   }
 
-  const categoryObj = categoriesList.find((c) => c.id === product.category || (c.slug && c.slug === product.category));
+  const categoryObj = categoriesList.find((c) => c.id === product.category || Object.values(c.slug || {}).includes(product.category));
   const categoryName = categoryObj ? getLocalizedText(categoryObj.name, currentLang, String(product.category)) : String(product.category || '');
   const categorySlug = categoryObj ? getSafeCategorySlug(categoryObj, currentLang) : String(product.category || 'all');
 

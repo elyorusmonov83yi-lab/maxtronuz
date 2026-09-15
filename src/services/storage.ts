@@ -10,7 +10,8 @@ import {
   HeaderSettings,
   ContactSettings,
   PageSeoSettings,
-  IndustryInfo
+  IndustryInfo,
+  BrandInfo
 } from '../types';
 import { TelegramService } from './telegramService';
 import { productsData as defaultProducts, categoriesData as defaultCategories } from '../data/products';

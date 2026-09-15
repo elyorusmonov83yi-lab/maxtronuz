@@ -10,6 +10,7 @@ interface AdminClientsProps {
   setClientLogoPreview: (url: string) => void;
   setIsClientModalOpen: (open: boolean) => void;
   showNotification: (msg: string, type?: 'success' | 'error') => void;
+  triggerDeleteClient?: (client: ClientPartner) => void;
 }
 
 export const AdminClients: React.FC<AdminClientsProps> = ({

@@ -1,4 +1,4 @@
-import { Language, Product } from '../types';
+import { Language, Product, SeoSettings } from '../types';
 import { StorageService } from '../services/storage';
 
 export interface SeoConfig {
@@ -14,7 +14,7 @@ export interface SeoConfig {
 }
 
 export function updateSEO(config: SeoConfig = {}, lang: Language = 'uz') {
-  const seoSettings = StorageService.getSeoSettings() || {};
+  const seoSettings: Partial<SeoSettings> = StorageService.getSeoSettings() || {};
   const siteName = seoSettings.siteName || 'MAXTRON';
 
   // 1. Title: Faqat haqiqiy config yoki bazadagisi olinadi

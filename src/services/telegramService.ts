@@ -78,7 +78,7 @@ export const TelegramService = {
     return this.sendRawMessage(botToken, chatId, testMessage);
   },
 
-  async sendQuoteNotification(quote: QuoteRequestData & { productName?: string; id?: string }): Promise<boolean> {
+  async sendQuoteNotification(quote: QuoteRequestData & { productName?: string; id?: string; totalEstimate?: number }): Promise<boolean> {
     const settings = this.getSettings();
     if (!settings.enabled || !settings.botToken || !settings.chatId || !settings.notifyOnQuote) {
       return false;

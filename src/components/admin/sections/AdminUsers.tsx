@@ -27,13 +27,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
   const loadUsersFromDB = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/users');
-      const json = await res.json();
-      if (json && json.success && Array.isArray(json.data)) {
-        setUsersList(json.data);
-      } else {
-        setUsersList([]);
-      }
+      setUsersList(await ApiService.getAdminUsers());
     } catch (err) {
       console.error('Foydalanuvchilarni yuklashda xatolik:', err);
       showNotification('Фойдаланувчиларни юклашда хатолик yuz berdi', 'error');
@@ -155,7 +149,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               <input
                 type="password"
                 required
-                placeholder="••••••••"
+                minLength={10}
+                placeholder="Kamida 10 belgi"
                 value={newUserPassword}
                 onChange={(e) => setNewUserPassword(e.target.value)}
                 className="w-full px-4 py-2 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-emerald-500"

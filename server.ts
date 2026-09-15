@@ -1,8 +1,6 @@
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
 import dotenv from 'dotenv';
-import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
 
 // MariaDB Admin Marshrutlari
@@ -18,11 +16,22 @@ import usersAdminRoute from './src/api/admin/users/route';
 import uploadAdminRoute from './src/api/admin/upload/route';
 import industriesAdminRoute from './src/api/admin/industries/route';
 import brandRouter from './src/api/admin/brands/route';
+import { serveSitemap } from './src/server/sitemap';
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -30,46 +39,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // --- 🌟 STATIK PAPKALAR (/uploads brauzerda ochilishi uchun) ---
 const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
 app.use('/uploads', express.static(uploadsDir));
-
-// --- 🌟 MULTER SOZLAMASI (PDF va Rasmlar yuklash) ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const certsDir = path.join(process.cwd(), 'public', 'uploads', 'certificates');
-    if (!fs.existsSync(certsDir)) {
-      fs.mkdirSync(certsDir, { recursive: true });
-    }
-    cb(null, certsDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.pdf';
-    const cleanName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
-    cb(null, cleanName);
-  }
-});
-
-const upload = multer({ 
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB gacha ruxsat
-});
-
-// --- 🌟 UPLOAD API MARSHRUTI ---
-app.post('/api/admin/upload', upload.single('file'), (req: any, res: any) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Fayl yuborilmadi' });
-    }
-
-    const publicUrl = `/uploads/certificates/${req.file.filename}`;
-    return res.json({
-      success: true,
-      url: publicUrl,
-      name: req.file.originalname
-    });
-  } catch (err: any) {
-    console.error('Upload Error:', err);
-    return res.status(500).json({ success: false, message: err.message || 'Server yuklash xatosi' });
-  }
-});
+app.get('/sitemap.xml', serveSitemap);
 
 // --- MariaDB API Marshrutlari ---
 app.use('/api/admin/header', headerAdminRoute);

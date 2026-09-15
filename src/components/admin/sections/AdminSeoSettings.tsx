@@ -33,7 +33,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
               type="text"
               value={seoSettings.googleVerification || ''}
               onChange={(e) => setSeoSettings({ ...seoSettings, googleVerification: e.target.value })}
-              placeholder="google-site-verification=..."
+              placeholder="Tasdiqlash kodi (meta-tegdagi content qiymati)"
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white font-mono"
             />
           </div>
@@ -44,7 +44,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
               type="text"
               value={seoSettings.yandexVerification || ''}
               onChange={(e) => setSeoSettings({ ...seoSettings, yandexVerification: e.target.value })}
-              placeholder="yandex-verification=..."
+              placeholder="Tasdiqlash kodi (meta-tegdagi content qiymati)"
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white font-mono"
             />
           </div>
@@ -81,6 +81,26 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Standart Meta Title</label>
+            <input
+              type="text"
+              value={seoSettings.defaultTitle || ''}
+              onChange={(e) => setSeoSettings({ ...seoSettings, defaultTitle: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Standart Meta Description</label>
+            <input
+              type="text"
+              value={seoSettings.defaultDescription || ''}
+              onChange={(e) => setSeoSettings({ ...seoSettings, defaultDescription: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white"
+            />
+          </div>
+
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-gray-300 mb-1">Дефолт Meta Keywords</label>
             <input
@@ -100,7 +120,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
           <span>Sitemap.xml va Robots.txt Generator</span>
         </h3>
         <p className="text-xs text-gray-400">
-          Сайтнинг жойланган барча маҳсулотлари ва саҳифалари асосида автомат равишда SEO xml харита ва robot қоидаларини юклаб олинг.
+          Sitemap mahsulot, kategoriya va e’lon qilingan sahifalar o‘zgarganida avtomatik yangilanadi. Google va Yandex uchun manzil: <span className="font-mono text-cyan-300">/sitemap.xml</span>.
         </p>
 
         <div className="flex flex-wrap gap-3 pt-2">

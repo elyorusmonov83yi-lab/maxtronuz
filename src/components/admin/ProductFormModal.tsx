@@ -598,8 +598,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         uz: (formData.seoTitle as LocalizedString).uz?.trim() || nameObj.uz || ''
       },
       seoDescription: {
-        ru: (formData.seoDescription as LocalizedString).seoDescription?.ru?.trim() || '',
-        uz: (formData.seoDescription as LocalizedString).seoDescription?.uz?.trim() || ''
+        ru: (formData.seoDescription as LocalizedString).ru?.trim() || '',
+        uz: (formData.seoDescription as LocalizedString).uz?.trim() || ''
       },
       seoKeywords: {
         ru: (formData.seoKeywords as LocalizedString).ru?.trim() || '',

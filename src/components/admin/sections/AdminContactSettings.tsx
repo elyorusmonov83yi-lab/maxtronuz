@@ -27,8 +27,8 @@ import { ApiService } from '../../../services/api';
 interface AdminContactSettingsProps {
   contactSettings: ContactSettings;
   setContactSettings: React.Dispatch<React.SetStateAction<ContactSettings>>;
-  pageSeoSettings: PageSeoSettings;
-  setPageSeoSettings: React.Dispatch<React.SetStateAction<PageSeoSettings>>;
+  pageSeoSettings?: PageSeoSettings;
+  setPageSeoSettings?: React.Dispatch<React.SetStateAction<PageSeoSettings>>;
   handleSaveContact: (e: React.FormEvent) => void;
 }
 
@@ -51,7 +51,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
     try {
       setIsUploadingOg(true);
       const url = await ApiService.uploadFile(file);
-      setPageSeoSettings((prev) => ({
+      setPageSeoSettings?.((prev) => ({
         ...prev,
         contact: {
           ...prev.contact,

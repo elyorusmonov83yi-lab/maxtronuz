@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Language, Product, HomeContent } from '../types';
 import { StorageService } from '../services/storage';
@@ -16,6 +16,23 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
   homeContent 
 }) => {
   const location = useLocation();
+  const [seoSettings, setSeoSettings] = useState(() => StorageService.getSeoSettings());
+  const [contentVersion, setContentVersion] = useState(0);
+
+  useEffect(() => {
+    const refreshSeo = (event: Event) => setSeoSettings((event as CustomEvent).detail || StorageService.getSeoSettings());
+    const refreshContent = () => setContentVersion((version) => version + 1);
+    window.addEventListener('maxtron_seo_updated', refreshSeo);
+    window.addEventListener('maxtron_products_updated', refreshContent);
+    window.addEventListener('maxtron_categories_updated', refreshContent);
+    window.addEventListener('maxtron_pages_updated', refreshContent);
+    return () => {
+      window.removeEventListener('maxtron_seo_updated', refreshSeo);
+      window.removeEventListener('maxtron_products_updated', refreshContent);
+      window.removeEventListener('maxtron_categories_updated', refreshContent);
+      window.removeEventListener('maxtron_pages_updated', refreshContent);
+    };
+  }, []);
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -31,18 +48,32 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     let keywords = '';
     let ogImage = '';
     let robots = 'index, follow';
-    let canonical = window.location.href;
+    const canonicalUrl = new URL(window.location.href);
+    canonicalUrl.search = '';
+    canonicalUrl.hash = '';
+    let canonical = canonicalUrl.toString();
+    const normalizedPath = pathname.replace(/^\/(?:uz|ru|uz_cyrl|en)(?=\/|$)/, '') || '/';
+    const pathParts = normalizedPath.split('/').filter(Boolean);
+    const seoPageKey = pathParts[0] || 'home';
+    const pageSeo = seoSettings.pageSeo?.[seoPageKey];
 
     // 1. Mahsulot sahifasi SEO
-    if (product) {
-      const prodName = getProductName(product, currentLang);
-      title = getLocalized(product.seoTitle, `${prodName} ${product.model ? `(${product.model})` : ''} | MAXTRON`);
-      description = getLocalized(product.seoDescription, getLocalized(product.description, ''));
-      keywords = getLocalized(product.seoKeywords, `${product.model || ''}, ${prodName}, sanoat uskunalari`);
-      ogImage = product.ogImage || product.image || '';
+    const productSlug = pathParts[0] === 'product' ? decodeURIComponent(pathParts[1] || '') : '';
+    const resolvedProduct = product || StorageService.getProducts().find((item) => {
+      if (!productSlug) return false;
+      const slugs = typeof item.slug === 'object' ? Object.values(item.slug) : [item.slug];
+      return item.id === productSlug || slugs.some((slug) => slug === productSlug);
+    });
+
+    if (resolvedProduct) {
+      const prodName = getProductName(resolvedProduct, currentLang);
+      title = getLocalized(resolvedProduct.seoTitle, `${prodName} ${resolvedProduct.model ? `(${resolvedProduct.model})` : ''} | MAXTRON`);
+      description = getLocalized(resolvedProduct.seoDescription, getLocalized(resolvedProduct.description, ''));
+      keywords = getLocalized(resolvedProduct.seoKeywords, `${resolvedProduct.model || ''}, ${prodName}, sanoat uskunalari`);
+      ogImage = resolvedProduct.ogImage || resolvedProduct.image || '';
     } 
     // 2. BOSH SAHIFA SEO (Bazadagi `home` qatori ma'lumotlari)
-    else if (pathname === '/' || pathname === `/${currentLang}`) {
+    else if (normalizedPath === '/') {
       const homeData = homeContent || StorageService.getHomeContent();
 
       const defaultTitle = currentLang === 'ru'
@@ -67,9 +98,10 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     } 
     // 3. Boshqa sahifalar uchun standartlar
     else {
-      title = 'MAXTRON — Sanoat va O‘lchov Uskunalari';
-      description = 'Professional sanoat datchiklari va o‘lchov uskunalari';
-      keywords = 'maxtron, sanoat uskunalari';
+      title = getLocalized(pageSeo?.title, seoSettings.defaultTitle || 'MAXTRON — Sanoat va O‘lchov Uskunalari');
+      description = getLocalized(pageSeo?.description, seoSettings.defaultDescription || 'Professional sanoat datchiklari va o‘lchov uskunalari');
+      keywords = getLocalized(pageSeo?.keywords, seoSettings.defaultKeywords || 'maxtron, sanoat uskunalari');
+      ogImage = pageSeo?.ogImage || seoSettings.ogImageUrl || '';
     }
 
     // --- DOM'ni to'g'ridan-to'g'ri yangilash ---
@@ -89,11 +121,45 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     setMeta('name', 'description', description);
     setMeta('name', 'keywords', keywords);
     setMeta('name', 'robots', robots);
+    const googleVerification = (seoSettings.googleVerification || '').replace(/^google-site-verification\s*=\s*/i, '').trim();
+    const yandexVerification = (seoSettings.yandexVerification || '').replace(/^yandex-verification\s*=\s*/i, '').trim();
+    setMeta('name', 'google-site-verification', googleVerification);
+    setMeta('name', 'yandex-verification', yandexVerification);
+
+    const addExternalScript = (id: string, src: string) => {
+      let script = document.getElementById(id) as HTMLScriptElement | null;
+      if (!script) {
+        script = document.createElement('script');
+        script.id = id;
+        script.async = true;
+        script.src = src;
+        document.head.appendChild(script);
+      }
+      return script;
+    };
+    const googleAnalyticsId = (seoSettings.googleAnalyticsId || '').trim();
+    if (/^G-[A-Z0-9]+$/i.test(googleAnalyticsId)) {
+      const analyticsWindow = window as Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void };
+      analyticsWindow.dataLayer ||= [];
+      analyticsWindow.gtag ||= (...args: unknown[]) => analyticsWindow.dataLayer?.push(args);
+      addExternalScript('google-analytics', `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAnalyticsId)}`);
+      analyticsWindow.gtag('js', new Date());
+      analyticsWindow.gtag('config', googleAnalyticsId, { anonymize_ip: true });
+    }
+
+    const yandexMetrikaId = (seoSettings.yandexMetrikaId || '').trim();
+    if (/^\d+$/.test(yandexMetrikaId)) {
+      const metrikaWindow = window as Window & { ym?: (...args: unknown[]) => void };
+      const initMetrika = () => metrikaWindow.ym?.(Number(yandexMetrikaId), 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true });
+      const script = addExternalScript('yandex-metrika', 'https://mc.yandex.ru/metrika/tag.js');
+      if (metrikaWindow.ym) initMetrika();
+      else script.addEventListener('load', initMetrika, { once: true });
+    }
 
     // OpenGraph
     setMeta('property', 'og:title', title);
     setMeta('property', 'og:description', description);
-    setMeta('property', 'og:type', product ? 'product' : 'website');
+    setMeta('property', 'og:type', resolvedProduct ? 'product' : 'website');
     setMeta('property', 'og:url', canonical);
     if (ogImage) {
       setMeta('property', 'og:image', ogImage);
@@ -115,7 +181,7 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     }
     linkCanonical.setAttribute('href', canonical);
 
-  }, [location.pathname, currentLang, product, homeContent]);
+  }, [location.pathname, currentLang, product, homeContent, seoSettings, contentVersion]);
 
   return null;
 };

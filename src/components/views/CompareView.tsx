@@ -216,7 +216,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
                   <td className="p-4 font-medium text-gray-400">Давлат реестри / Сертификат</td>
                   {products.map((p) => (
                     <td key={p.id} className="p-4 text-xs font-mono text-blue-300">
-                      {p.standardCert}
+                      {getLocalizedText(p.standardCert, currentLang, '—')}
                     </td>
                   ))}
                 </tr>

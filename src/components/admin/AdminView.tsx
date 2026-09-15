@@ -59,9 +59,8 @@ interface AdminViewProps {
 
 export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
   // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return StorageService.isAdminAuthenticated();
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email: string; name: string } | null>(() => {
     return StorageService.getAdminUser();
   });
@@ -72,6 +71,25 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [authError, setAuthError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    ApiService.getCurrentAdmin().then((user) => {
+      if (!isMounted) return;
+      if (user) {
+        const adminData = { email: user.username, name: user.username };
+        StorageService.setAdminAuthenticated(true, adminData);
+        setCurrentUser(adminData);
+        setIsAuthenticated(true);
+      } else {
+        StorageService.setAdminAuthenticated(false);
+        localStorage.removeItem('admin_token');
+        setIsAuthenticated(false);
+      }
+      setIsAuthChecked(true);
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   // Sidebar Layout State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -307,6 +325,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
 
   const handleLogout = () => {
     StorageService.setAdminAuthenticated(false);
+    localStorage.removeItem('admin_token');
     setIsAuthenticated(false);
     setCurrentUser(null);
     setEmail('');
@@ -530,49 +549,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
   };
 
   const downloadSitemap = () => {
-    const baseUrl = 'https://maxtron.uz';
-    const dynamicPageUrls = pages.map((p) => `  <url>\n    <loc>${baseUrl}/page/${p.slug}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`).join('\n');
-    const dynamicProductUrls = products.map((p) => `  <url>\n    <loc>${baseUrl}/catalog?product=${p.id}</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>`).join('\n');
-    
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/catalog</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/certificates</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/about</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/contact</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-${dynamicPageUrls}
-${dynamicProductUrls}
-</urlset>`;
-
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = '/sitemap.xml';
     a.download = 'sitemap.xml';
     a.click();
-    URL.revokeObjectURL(url);
-    showNotification('sitemap.xml юклаб олинди!');
+    showNotification('Yangilanadigan sitemap.xml yuklab olindi!');
   };
 
   const downloadRobotsTxt = () => {
@@ -623,6 +604,10 @@ ${dynamicProductUrls}
       });
     }
   };
+
+  if (!isAuthChecked) {
+    return <div className="min-h-screen bg-gray-950" aria-label="Tekshirilmoqda" />;
+  }
 
   if (!isAuthenticated) {
     return (
@@ -878,7 +863,7 @@ ${dynamicProductUrls}
             try {
               const res = await ApiService.saveProduct(prod);
               if (res && res.success === false) {
-                throw new Error(res.message || res.error || 'Server saqlay olmadi');
+                throw new Error(res.message || 'Server saqlay olmadi');
               }
               showNotification(`«${prod.model || 'Маҳсулот'}» MariaDB базасига сақланди!`, 'success');
               setProducts(await ApiService.getProducts() || []);

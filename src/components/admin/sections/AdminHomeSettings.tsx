@@ -12,7 +12,7 @@ import {
   ShieldAlert,
   LayoutTemplate
 } from 'lucide-react';
-import { HomeContent } from '../../../types';
+import { HomeContent, LocalizedString } from '../../../types';
 
 interface AdminHomeSettingsProps {
   homeContent: HomeContent;
@@ -39,7 +39,7 @@ export const AdminHomeSettings: React.FC<AdminHomeSettingsProps> = ({
       const reader = new FileReader();
       reader.onload = (ev) => {
         const base64 = ev.target?.result as string;
-        const currentOg = typeof homeContent.ogImage === 'object' ? homeContent.ogImage : {};
+        const currentOg: LocalizedString = typeof homeContent.ogImage === 'object' && homeContent.ogImage ? homeContent.ogImage : { uz: '', ru: '' };
         setHomeContent({
           ...homeContent,
           ogImage: { ...currentOg, [homeLang]: base64 }
@@ -690,7 +690,7 @@ export const AdminHomeSettings: React.FC<AdminHomeSettingsProps> = ({
                     placeholder="https://..."
                     value={currentOgImage}
                     onChange={(e) => {
-                      const currentOg = typeof homeContent.ogImage === 'object' ? homeContent.ogImage : {};
+                      const currentOg: LocalizedString = typeof homeContent.ogImage === 'object' && homeContent.ogImage ? homeContent.ogImage : { uz: '', ru: '' };
                       setHomeContent({ ...homeContent, ogImage: { ...currentOg, [homeLang]: e.target.value } });
                     }}
                     className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white outline-none font-mono"

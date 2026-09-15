@@ -77,7 +77,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {product.model}
             </span>
             <span className="text-xs text-gray-400 hidden sm:inline-block">
-              {product.standardCert}
+              {getLocalizedText(product.standardCert, currentLang, '—')}
             </span>
           </div>
 
@@ -252,7 +252,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="p-3.5 rounded-xl bg-gray-950/60 border border-gray-800 flex items-center justify-between text-xs sm:col-span-2">
                     <span className="text-gray-400">Сертификат ва Давлат Реестри</span>
                     <span className="font-mono font-bold text-blue-400 text-right">
-                      {product.standardCert}
+                      {getLocalizedText(product.standardCert, currentLang, '—')}
                     </span>
                   </div>
                 </div>

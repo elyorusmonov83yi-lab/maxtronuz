@@ -1,7 +1,7 @@
 // ============================================================================
 // --- ASOSIY TIPLAR VA TILLAR (UZ / RU) ---
 // ============================================================================
-export type Language = 'uz' | 'ru';
+export type Language = 'uz' | 'ru' | 'uz_cyrl' | 'en';
 
 export type LocalizedString = {
   uz: string;
@@ -12,6 +12,7 @@ export type LocalizedString = {
 export interface LocalizedStringArray {
   uz: string[];
   ru: string[];
+  [key: string]: string[] | undefined;
 }
 
 // ============================================================================
@@ -40,7 +41,7 @@ export interface IndustryInfo {
 export interface Product {
   id: string;
   slug?: LocalizedString;
-  name: LocalizedString;
+  name: LocalizedString | string;
   model: string;
   category: string;
   tagline: LocalizedString;
@@ -52,11 +53,13 @@ export interface Product {
   isPopular?: boolean;
   isNew?: boolean;
   image: string;
+  imageUrl?: string;
+  brand?: string;
   additionalImages?: string[];
   specs: ProductSpec[];
   features: LocalizedStringArray;
   applications: LocalizedStringArray;
-  standardCert?: LocalizedString | string; // Ikki tilli standart
+  standardCert?: LocalizedString | string;
   warrantyMonths?: number;
   seoTitle?: LocalizedString;
   seoDescription?: LocalizedString;
@@ -76,14 +79,8 @@ export interface CategoryInfo {
     uz: string;
     ru: string;
   };
-  name: {
-    uz: string;
-    ru: string;
-  };
-  description: {
-    uz: string;
-    ru: string;
-  };
+  name: LocalizedString;
+  description: LocalizedString;
   icon?: string;
   image?: string;
   count?: number;
@@ -135,6 +132,7 @@ export interface SeoPageItem {
   keywords?: { uz: string; ru: string };
   ogTitle?: { uz: string; ru: string };
   ogImage?: string;
+  ogDescription?: { uz: string; ru: string };
 }
 
 export interface PageSeoFields {
@@ -222,7 +220,7 @@ export interface HomeContent {
   // 3. OpenGraph (Telegram / Facebook / WhatsApp Preview)
   ogTitle?: { uz: string; ru: string };
   ogDescription?: { uz: string; ru: string };
-  ogImage?: { uz: string; ru: string } | string;
+  ogImage?: LocalizedString | string;
 
   // 4. Texnik sozlamalar
   canonicalUrl?: string;
@@ -279,11 +277,13 @@ export interface HeaderSettings {
   topbarDelivery: LocalizedString;
   topbarSchedule: LocalizedString;
   phone: string;
+  phonePrimary?: string;
   phoneSecondary?: string;
   email: string;
   telegramUser: string;
   telegramUrl: string;
   instagramUrl?: string;
+  instagram?: string;
   youtubeUrl?: string;
 }
 
@@ -306,6 +306,7 @@ export interface ContactSettings {
   // 🌟 Barcha Ijtimoiy tarmoqlar:
   telegram?: string;
   telegramUrl?: string;
+  instagram?: string;
   instagramUrl?: string;
   whatsappUrl?: string;
   facebookUrl?: string;

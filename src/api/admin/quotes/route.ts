@@ -80,7 +80,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // 2. Telegram Bot orqali bildirishnoma yuborish (Asinxron)
     try {
-      await TelegramService.sendOrderNotification({
+      await TelegramService.sendQuoteNotification({
         id: quoteId,
         companyName,
         contactPerson,

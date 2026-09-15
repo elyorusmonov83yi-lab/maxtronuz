@@ -452,6 +452,17 @@ export const ApiService = {
     }
   },
 
+  async getCurrentAdmin(): Promise<{ id: string; username: string; role: string } | null> {
+    try {
+      const res = await fetch('/api/admin/users/me', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.success ? json.user : null;
+    } catch {
+      return null;
+    }
+  },
+
   async saveAdminUser(user: any): Promise<{ success: boolean; message?: string }> {
     const res = await fetch('/api/admin/users', {
       method: 'POST',

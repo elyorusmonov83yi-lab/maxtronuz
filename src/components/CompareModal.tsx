@@ -162,7 +162,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                     <td className="p-4 font-semibold text-gray-400">Метрология ва Сертификат</td>
                     {products.map((p) => (
                       <td key={p.id} className="p-4 text-blue-400 font-mono">
-                        {p.standardCert}
+                        {getLocalizedText(p.standardCert, currentLang, '—')}
                       </td>
                     ))}
                   </tr>
