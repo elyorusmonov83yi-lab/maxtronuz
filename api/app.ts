@@ -82,7 +82,7 @@ app.use('/api/upload', uploadAdminRoute);
 app.use('/api/admin/industries', industriesAdminRoute);
 app.use('/api/industries', industriesAdminRoute);
 
-app.get('/api/health', (_req, res) => {
+app.get(['/health', '/api/health'], (_req, res) => {
   res.json({
     status: 'ok',
     storage: 'mariadb_database',
