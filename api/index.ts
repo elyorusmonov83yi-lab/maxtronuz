@@ -2,19 +2,19 @@ import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 
-import headerAdminRoute from '../src/api/admin/header/route.ts';
-import categoriesAdminRoute from '../src/api/admin/categories/route.ts';
-import productsAdminRoute from '../src/api/admin/products/route.ts';
-import quotesAdminRoute from '../src/api/admin/quotes/route.ts';
-import certificatesAdminRoute from '../src/api/admin/certificates/route.ts';
-import clientsAdminRoute from '../src/api/admin/clients/route.ts';
-import pagesAdminRoute from '../src/api/admin/pages/route.ts';
-import settingsAdminRoute from '../src/api/admin/settings/route.ts';
-import usersAdminRoute from '../src/api/admin/users/route.ts';
-import uploadAdminRoute from '../src/api/admin/upload/route.ts';
-import industriesAdminRoute from '../src/api/admin/industries/route.ts';
-import brandRouter from '../src/api/admin/brands/route.ts';
-import { serveSitemap } from '../src/server/sitemap.ts';
+import headerAdminRoute from '../src/api/admin/header/route.js';
+import categoriesAdminRoute from '../src/api/admin/categories/route.js';
+import productsAdminRoute from '../src/api/admin/products/route.js';
+import quotesAdminRoute from '../src/api/admin/quotes/route.js';
+import certificatesAdminRoute from '../src/api/admin/certificates/route.js';
+import clientsAdminRoute from '../src/api/admin/clients/route.js';
+import pagesAdminRoute from '../src/api/admin/pages/route.js';
+import settingsAdminRoute from '../src/api/admin/settings/route.js';
+import usersAdminRoute from '../src/api/admin/users/route.js';
+import uploadAdminRoute from '../src/api/admin/upload/route.js';
+import industriesAdminRoute from '../src/api/admin/industries/route.js';
+import brandRouter from '../src/api/admin/brands/route.js';
+import { serveSitemap } from '../src/server/sitemap.js';
 
 dotenv.config();
 
