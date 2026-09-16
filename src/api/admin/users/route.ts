@@ -4,7 +4,8 @@ import crypto from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
 import { db } from '../../../server/db.ts';
-import { requireAdmin, requireSuperAdmin, AuthenticatedRequest } from '../../../middleware/auth.ts';
+import { requireAdmin, requireSuperAdmin } from '../../../middleware/auth.ts';
+import type { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const router = Router();
 const scrypt = promisify(crypto.scrypt);
