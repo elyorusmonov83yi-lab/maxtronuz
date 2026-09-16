@@ -8,3 +8,4 @@ coverage/
 !.env.example
 maxtron_backup.sql
 server.ts.backup
+.vercel
