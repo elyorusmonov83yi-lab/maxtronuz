@@ -2,8 +2,8 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
-import { db } from '../../../server/db';
-import { requireAdmin, requireSuperAdmin, AuthenticatedRequest } from '../../../middleware/auth';
+import { db } from '../../../server/db.js';
+import { requireAdmin, requireSuperAdmin, AuthenticatedRequest } from '../../../middleware/auth.js';
 
 const router = Router();
 const scrypt = promisify(crypto.scrypt);
