@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { db } from '../../../server/db.ts';
 import { requireAdmin } from '../../../middleware/auth.ts';
 import { TelegramService } from '../../../services/telegramService.ts'; // 🌟 To'g'ri import yo'li
