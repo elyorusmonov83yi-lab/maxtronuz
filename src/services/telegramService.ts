@@ -1,4 +1,4 @@
-import { QuoteRequestData } from '../types.ts';
+import type { QuoteRequestData } from '../types.ts';
 
 export interface TelegramBotSettings {
   enabled: boolean;
