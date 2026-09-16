@@ -75,7 +75,7 @@ router.get('/', requireSuperAdmin, async (_req: Request, res: Response) => {
     const [rows]: any = await db.query('SELECT id, name, username, role, createdAt, created_at FROM admin_users');
     const users = Array.isArray(rows) ? rows.map((user: any) => ({
       id: user.id, name: user.name || user.username, fullName: user.name || user.username,
-      username: user.username, role: user.role || 'admin', createdAt: user.createdAt || user.created_at || null
+      username: user.username, role: user.role || 'admin', createdAt: user.createdAt || null
     })) : [];
     return res.json({ success: true, data: users });
   } catch (error: any) {

@@ -20,7 +20,7 @@ import { serveSitemap } from './src/server/sitemap';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.disable('x-powered-by');
@@ -108,4 +108,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.NODE_ENV !== 'production') {
+  startServer();
+}
+
+export default app;
