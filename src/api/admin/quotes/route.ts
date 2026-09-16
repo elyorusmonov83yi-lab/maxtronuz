@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { db } from '../../../server/db.ts';
-import { requireAdmin } from '../../../middleware/auth.ts';
-import { TelegramService } from '../../../services/telegramService.ts'; // 🌟 To'g'ri import yo'li
+import { db } from '../../../server/db.js';
+import { requireAdmin } from '../../../middleware/auth.js';
+import { TelegramService } from '../../../services/telegramService.js'; // 🌟 To'g'ri import yo'li
 
 const router = Router();
 

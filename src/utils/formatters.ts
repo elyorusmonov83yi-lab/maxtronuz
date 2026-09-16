@@ -1,4 +1,4 @@
-import { Language } from '../types.ts';
+import { Language } from '../types.js';
 
 /**
  * Format numeric price into national currency (UZS sum) with language-appropriate formatting

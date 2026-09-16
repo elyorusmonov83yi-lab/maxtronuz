@@ -1,5 +1,5 @@
-import { Language, Product, SeoSettings } from '../types.ts';
-import { StorageService } from '../services/storage.ts';
+import { Language, Product, SeoSettings } from '../types.js';
+import { StorageService } from '../services/storage.js';
 
 export interface SeoConfig {
   title?: string;

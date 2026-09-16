@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
-import { requireAdmin } from '../../../middleware/auth.ts';
+import { requireAdmin } from '../../../middleware/auth.js';
 
 const router = Router();
 const baseUploadDir = path.resolve(process.cwd(), 'public', 'uploads');

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { db } from '../../../server/db.ts';
-import { requireAdmin } from '../../../middleware/auth.ts';
+import { db } from '../../../server/db.js';
+import { requireAdmin } from '../../../middleware/auth.js';
 
 const router = Router();
 

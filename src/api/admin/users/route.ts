@@ -1,11 +1,9 @@
-import { Router } from 'express';
-import type { Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
-import { db } from '../../../server/db.ts';
-import { requireAdmin, requireSuperAdmin } from '../../../middleware/auth.ts';
-import type { AuthenticatedRequest } from '../../../middleware/auth.ts';
+import { db } from '../../../server/db';
+import { requireAdmin, requireSuperAdmin, AuthenticatedRequest } from '../../../middleware/auth';
 
 const router = Router();
 const scrypt = promisify(crypto.scrypt);
@@ -74,7 +72,8 @@ router.get('/me', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
 
 router.get('/', requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
-    const [rows]: any = await db.query('SELECT id, name, username, role, createdAt, created_at FROM admin_users');
+   
+    const [rows]: any = await db.query('SELECT id, name, username, role, createdAt FROM admin_users');
     const users = Array.isArray(rows) ? rows.map((user: any) => ({
       id: user.id, name: user.name || user.username, fullName: user.name || user.username,
       username: user.username, role: user.role || 'admin', createdAt: user.createdAt || null

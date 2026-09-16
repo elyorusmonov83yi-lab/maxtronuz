@@ -1,4 +1,4 @@
-import { Certificate } from '../types.ts';
+import { Certificate } from '../types.js';
 
 export const certificatesData: Certificate[] = [
   {
