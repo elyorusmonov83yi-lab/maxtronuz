@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { db } from '../../../server/db';
-import { requireAdmin } from '../../../middleware/auth';
+import { db } from '../../../server/db.ts';
+import { requireAdmin } from '../../../middleware/auth.ts';
 
 const router = Router();
 

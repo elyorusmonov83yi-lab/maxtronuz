@@ -7,8 +7,8 @@ import {
   HomeContent,
   IndustryInfo,
   BrandInfo
-} from '../types';
-import { StorageService } from './storage';
+} from '../types.ts';
+import { StorageService } from './storage.ts';
 
 // 🌟 Barcha so'rovlarga token qo'shish uchun yordamchi funksiya
 const getAuthHeaders = () => {

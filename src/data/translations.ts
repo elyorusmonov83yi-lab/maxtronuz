@@ -1,4 +1,4 @@
-import { Language } from '../types';
+import { Language } from '../types.ts';
 
 export const translations: Record<Language, Record<string, string>> = {
   uz_cyrl: {

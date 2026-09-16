@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { db } from './db';
+import { db } from './db.ts';
 
 type SitemapEntry = { path: string; lastmod?: unknown; changefreq: 'daily' | 'weekly' | 'monthly'; priority: string };
 

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { db } from '../../../server/db';
-import { requireAdmin } from '../../../middleware/auth';
-import { TelegramService } from '../../../services/telegramService'; // 🌟 To'g'ri import yo'li
+import { db } from '../../../server/db.ts';
+import { requireAdmin } from '../../../middleware/auth.ts';
+import { TelegramService } from '../../../services/telegramService.ts'; // 🌟 To'g'ri import yo'li
 
 const router = Router();
 

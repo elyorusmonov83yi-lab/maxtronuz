@@ -12,11 +12,11 @@ import {
   PageSeoSettings,
   IndustryInfo,
   BrandInfo
-} from '../types';
-import { TelegramService } from './telegramService';
-import { productsData as defaultProducts, categoriesData as defaultCategories } from '../data/products';
-import { certificatesData as defaultCertificates } from '../data/certificates';
-import { getLocalizedText } from '../utils/formatters';
+} from '../types.ts';
+import { TelegramService } from './telegramService.ts';
+import { productsData as defaultProducts, categoriesData as defaultCategories } from '../data/products.ts';
+import { certificatesData as defaultCertificates } from '../data/certificates.ts';
+import { getLocalizedText } from '../utils/formatters.ts';
 
 function safeJsonParse(val: any, fallback: any): any {
   if (typeof val !== 'string') return val;
