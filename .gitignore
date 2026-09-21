@@ -1,0 +1,12 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+maxtron_backup.sql
+server.ts.backup
+.vercel
+.next/        <-- Mana shu qatorni qo'shing
