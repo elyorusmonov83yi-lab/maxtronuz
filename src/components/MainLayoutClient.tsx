@@ -71,9 +71,13 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
+  const token = localStorage.getItem('admin_token');
+
+  if (token) {
     StorageService.syncWithDatabase();
-  }, []);
+  }
+}, []);
 
   useEffect(() => {
     const handleScroll = () => {
