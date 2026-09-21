@@ -1,8 +1,15 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
 
+
 function getJwtSecret(): string {
-  return process.env.JWT_SECRET || 'maxtron_default_jwt_secret_key_2026';
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+
+  return secret;
 }
 
 // 1. Tokenni tekshirish (Boolean qaytaradi)
