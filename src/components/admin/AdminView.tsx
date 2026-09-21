@@ -82,7 +82,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
     ApiService.getCurrentAdmin().then((user) => {
       if (!isMounted) return;
       if (user) {
-        const adminData = { email: user.username, name: user.name || user.username };
+        const adminData = { email: user.username, name: (user as any).name || user.username};
         StorageService.setAdminAuthenticated(true, adminData);
         setCurrentUser(adminData);
         setIsAuthenticated(true);

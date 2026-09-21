@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const originalName = file.name || 'document';
     const extension = path.extname(originalName).toLowerCase();
 
-    if (!ALLOWED_EXTENSIONS.has(extension) || !ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    if (!ALLOWED_EXTENSIONS.has(extension) || !ALLOWED_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
         { success: false, message: 'Ruxsat etilmagan fayl formati' },
         { status: 400 }

@@ -38,14 +38,15 @@ import {
   getSafeProductSlug, 
   getSafeCategorySlug 
 } from '../../utils/formatters';
-
 interface CatalogViewProps {
   currentLang: Language;
+  initialCategory?: string;
+  onSelectProduct: (p: Product) => void;
   onOpenQuote: (product: Product) => void;
   comparedProducts: string[];
   onToggleCompare: (product: Product) => void;
+  onShowToast: (msg: string) => void;
 }
-
 const setMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
   if (typeof document === 'undefined' || !content) return;
   let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
@@ -73,6 +74,7 @@ const cleanCategoryTitle = (title: string): string => {
 
 export const CatalogView: React.FC<CatalogViewProps> = ({
   currentLang,
+  initialCategory = 'all',
   onOpenQuote,
   comparedProducts,
   onToggleCompare,
@@ -80,7 +82,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const params = useParams() as { categorySlug?: string; categoryId?: string };
   const navigate = useNavigate();
 
-  const rawParam = params?.categorySlug || params?.categoryId || 'all';
+  const rawParam = params?.categorySlug || params?.categoryId || initialCategory || 'all';
   const currentSlugParam = typeof rawParam === 'string' ? rawParam : 'all';
 
   // Filters State

@@ -6,7 +6,6 @@ const BASE_URL = 'https://maxtron.uz';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const currentDate = new Date();
 
-  // 1. Statik sahifalar (Har bir sahifa RU va UZ uchun)
   const staticRoutes = [
     '',
     '/catalog',
@@ -23,7 +22,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [];
 
   for (const route of staticRoutes) {
-    // Ruscha (asosiy)
     staticEntries.push({
       url: `${BASE_URL}${route}`,
       lastModified: currentDate,
@@ -37,7 +35,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     });
 
-    // O'zbekcha versiya
     staticEntries.push({
       url: `${BASE_URL}/uz${route}`,
       lastModified: currentDate,
@@ -52,12 +49,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // 2. Dinamik Mahsulotlar (Bazadan avtomatik olinadi)
+  // Dinamik Mahsulotlar (xatosiz SQL)
   let productEntries: MetadataRoute.Sitemap = [];
   try {
-    const [products]: any = await db.query(
-      'SELECT id, slug, updated_at FROM products WHERE is_active = 1 OR is_active IS NULL'
-    );
+    const [products]: any = await db.query('SELECT id, slug FROM products');
 
     if (Array.isArray(products)) {
       products.forEach((p) => {
@@ -75,12 +70,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           }
         }
 
-        const lastMod = p.updated_at ? new Date(p.updated_at) : currentDate;
-
-        // Mahsulot RU
         productEntries.push({
           url: `${BASE_URL}/product/${encodeURIComponent(slugRu)}`,
-          lastModified: lastMod,
+          lastModified: currentDate,
           changeFrequency: 'weekly',
           priority: 0.9,
           alternates: {
@@ -91,10 +83,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           },
         });
 
-        // Mahsulot UZ
         productEntries.push({
           url: `${BASE_URL}/uz/product/${encodeURIComponent(slugUz)}`,
-          lastModified: lastMod,
+          lastModified: currentDate,
           changeFrequency: 'weekly',
           priority: 0.8,
           alternates: {
@@ -107,52 +98,49 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
   } catch (err) {
-    console.error('Sitemap products fetch error:', err);
+    console.error('Sitemap products error:', err);
   }
 
-  // 3. Dinamik Kategoriyalar (Katalog filtrlari uchun)
+  // Dinamik Kategoriyalar
   let categoryEntries: MetadataRoute.Sitemap = [];
   try {
-    const [categories]: any = await db.query('SELECT id, slug, updated_at FROM categories');
+    const [categories]: any = await db.query('SELECT id, slug FROM categories');
 
     if (Array.isArray(categories)) {
       categories.forEach((cat) => {
         const slug = cat.slug || cat.id;
-        const lastMod = cat.updated_at ? new Date(cat.updated_at) : currentDate;
 
         categoryEntries.push({
           url: `${BASE_URL}/catalog?category=${encodeURIComponent(slug)}`,
-          lastModified: lastMod,
+          lastModified: currentDate,
           changeFrequency: 'weekly',
           priority: 0.7,
         });
 
         categoryEntries.push({
           url: `${BASE_URL}/uz/catalog?category=${encodeURIComponent(slug)}`,
-          lastModified: lastMod,
+          lastModified: currentDate,
           changeFrequency: 'weekly',
           priority: 0.7,
         });
       });
     }
   } catch (err) {
-    console.error('Sitemap categories fetch error:', err);
+    console.error('Sitemap categories error:', err);
   }
 
-  // 4. Dinamik CMS Sahifalar (`/page/[slug]`)
+  // Dinamik CMS Sahifalar (xatosiz SQL)
   let cmsEntries: MetadataRoute.Sitemap = [];
   try {
-    const [pages]: any = await db.query(
-      'SELECT slug, updated_at FROM pages WHERE is_published = 1'
-    );
+    const [pages]: any = await db.query('SELECT slug FROM pages');
 
     if (Array.isArray(pages)) {
       pages.forEach((page) => {
-        const lastMod = page.updated_at ? new Date(page.updated_at) : currentDate;
+        if (!page.slug) return;
 
         cmsEntries.push({
           url: `${BASE_URL}/page/${encodeURIComponent(page.slug)}`,
-          lastModified: lastMod,
+          lastModified: currentDate,
           changeFrequency: 'monthly',
           priority: 0.6,
           alternates: {
@@ -165,7 +153,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         cmsEntries.push({
           url: `${BASE_URL}/uz/page/${encodeURIComponent(page.slug)}`,
-          lastModified: lastMod,
+          lastModified: currentDate,
           changeFrequency: 'monthly',
           priority: 0.5,
           alternates: {
@@ -178,7 +166,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
   } catch (err) {
-    console.error('Sitemap pages fetch error:', err);
+    console.error('Sitemap pages error:', err);
   }
 
   return [...staticEntries, ...productEntries, ...categoryEntries, ...cmsEntries];

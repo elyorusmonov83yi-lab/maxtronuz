@@ -1,13 +1,16 @@
 'use client';
 
 import React from 'react';
-import NextLink, { LinkProps as NextLinkProps } from 'next/link';
+import NextLink from 'next/link';
 import { useRouter as useNextRouter, usePathname, useSearchParams } from 'next/navigation';
 
-export interface LinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, keyof NextLinkProps>, NextLinkProps {
-  children?: React.ReactNode;
+export interface LinkProps {
+  href: string;
   to?: string;
-  href?: any;
+  id?: string;
+  children: React.ReactNode;
+  className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export const Link: React.FC<LinkProps> = ({ to, href, children, ...props }) => {
@@ -32,9 +35,20 @@ export const useNavigate = () => {
 
 export const useLocation = () => {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  let search = '';
+  
+  try {
+    // useSearchParams faqat Suspense ichida xavfsiz ishlaydi, 
+    // shuning uchun uni try-catch bilan orab, build paytida qulab tushishining oldini olamiz
+    const searchParams = useSearchParams();
+    search = searchParams?.toString() ? `?${searchParams.toString()}` : '';
+  } catch {
+    // SSR / Prerender vaqtida Suspense bo'lmasa, xatoni yutib yuboradi
+    search = '';
+  }
+
   return {
     pathname: pathname || '/',
-    search: searchParams?.toString() ? `?${searchParams.toString()}` : '',
+    search,
   };
 };

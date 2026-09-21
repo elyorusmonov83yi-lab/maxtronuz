@@ -6,8 +6,8 @@ import {
   Handshake, Users, Globe, Layout, Building, MapPin, Sparkles, 
   Send, LogOut, X, Building2, Tag 
 } from 'lucide-react';
-import { AdminUser, Product, CategoryInfo, Certificate, CustomPage, ClientPartner, IndustryInfo, BrandInfo } from '../../../types';
-import { AdminQuoteRequest } from '../../../services/storage';
+import { AdminUser, Product, CategoryInfo, Certificate, CustomPage, ClientPartner, IndustryInfo, BrandInfo } from '@/types';
+import { AdminQuoteRequest } from '@/services/storage';
 
 interface AdminSidebarProps {
   activeTab: string;

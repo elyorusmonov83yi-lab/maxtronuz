@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ProductView } from '@/components/views/ProductView';
+import { ProductDetailView } from '@/components/views/ProductDetailView';
 import { Product } from '@/types';
 import { StorageService } from '@/services/storage';
 
@@ -36,16 +36,15 @@ export const ProductPageClient = () => {
   }
 
   return (
-    <ProductView
-      product={product}
+    <ProductDetailView
       currentLang="ru"
       onOpenQuote={() => {}}
+      comparedProducts={comparedProducts}
       onToggleCompare={(p: Product) => {
         setComparedProducts((prev) => 
           prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]
         );
       }}
-      isCompared={comparedProducts.includes(product.id)}
       onShowToast={(msg: string) => console.log(msg)}
     />
   );
