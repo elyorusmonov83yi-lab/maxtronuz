@@ -9,4 +9,4 @@ coverage/
 maxtron_backup.sql
 server.ts.backup
 .vercel
-.next/        <-- Mana shu qatorni qo'shing
+.next/
