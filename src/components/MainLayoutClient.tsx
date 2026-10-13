@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLocation, useNavigate } from '@/utils/navigation';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Header } from './Header';
@@ -16,54 +17,52 @@ interface MainLayoutClientProps {
 }
 
 export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) => {
+  const pathname = usePathname();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const getLangFromPath = (pathname: string): Language | null => {
-    const parts = pathname.split('/').filter(Boolean);
+  // Определение языка одинаково работает и на SSR, и в браузере
+  const getLangFromPath = (path: string | null): Language => {
+    if (!path) return 'ru';
+    const parts = path.split('/').filter(Boolean);
     if (parts.length > 0) {
       const first = parts[0].toLowerCase();
       if (first === 'uz') return 'uz';
       if (first === 'ru') return 'ru';
-      if (first === 'en') return 'en';
-      if (first === 'uz_cyrl' || first === 'oz') return 'uz_cyrl';
-    }
-    return null;
-  };
-
-  const [currentLang, setCurrentLang] = useState<Language>(() => {
-    if (typeof window !== 'undefined') {
-      return getLangFromPath(window.location.pathname) || 'ru';
     }
     return 'ru';
-  });
+  };
+
+  // Начальное состояние синхронно с путем как на сервере, так и на клиенте
+  const [currentLang, setCurrentLang] = useState<Language>(() => getLangFromPath(pathname));
 
   useEffect(() => {
-    const detected = getLangFromPath(location.pathname);
-    if (detected && detected !== currentLang) {
+    const detected = getLangFromPath(pathname);
+    if (detected !== currentLang) {
       setCurrentLang(detected);
     }
-  }, [location.pathname, currentLang]);
+  }, [pathname, currentLang]);
 
   const handleLanguageChange = (newLang: Language) => {
     setCurrentLang(newLang);
-    const parts = location.pathname.split('/').filter(Boolean);
+    const currentPath = pathname || location.pathname || '/';
+    const parts = currentPath.split('/').filter(Boolean);
     let subpath = '';
-    if (['uz', 'ru', 'en', 'uz_cyrl', 'oz'].includes(parts[0]?.toLowerCase())) {
+    
+    if (['uz', 'ru'].includes(parts[0]?.toLowerCase())) {
       subpath = '/' + parts.slice(1).join('/');
     } else {
-      subpath = location.pathname;
+      subpath = currentPath;
     }
 
     if (newLang === 'ru') {
-      navigate(subpath || '/');
+      window.location.href = subpath || '/';
     } else {
-      const prefix = `/${newLang}`;
-      navigate(`${prefix}${subpath === '/' ? '' : subpath}`);
+      window.location.href = `/uz${subpath === '/' ? '' : subpath}`;
     }
   };
 
-  // Modallar va solishtirish holatlari
+  // Модальные окна и сравнение
   const [quoteProduct, setQuoteProduct] = useState<Product | null>(null);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState<boolean>(false);
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
@@ -71,13 +70,12 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
- useEffect(() => {
-  const token = localStorage.getItem('admin_token');
-
-  if (token) {
-    StorageService.syncWithDatabase();
-  }
-}, []);
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      StorageService.syncWithDatabase();
+    }
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -111,7 +109,7 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
           onOpenQuoteModal={() => handleOpenQuote()}
         />
 
-        {/* Sahifalar kontenti (Next.js har bir sahifani shu yerga render qiladi) */}
+        {/* Контент страницы */}
         <main className="flex-1 pt-20 md:pt-28">
           {children}
         </main>
@@ -122,7 +120,7 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
           onOpenQuoteModal={() => handleOpenQuote()}
         />
 
-        {/* Solishtirish paneli */}
+        {/* Панель сравнения */}
         {comparedProductIds.length > 0 && (
           <div className="fixed bottom-6 left-6 z-40 animate-in slide-in-from-bottom-5">
             <button
@@ -131,13 +129,13 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
             >
               <Scale className="w-4 h-4" />
               <span className="text-xs">
-                {currentLang === 'uz_cyrl' ? 'Солиштириш' : 'Solishtirish'} ({comparedProductIds.length})
+                {currentLang === 'uz' ? 'Solishtirish' : 'Сравнение'} ({comparedProductIds.length})
               </span>
             </button>
           </div>
         )}
 
-        {/* Scroll To Top */}
+        {/* Кнопка наверх */}
         {showScrollTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -148,7 +146,7 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
           </button>
         )}
 
-        {/* Toast Notification */}
+        {/* Уведомления Toast */}
         {toastMessage && (
           <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
             <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-gray-900/95 border border-blue-500/40 shadow-2xl text-xs font-semibold text-white backdrop-blur-md">
@@ -158,7 +156,7 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
           </div>
         )}
 
-        {/* Modallar */}
+        {/* Модалки */}
         <QuoteRequestModal
           isOpen={isQuoteModalOpen}
           onClose={() => setIsQuoteModalOpen(false)}

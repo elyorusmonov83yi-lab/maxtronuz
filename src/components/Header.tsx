@@ -45,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   compareCount = 0,
   onOpenQuoteModal,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
@@ -90,6 +91,8 @@ export const Header: React.FC<HeaderProps> = ({
   const currentLangItem = languages.find(l => l.code === currentLang) || languages[0];
 
   useEffect(() => {
+    setMounted(true);
+
     const fetchData = async () => {
       try {
         const [cats, prods, pages, settings] = await Promise.all([
@@ -124,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('maxtron_header_updated', handleHeaderUpdated);
   }, []);
 
-  // Bazadan kelgan faviconni brauzer tabiga dinamik o'rnatish
+  // Favicon
   useEffect(() => {
     if (headerSettings?.faviconUrl) {
       let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
@@ -155,8 +158,9 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const getLocalizedUrl = (path: string) => {
-    if (currentLang === 'ru') return path;
-    return `/${currentLang}${path === '/' ? '' : path}`;
+    const clean = path.startsWith('/') ? path : `/${path}`;
+    if (currentLang === 'ru') return clean;
+    return clean === '/' ? '/uz' : `/uz${clean}`;
   };
 
   const handleSwitchLanguage = (newLang: Language) => {
@@ -165,8 +169,8 @@ export const Header: React.FC<HeaderProps> = ({
       return;
     }
 
-    const currentPath = location.pathname;
-    const cleanPath = currentPath.replace(/^\/(uz|ru)/, '') || '/';
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : location.pathname;
+    const cleanPath = currentPath.replace(/^\/(uz|ru)(\/|$)/, '/') || '/';
     const segments = cleanPath.split('/').filter(Boolean);
 
     let targetPath = cleanPath;
@@ -195,12 +199,20 @@ export const Header: React.FC<HeaderProps> = ({
       }
     }
 
-    const finalUrl = newLang === 'ru' ? targetPath : `/uz${targetPath === '/' ? '' : targetPath}`;
+    const searchParams = typeof window !== 'undefined' ? window.location.search : '';
+    const finalUrl = (newLang === 'ru' 
+      ? targetPath 
+      : `/uz${targetPath === '/' ? '' : targetPath}`) + searchParams;
 
-    onLanguageChange(newLang);
     setLangDropdownOpen(false);
     setMobileMenuOpen(false);
-    navigate(finalUrl);
+    onLanguageChange(newLang);
+
+    if (typeof window !== 'undefined') {
+      window.location.href = finalUrl;
+    } else {
+      navigate(finalUrl);
+    }
   };
 
   const navLinks = [
@@ -252,8 +264,8 @@ export const Header: React.FC<HeaderProps> = ({
     return childIds.includes(p.category);
   });
 
-  const topbarWarehouseText = getLocalizedText(headerSettings.topbarWarehouse, currentLang, currentLang === 'ru' ? 'Склад в Ташкенте' : 'Toshkent ombori');
-  const topbarDeliveryText = getLocalizedText(headerSettings.topbarDelivery, currentLang, currentLang === 'ru' ? 'Доставка по РУз' : 'Yetkazib berish');
+  const topbarWarehouseText = getLocalizedText(headerSettings.topbarWarehouse, currentLang, currentLang === 'ru' ? 'Склад в Ташкенте: 200+ моделей' : 'Toshkent ombori: 200+ model');
+  const topbarDeliveryText = getLocalizedText(headerSettings.topbarDelivery, currentLang, currentLang === 'ru' ? 'Доставка по всему Узбекистану' : 'O‘zbekiston bo‘ylab yetkazish');
   const phoneNumber = headerSettings.phonePrimary || headerSettings.phone || '+998 71 200-88-44';
 
   return (
@@ -266,12 +278,12 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="flex items-center gap-1.5 text-gray-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <Warehouse className="w-3.5 h-3.5 text-blue-400" />
-              <span>{topbarWarehouseText}</span>
+              <span suppressHydrationWarning>{topbarWarehouseText}</span>
             </span>
             <span className="text-gray-700">|</span>
             <span className="flex items-center gap-1.5 text-gray-400">
               <Truck className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{topbarDeliveryText}</span>
+              <span suppressHydrationWarning>{topbarDeliveryText}</span>
             </span>
           </div>
 
@@ -290,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-gray-700">|</span>
             <span className="flex items-center gap-1 text-gray-400">
               <Clock className="w-3 h-3 text-gray-500" />
-              <span>{getLocalizedText(headerSettings.topbarSchedule, currentLang, '09:00 - 18:00')}</span>
+              <span suppressHydrationWarning>{getLocalizedText(headerSettings.topbarSchedule, currentLang, '09:00 - 18:00')}</span>
             </span>
           </div>
         </div>
@@ -322,7 +334,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {headerSettings.logoText || 'MAXTRON'}
                     <span className="text-blue-500 text-xs">{headerSettings.logoAccentText || '.UZ'}</span>
                   </span>
-                  <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-tight mt-0.5">
+                  <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-tight mt-0.5" suppressHydrationWarning>
                     {getLocalizedText(headerSettings.logoSubtitle, currentLang, currentLang === 'ru' ? 'КИПиА & Метрология' : 'O‘lchov uskunalari')}
                   </p>
                 </div>

@@ -3,61 +3,178 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { QuoteClient } from './QuoteClient';
 
-export async function generateMetadata(): Promise<Metadata> {
+function safeParse(val: any): Record<string, any> {
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+async function getQuoteSettingsBundle() {
   try {
     const [rows]: any = await db.query(
-      "SELECT value FROM settings WHERE `key` = 'seo_settings' LIMIT 1"
+      `SELECT \`key\`, value FROM settings 
+       WHERE \`key\` IN ('quote_seo', 'site_settings', 'translations')`
     );
 
-    let seoData: any = {};
-    if (rows && rows.length > 0 && rows[0].value) {
-      seoData = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+    const bundle: Record<string, any> = {};
+    if (rows && rows.length > 0) {
+      for (const row of rows) {
+        bundle[row.key] = safeParse(row.value);
+      }
     }
-
-    const title = 'Запрос коммерческого предложения (КП / RFQ) — MAXTRON';
-    const description = 'Запросите официальное коммерческое предложение на измерительные приборы и датчики с НДС за 15 минут.';
-    let imageUrl = seoData?.ogImageUrl || '/og-image.jpg';
-    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-      imageUrl = `https://maxtron.uz${imageUrl}`;
-    }
-
-    return {
-      title,
-      description,
-      alternates: {
-        canonical: 'https://maxtron.uz/quote',
-        languages: {
-          'ru': 'https://maxtron.uz/quote',
-          'uz': 'https://maxtron.uz/uz/quote',
-        },
-      },
-      openGraph: {
-        title,
-        description,
-        url: 'https://maxtron.uz/quote',
-        siteName: 'MAXTRON',
-        images: [{ url: imageUrl, width: 1200, height: 630 }],
-        type: 'website',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [imageUrl],
-      },
-    };
+    return bundle;
   } catch (err) {
-    return {
-      title: 'Tijorat taklifi so‘rovi — MAXTRON',
-      description: 'Rasmiy tijorat taklifi olish',
-    };
+    console.error('Quote sozlamalarini yuklashda xatolik:', err);
+    return {};
   }
 }
 
-export default function QuotePage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const lang: 'ru' = 'ru';
+  const bundle = await getQuoteSettingsBundle();
+  const seo = bundle.quote_seo || {};
+  const site = bundle.site_settings || {};
+
+  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+
+  const title =
+    seo.title?.[lang] ||
+    seo.seoTitle?.[lang] ||
+    'Запрос коммерческого предложения';
+
+  const description =
+    seo.description?.[lang] ||
+    seo.seoDescription?.[lang] ||
+    'Оформить официальный запрос коммерческого предложения на поставку контрольно-измерительных приборов.';
+
+  const canonicalPath = seo.canonicalPath || '/quote';
+
+  let imageUrl = seo.ogImage?.[lang] || seo.ogImageUrl || site.defaultOgImage || '';
+  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  }
+
+  const keywords = Array.isArray(seo.keywords?.[lang] || seo.keywords)
+    ? seo.keywords?.[lang] || seo.keywords
+    : (seo.keywords?.[lang] || seo.keywords || '')
+        .split(',')
+        .map((k: string) => k.trim())
+        .filter(Boolean);
+
+  return {
+    metadataBase: new URL(baseUrl),
+    title,
+    description,
+    ...(keywords.length > 0 ? { keywords } : {}),
+    alternates: {
+      canonical: canonicalPath,
+      languages: {
+        ru: canonicalPath,
+        uz: `/uz${canonicalPath}`,
+      },
+    },
+    openGraph: {
+      title: seo.ogTitle?.[lang] || title,
+      description: seo.ogDescription?.[lang] || description,
+      url: canonicalPath,
+      siteName,
+      locale: 'ru_RU',
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: Number(seo.ogImageWidth) || 1200,
+              height: Number(seo.ogImageHeight) || 630,
+              alt: title,
+            },
+          ]
+        : [],
+      type: 'website',
+    },
+    twitter: {
+      card: (seo.twitterCard as 'summary' | 'summary_large_image') || 'summary_large_image',
+      title: seo.twitterTitle?.[lang] || title,
+      description: seo.twitterDescription?.[lang] || description,
+      images: imageUrl ? [imageUrl] : [],
+    },
+  };
+}
+
+export default async function QuotePage() {
+  const lang: 'ru' = 'ru';
+  const bundle = await getQuoteSettingsBundle();
+  const seo = bundle.quote_seo || {};
+  const site = bundle.site_settings || {};
+  const t = bundle.translations || {};
+
+  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+
+  const title = seo.title?.[lang] || seo.seoTitle?.[lang] || 'Запрос КП';
+  const description = seo.description?.[lang] || seo.seoDescription?.[lang] || '';
+
+  const canonicalPath = seo.canonicalPath || '/quote';
+  const homePath = baseUrl;
+
+  const homeBreadcrumb = t.breadcrumbHome?.[lang] || 'Главная';
+  const quoteBreadcrumb = t.breadcrumbQuote?.[lang] || title;
+  const loadingText = t.loading?.[lang] || 'Загрузка формы...';
+
+  const quoteJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'ContactPage',
+        '@id': `${baseUrl}${canonicalPath}#webpage`,
+        url: `${baseUrl}${canonicalPath}`,
+        name: title,
+        inLanguage: 'ru-RU',
+        description: description,
+        isPartOf: {
+          '@type': 'WebSite',
+          '@id': `${baseUrl}/#website`,
+          name: siteName,
+          url: baseUrl,
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${baseUrl}${canonicalPath}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: homeBreadcrumb,
+            item: homePath,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: quoteBreadcrumb,
+            item: `${baseUrl}${canonicalPath}`,
+          },
+        ],
+      },
+    ],
+  };
+
   return (
-    <Suspense fallback={<div className="py-20 text-center text-xs text-gray-500">Yuklanmoqda...</div>}>
-      <QuoteClient />
-    </Suspense>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(quoteJsonLd) }}
+      />
+      <Suspense fallback={<div className="py-20 text-center text-xs text-gray-500">{loadingText}</div>}>
+        <QuoteClient lang={lang} content={seo} translations={t} siteSettings={site} />
+      </Suspense>
+    </>
   );
 }

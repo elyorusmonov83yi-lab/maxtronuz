@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { ShieldCheck, Scale, Check, ArrowUpRight, Eye } from 'lucide-react';
 import { Product, Language } from '../types';
 import { translations } from '../data/translations';
@@ -14,7 +15,7 @@ import {
 interface ProductCardProps {
   product: Product;
   currentLang: Language;
-  onSelect: (product: Product) => void;
+  onSelect?: (product: Product) => void;
   onOpenQuote: (product: Product) => void;
   isCompared: boolean;
   onToggleCompare: (product: Product) => void;
@@ -23,15 +24,19 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   currentLang,
-  onSelect,
   onOpenQuote,
   isCompared,
   onToggleCompare,
 }) => {
   const t = translations[currentLang] || translations.ru;
 
-  const safeId = getSafeProductSlug(product, currentLang) || 'item';
+  const safeSlug = getSafeProductSlug(product, currentLang) || product.id || 'item';
   const productName = getLocalizedText(product.name || (product as any).title, currentLang, 'Ускуна');
+
+  // Tilga mos URL hosil qilish: /uz/product/... yoki /product/...
+  const productHref = currentLang === 'uz'
+    ? `/uz/product/${encodeURIComponent(safeSlug)}`
+    : `/product/${encodeURIComponent(safeSlug)}`;
 
   const priceText = product.price 
     ? formatPrice(product.price, currentLang) 
@@ -50,24 +55,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div 
       className="group relative bg-gray-900/90 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col justify-between overflow-hidden"
-      id={`product-card-${safeId}`}
+      id={`product-card-${safeSlug}`}
     >
-      {/* Top Media & Badges */}
-      <div 
-        className="relative aspect-[4/3] w-full bg-gray-950/80 overflow-hidden cursor-pointer" 
-        onClick={() => onSelect(product)}
-      >
-        <img
-          src={product.image || ''}
-          alt={productName}
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80" />
+      {/* 1. Rasm va Belgilar (Top Media & Badges) */}
+      <div className="relative aspect-[4/3] w-full bg-gray-950/80 overflow-hidden">
+        <Link href={productHref} className="block w-full h-full">
+          <img
+            src={product.image || ''}
+            alt={productName}
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80" />
+        </Link>
 
-        {/* Top Badges */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Badges */}
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+          <div className="flex items-center gap-1.5 flex-wrap pointer-events-auto">
             {product.inStock ? (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 backdrop-blur-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse" />
@@ -92,15 +96,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
 
-          {/* Compare toggle */}
+          {/* Solishtirish (Compare toggle) */}
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onToggleCompare(product);
             }}
             title={isCompared ? t.btn_in_compare : t.btn_add_compare}
-            className={`p-1.5 rounded-lg backdrop-blur-md border transition-all cursor-pointer ${
+            className={`p-1.5 rounded-lg backdrop-blur-md border transition-all cursor-pointer pointer-events-auto ${
               isCompared
                 ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/30'
                 : 'bg-gray-900/80 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
@@ -111,28 +116,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Model Tag */}
-        <div className="absolute bottom-3 left-3">
+        <div className="absolute bottom-3 left-3 pointer-events-none">
           <span className="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-gray-950/90 text-blue-400 border border-gray-800 backdrop-blur-md">
             {typeof product.model === 'object' ? getLocalizedText(product.model, currentLang, '—') : (product.model || '—')}
           </span>
         </div>
       </div>
 
-      {/* Content */}
+      {/* 2. Matn va Tavsif qismi (Content) */}
       <div className="p-5 flex-1 flex flex-col justify-between">
         <div>
-          <h3 
-            onClick={() => onSelect(product)}
-            className="text-base font-bold text-white group-hover:text-blue-400 transition-colors cursor-pointer line-clamp-1 mb-1"
+          {/* Sarlavha: Haqiqiy SEO havolasi */}
+          <Link
+            href={productHref}
+            className="block text-base font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1 mb-1"
           >
             {productName}
-          </h3>
+          </Link>
 
           <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed">
             {getLocalizedText(product.tagline, currentLang)}
           </p>
 
-          {/* Price Block */}
+          {/* Narx qismi */}
           <div className="mb-3.5 p-2.5 rounded-xl bg-gray-950/60 border border-gray-800/60 flex items-baseline justify-between gap-2">
             <div>
               <span className="text-[10px] text-gray-500 block uppercase font-medium">
@@ -149,7 +155,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
 
-          {/* Quick Specs */}
+          {/* Qisqa xarakteristikalar */}
           <div className="space-y-1.5 py-2.5 border-y border-gray-800/80 text-xs">
             {(product.specs || []).slice(0, 2).map((spec, i) => (
               <div key={i} className="flex items-center justify-between text-gray-400 gap-2">
@@ -161,6 +167,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             ))}
           </div>
 
+          {/* Kafolat & Sertifikat */}
           <div className="flex items-center justify-between pt-3 text-[11px] text-gray-400">
             <span className="flex items-center gap-1 text-emerald-400 font-medium">
               <ShieldCheck className="w-3.5 h-3.5" /> 
@@ -172,17 +179,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Actions */}
+        {/* 3. Tugmalar (Actions) */}
         <div className="mt-4 grid grid-cols-2 gap-2 pt-2 border-t border-gray-800/50">
-          <button
-            type="button"
-            onClick={() => onSelect(product)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-gray-800/80 hover:bg-gray-800 text-gray-200 border border-gray-700/60 hover:border-gray-600 transition cursor-pointer"
+          {/* Batafsil: button emas, Link */}
+          <Link
+            href={productHref}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-gray-800/80 hover:bg-gray-800 text-gray-200 border border-gray-700/60 hover:border-gray-600 transition"
           >
             <Eye className="w-3.5 h-3.5 text-gray-400" />
             <span>{t.btn_details || (currentLang === 'ru' ? 'Подробнее' : 'Batafsil')}</span>
-          </button>
+          </Link>
 
+          {/* Taklif olish */}
           <button
             type="button"
             onClick={() => onOpenQuote(product)}

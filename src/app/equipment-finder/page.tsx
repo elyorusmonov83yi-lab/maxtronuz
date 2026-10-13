@@ -2,57 +2,154 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { FinderClient } from './FinderClient';
 
-export async function generateMetadata(): Promise<Metadata> {
+function safeJsonParse(data: unknown): Record<string, any> {
+  if (!data) return {};
+  if (typeof data === 'object') return data as Record<string, any>;
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+async function getPageData() {
   try {
     const [rows]: any = await db.query(
-      "SELECT value FROM settings WHERE `key` = 'seo_settings' LIMIT 1"
+      `SELECT \`key\`, value FROM settings 
+       WHERE \`key\` IN ('finder_seo', 'site_settings', 'translations')`
     );
 
-    let seoData: any = {};
-    if (rows && rows.length > 0 && rows[0].value) {
-      seoData = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+    const data: Record<string, any> = {};
+    if (rows && rows.length > 0) {
+      for (const row of rows) {
+        data[row.key] = safeJsonParse(row.value);
+      }
     }
-
-    const title = 'Мастер интеллектуального подбора оборудования — MAXTRON';
-    const description = '3 шага для точного инженерного подбора контрольно-измерительных приборов и датчиков со склада в Ташкенте.';
-    let imageUrl = seoData?.ogImageUrl || '/og-image.jpg';
-    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-      imageUrl = `https://maxtron.uz${imageUrl}`;
-    }
-
-    return {
-      title,
-      description,
-      alternates: {
-        canonical: 'https://maxtron.uz/equipment-finder',
-        languages: {
-          'ru': 'https://maxtron.uz/equipment-finder',
-          'uz': 'https://maxtron.uz/uz/equipment-finder',
-        },
-      },
-      openGraph: {
-        title,
-        description,
-        url: 'https://maxtron.uz/equipment-finder',
-        siteName: 'MAXTRON',
-        images: [{ url: imageUrl, width: 1200, height: 630 }],
-        type: 'website',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [imageUrl],
-      },
-    };
+    return data;
   } catch (err) {
-    return {
-      title: 'Uskuna tanlash ustasi — MAXTRON',
-      description: 'Sanoat uskunalarini tanlash konfiguratori',
-    };
+    console.error('Finder ma’lumotlarini yuklashda xatolik:', err);
+    return {};
   }
 }
 
-export default function FinderPage() {
-  return <FinderClient />;
+function normalizePath(path: string): string {
+  if (!path) return '/equipment-finder';
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const lang: 'ru' = 'ru';
+  const pageData = await getPageData();
+
+  const seo = pageData.finder_seo || {};
+  const site = pageData.site_settings || {};
+
+  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+
+  const rawTitle = seo.title?.[lang] || 'Подбор оборудования — Интерактивный конфигуратор';
+  const title = siteName && !rawTitle.includes(siteName)
+    ? `${rawTitle} — ${siteName}`
+    : rawTitle;
+
+  const description = seo.description?.[lang] || 'Онлайн конфигуратор для точного подбора контрольно-измерительных приборов и датчиков.';
+  const rawPath = normalizePath(seo.canonicalPath);
+
+  return {
+    metadataBase: new URL(baseUrl),
+    title,
+    description,
+    alternates: {
+      canonical: rawPath,
+      languages: {
+        ru: rawPath,
+        uz: `/uz${rawPath}`,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: rawPath,
+      siteName,
+      locale: 'ru_RU',
+      type: 'website',
+    },
+  };
+}
+
+export default async function FinderPage() {
+  const lang: 'ru' = 'ru';
+  const pageData = await getPageData();
+
+  const seo = pageData.finder_seo || {};
+  const site = pageData.site_settings || {};
+  const t = pageData.translations || {};
+
+  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+  const title = seo.title?.[lang] || 'Подбор оборудования';
+  const description = seo.description?.[lang] || '';
+
+  const rawPath = normalizePath(seo.canonicalPath);
+  const homePath = baseUrl;
+
+  const homeLabel = t.breadcrumbHome?.[lang] || 'Главная';
+  const pageLabel = t.breadcrumbFinder?.[lang] || 'Подбор оборудования';
+
+  const finderJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebApplication',
+        '@id': `${baseUrl}${rawPath}#app`,
+        url: `${baseUrl}${rawPath}`,
+        name: title,
+        inLanguage: 'ru-RU',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'All',
+        description,
+        provider: {
+          '@type': 'Organization',
+          name: siteName,
+          url: baseUrl,
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${baseUrl}${rawPath}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: homeLabel,
+            item: homePath,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: pageLabel,
+            item: `${baseUrl}${rawPath}`,
+          },
+        ],
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(finderJsonLd) }}
+      />
+      <FinderClient
+        lang={lang}
+        translations={t}
+        content={seo}
+        siteSettings={site}
+      />
+    </>
+  );
 }

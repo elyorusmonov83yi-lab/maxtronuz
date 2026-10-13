@@ -10,10 +10,16 @@ import {
   Upload, 
   Loader2, 
   Share2,
-  Trash
+  Trash,
+  Plus,
+  Truck,
+  Megaphone,
+  Users
 } from 'lucide-react';
-import { AboutContent, PageSeoSettings, LocalizedString } from '../../../types';
+import { AboutContent, PageSeoSettings } from '../../../types';
 import { ApiService } from '../../../services/api';
+
+type AdminLang = 'uz' | 'ru';
 
 interface AdminAboutSettingsProps {
   aboutContent: AboutContent;
@@ -30,17 +36,17 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
   setPageSeoSettings,
   handleSaveAbout
 }) => {
-  const [aboutLang, setAboutLang] = useState<'uz' | 'ru'>('ru');
+  const [aboutLang, setAboutLang] = useState<AdminLang>('uz');
   const [isUploadingOg, setIsUploadingOg] = useState(false);
   const ogInputRef = useRef<HTMLInputElement>(null);
 
-  // SEO OpenGraph rasmini yuklash
+  // Ijtimoiy tarmoqlar uchun OG rasmini yuklash
   const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 20 * 1024 * 1024) {
-      alert('Rasm hajmi 20 MB dan oshmasligi kerak!');
+      alert('Fayl hajmi 20 MB dan oshmasligi kerak!');
       return;
     }
 
@@ -55,48 +61,197 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
         }
       }));
     } catch (err: any) {
-      alert('OG rasmni yuklashda xatolik: ' + (err?.message || 'Server xatosi'));
+      alert('Rasmni yuklashda xatolik: ' + (err?.message || 'Server xatosi'));
     } finally {
       setIsUploadingOg(false);
     }
   };
 
-  // Matnli (LocalizedString) maydonlarni xavfsiz yangilash
-  const handleTextChange = (field: keyof AboutContent, value: string) => {
-    setAboutContent((prev) => ({
-      ...prev,
-      [field]: {
-        ...((prev[field] as LocalizedString) || { uz: '', ru: '' }),
-        [aboutLang]: value
-      }
-    }));
+  // Har qanday ko'p tilli obyekt yoki satrdan joriy til qiymatini xavfsiz olish
+  const getVal = (field: any): string => {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    if (typeof field === 'object') return field[aboutLang] || '';
+    return '';
   };
 
-  // SEO maydonlarini yangilash
+  // Ko'p tilli matnlarni xavfsiz yangilash (bir til boshqasini aslo o'chirmaydi)
+  const handleTextChange = (fieldName: string, value: string) => {
+    setAboutContent((prev: any) => {
+      const prevField = prev?.[fieldName];
+      const currentObj = (typeof prevField === 'object' && prevField !== null && !Array.isArray(prevField))
+        ? { ...prevField }
+        : { uz: typeof prevField === 'string' ? prevField : '', ru: '' };
+
+      currentObj[aboutLang] = value;
+
+      return {
+        ...prev,
+        [fieldName]: currentObj
+      };
+    });
+  };
+
+  // Har bir til uchun afzalliklar ro'yxatini alohida xavfsiz olish
+  const getBenefitsList = (): string[] => {
+    const raw = (aboutContent as any)?.benefits;
+    if (!raw) return [];
+    if (typeof raw === 'object' && !Array.isArray(raw)) {
+      return Array.isArray(raw[aboutLang]) ? raw[aboutLang] : [];
+    }
+    if (Array.isArray(raw)) {
+      return aboutLang === 'uz' ? raw : [];
+    }
+    return [];
+  };
+
+  const currentBenefits = getBenefitsList();
+
+  // Afzallik bandini o'zgartirish
+  const handleBenefitChange = (index: number, val: string) => {
+    setAboutContent((prev: any) => {
+      const raw = prev?.benefits;
+      let uzList: string[] = [];
+      let ruList: string[] = [];
+
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        uzList = Array.isArray(raw.uz) ? [...raw.uz] : [];
+        ruList = Array.isArray(raw.ru) ? [...raw.ru] : [];
+      } else if (Array.isArray(raw)) {
+        uzList = [...raw];
+      }
+
+      if (aboutLang === 'uz') {
+        uzList[index] = val;
+      } else {
+        ruList[index] = val;
+      }
+
+      return {
+        ...prev,
+        benefits: {
+          uz: uzList,
+          ru: ruList
+        }
+      };
+    });
+  };
+
+  // Yangi afzallik bandini qo'shish
+  const handleAddBenefit = () => {
+    setAboutContent((prev: any) => {
+      const raw = prev?.benefits;
+      let uzList: string[] = [];
+      let ruList: string[] = [];
+
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        uzList = Array.isArray(raw.uz) ? [...raw.uz] : [];
+        ruList = Array.isArray(raw.ru) ? [...raw.ru] : [];
+      } else if (Array.isArray(raw)) {
+        uzList = [...raw];
+      }
+
+      if (aboutLang === 'uz') {
+        uzList.push('');
+      } else {
+        ruList.push('');
+      }
+
+      return {
+        ...prev,
+        benefits: {
+          uz: uzList,
+          ru: ruList
+        }
+      };
+    });
+  };
+
+  // Afzallik bandini o'chirish
+  const handleRemoveBenefit = (index: number) => {
+    setAboutContent((prev: any) => {
+      const raw = prev?.benefits;
+      let uzList: string[] = [];
+      let ruList: string[] = [];
+
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        uzList = Array.isArray(raw.uz) ? [...raw.uz] : [];
+        ruList = Array.isArray(raw.ru) ? [...raw.ru] : [];
+      } else if (Array.isArray(raw)) {
+        uzList = [...raw];
+      }
+
+      if (aboutLang === 'uz') {
+        uzList.splice(index, 1);
+      } else {
+        ruList.splice(index, 1);
+      }
+
+      return {
+        ...prev,
+        benefits: {
+          uz: uzList,
+          ru: ruList
+        }
+      };
+    });
+  };
+
+  // Ta'minot bosqichlarini xavfsiz olish
+  const supplySteps = (aboutContent as any)?.supplySteps || [
+    { stage: 'MAXTRON SUPPLY STAGE 01', title: { uz: '', ru: '' }, desc: { uz: '', ru: '' } },
+    { stage: 'MAXTRON SUPPLY STAGE 02', title: { uz: '', ru: '' }, desc: { uz: '', ru: '' } },
+    { stage: 'MAXTRON SUPPLY STAGE 03', title: { uz: '', ru: '' }, desc: { uz: '', ru: '' } },
+    { stage: 'MAXTRON SUPPLY STAGE 04', title: { uz: '', ru: '' }, desc: { uz: '', ru: '' } }
+  ];
+
+  const handleSupplyStepChange = (index: number, field: 'title' | 'desc', val: string) => {
+    setAboutContent((prev: any) => {
+      const currentSteps = prev?.supplySteps || supplySteps;
+      const updated = currentSteps.map((s: any, idx: number) => {
+        if (idx !== index) return s;
+        const currentObj = typeof s[field] === 'object' && s[field] !== null ? { ...s[field] } : { uz: '', ru: '' };
+        currentObj[aboutLang] = val;
+        return {
+          ...s,
+          [field]: currentObj
+        };
+      });
+      return { ...prev, supplySteps: updated };
+    });
+  };
+
+  // SEO sozlamalarini yangilash
   const aboutSeo = (pageSeoSettings?.about || {}) as any;
 
   const handleSeoChange = (field: string, value: string) => {
-    setPageSeoSettings((prev) => ({
-      ...prev,
-      about: {
-        ...prev.about,
-        [field]: {
-          ...(prev.about as any)?.[field],
-          [aboutLang]: value
+    setPageSeoSettings((prev: any) => {
+      const currentAbout = prev?.about || {};
+      const currentObj = typeof currentAbout[field] === 'object' && currentAbout[field] !== null
+        ? { ...currentAbout[field] }
+        : { uz: '', ru: '' };
+
+      currentObj[aboutLang] = value;
+
+      return {
+        ...prev,
+        about: {
+          ...currentAbout,
+          [field]: currentObj
         }
-      }
-    }));
+      };
+    });
   };
 
   return (
     <form onSubmit={handleSaveAbout} className="space-y-6">
       
-      {/* 2 ta Til Switcheri (Русский / O'zbekcha) */}
-      <div className="flex items-center justify-between bg-gray-900/80 p-4 rounded-3xl border border-gray-800">
+      {/* Tillarni tanlash va saqlash tugmasi */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-900/80 p-4 rounded-3xl border border-gray-800">
         <div className="flex gap-2 p-1 rounded-2xl bg-gray-950 border border-gray-800 w-fit">
           {[
-            { code: 'ru' as const, label: "🇷🇺 Русский" },
-            { code: 'uz' as const, label: "🇺🇿 O'zbekcha" }
+            { code: 'uz' as const, label: "🇺🇿 O'zbekcha" },
+            { code: 'ru' as const, label: "🇷🇺 Русский" }
           ].map((lang) => (
             <button
               key={lang.code}
@@ -118,26 +273,26 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
           className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition flex items-center gap-2 cursor-pointer"
         >
           <CheckCircle2 className="w-4 h-4" />
-          <span>Saqlash</span>
+          <span>Sozlamalarni saqlash</span>
         </button>
       </div>
 
-      {/* 1. HERO QISMI */}
+      {/* 1. HERO BANNER BLOKI */}
       <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-5">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <Building className="w-4 h-4 text-blue-400" />
-          <span>1. Asosiy Hero sarlavhalari ({aboutLang.toUpperCase()})</span>
+          <span>1. Asosiy banner (Hero) ({aboutLang.toUpperCase()})</span>
         </h3>
 
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">
-              Belgi / Badge ({aboutLang.toUpperCase()})
+              Beydj / Yuqori qismdagi yozuv ({aboutLang.toUpperCase()})
             </label>
             <input
               type="text"
               placeholder="MAXTRON Industrial Supply & Trading"
-              value={aboutContent.heroBadge?.[aboutLang] || ''}
+              value={getVal(aboutContent.heroBadge)}
               onChange={(e) => handleTextChange('heroBadge', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-blue-500"
             />
@@ -145,12 +300,12 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">
-              Katta Bosh Sarlavha ({aboutLang.toUpperCase()})
+              Asosiy sarlavha H1 ({aboutLang.toUpperCase()})
             </label>
             <textarea
               rows={2}
-              placeholder="Ведущий поставщик измерительного оборудования в промышленности"
-              value={aboutContent.heroTitle?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "Sanoat va o'lchov uskunalari ishonchli ta'minoti" : "Ведущий поставщик измерительного оборудования"}
+              value={getVal(aboutContent.heroTitle)}
               onChange={(e) => handleTextChange('heroTitle', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-blue-500 font-bold"
             />
@@ -158,12 +313,12 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">
-              Qisqacha ta'rif / Hero Subtitle ({aboutLang.toUpperCase()})
+              Sarlavha ostidagi qisqacha tavsif ({aboutLang.toUpperCase()})
             </label>
             <textarea
               rows={2}
-              placeholder="MAXTRON — высокое качество, метрологическая гарантия и профессиональные инженерные решения."
-              value={aboutContent.heroSubtitle?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "O'zbekiston bo'ylab to'g'ridan-to'g'ri import va rasmiy kafolat..." : "Надежный национальный поставщик сертифицированных приборов..."}
+              value={getVal(aboutContent.heroSubtitle)}
               onChange={(e) => handleTextChange('heroSubtitle', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-blue-500"
             />
@@ -171,22 +326,22 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
         </div>
       </div>
 
-      {/* 2. KOMPANIYA TAVSIFI VA 4 TA STATISTIKA */}
+      {/* 2. KOMPANIYA HAQIDA, AFZALLIKLAR VA STATISTIKA */}
       <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-5">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-cyan-400" />
-          <span>2. Kompaniya haqida matn va 4 ta statistika ({aboutLang.toUpperCase()})</span>
+          <span>2. Kompaniya haqida, afzalliklar va ko'rsatkichlar ({aboutLang.toUpperCase()})</span>
         </h3>
 
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">
-              Blok Sarlavhasi ({aboutLang.toUpperCase()})
+              Kompaniya tarixi sarlavhasi ({aboutLang.toUpperCase()})
             </label>
             <input
               type="text"
-              placeholder="Надежный поставщик измерительного оборудования для предприятий Узбекистана"
-              value={aboutContent.storyTitle?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "O'zbekiston sanoat korxonalari uchun ishonchli ta'minot hamkori" : "Надежный поставщик измерительного оборудования для предприятий Узбекистана"}
+              value={getVal(aboutContent.storyTitle)}
               onChange={(e) => handleTextChange('storyTitle', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500 font-semibold"
             />
@@ -194,75 +349,343 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">
-              Asosiy ta'rif matni ({aboutLang.toUpperCase()})
+              Kompaniya tavsifi matni ({aboutLang.toUpperCase()})
             </label>
             <textarea
               rows={3}
-              placeholder="Компания с 2018 года поставляет предприятиям необходимое измерительное оборудование."
-              value={aboutContent.storyText?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "MAXTRON — O'zbekiston sanoat korxonalari uchun zamonaviy uskunalar yetkazib beradi..." : "Компания с 2018 года поставляет предприятиям необходимое оборудование..."}
+              value={getVal(aboutContent.storyText)}
               onChange={(e) => handleTextChange('storyText', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
           </div>
 
-          {/* 4 ta Statistika */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-gray-300">Tajriba (raqam)</label>
+          {/* Tugmalar matnlari */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Moviy tugma matni ({aboutLang.toUpperCase()})
+              </label>
               <input
                 type="text"
-                placeholder="8+"
-                value={aboutContent.yearsExp || ''}
-                onChange={(e) => setAboutContent({ ...aboutContent, yearsExp: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white font-mono focus:outline-none focus:border-cyan-500"
+                placeholder={aboutLang === 'uz' ? "Katalogni ko'rish" : "Смотреть каталог"}
+                value={getVal((aboutContent as any)?.btnCatalogText)}
+                onChange={(e) => handleTextChange('btnCatalogText', e.target.value)}
+                className="w-full px-4 py-2 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
               />
-              <span className="text-[11px] text-gray-500">O'zbekiston bozoridagi tajriba</span>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Qora tugma matni ({aboutLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                placeholder={aboutLang === 'uz' ? "Sertifikatlar" : "Сертификаты"}
+                value={getVal((aboutContent as any)?.btnCertsText)}
+                onChange={(e) => handleTextChange('btnCertsText', e.target.value)}
+                className="w-full px-4 py-2 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Afzalliklar / Cheklist */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-gray-300">
+                Afzalliklar / Belgili ro'yxat ({aboutLang.toUpperCase()})
+              </label>
+              <button
+                type="button"
+                onClick={handleAddBenefit}
+                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Band qo'shish ({aboutLang.toUpperCase()})</span>
+              </button>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-gray-300">Yetkazilgan (raqam)</label>
+            {currentBenefits.length === 0 ? (
+              <div className="p-4 rounded-xl bg-gray-950/40 border border-dashed border-gray-800 text-center">
+                <p className="text-xs text-gray-500 mb-2">
+                  {aboutLang === 'uz' ? "Hozircha o'zbekcha afzalliklar bandi qo'shilmagan." : "Пока нет пунктов преимуществ на русском языке."}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAddBenefit}
+                  className="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs font-medium inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{aboutLang === 'uz' ? "Birinchi bandni qo'shish" : "Добавить первый пункт"}</span>
+                </button>
+              </div>
+            ) : (
+              currentBenefits.map((b, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" />
+                  <input
+                    type="text"
+                    value={b || ''}
+                    onChange={(e) => handleBenefitChange(idx, e.target.value)}
+                    placeholder={aboutLang === 'uz' ? `Afzallik ${idx + 1}` : `Преимущество ${idx + 1}`}
+                    className="w-full px-4 py-2 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBenefit(idx)}
+                    className="p-2 text-gray-500 hover:text-rose-400 transition cursor-pointer"
+                    title="O'chirish"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* 4 ta Statistika ko'rsatkichlari (SONI HAM, YOZUVI HAM HAR BIR TIL UCHUN ALOHIDA) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-800">
+            {/* 1. Tajriba */}
+            <div className="space-y-2 p-3 rounded-2xl bg-gray-950 border border-gray-800">
+              <label className="block text-[11px] font-semibold text-gray-300">
+                Tajriba (soni) ({aboutLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                placeholder={aboutLang === 'uz' ? "8+ yil" : "8+ лет"}
+                value={getVal(aboutContent.yearsExp)}
+                onChange={(e) => handleTextChange('yearsExp', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
+              />
+              <label className="block text-[11px] font-semibold text-gray-400">
+                Yozuvi ({aboutLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                placeholder={aboutLang === 'uz' ? "Bozordagi faoliyat" : "Опыт на рынке Узбекистана"}
+                value={getVal((aboutContent as any)?.statExpLabel)}
+                onChange={(e) => handleTextChange('statExpLabel', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            {/* 2. Yetkazilgan uskunalar */}
+            <div className="space-y-2 p-3 rounded-2xl bg-gray-950 border border-gray-800">
+              <label className="block text-[11px] font-semibold text-gray-300">
+                Yetkazilgan (soni) ({aboutLang.toUpperCase()})
+              </label>
               <input
                 type="text"
                 placeholder="1,500+"
-                value={aboutContent.equipmentDelivered || ''}
-                onChange={(e) => setAboutContent({ ...aboutContent, equipmentDelivered: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white font-mono focus:outline-none focus:border-cyan-500"
+                value={getVal(aboutContent.equipmentDelivered)}
+                onChange={(e) => handleTextChange('equipmentDelivered', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
               />
-              <span className="text-[11px] text-gray-500">Yetkazilgan jihozlar soni</span>
+              <label className="block text-[11px] font-semibold text-gray-400">
+                Yozuvi ({aboutLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                placeholder={aboutLang === 'uz' ? "Yetkazilgan uskunalar" : "Поставлено единиц оборудования"}
+                value={getVal((aboutContent as any)?.statDeliveredLabel)}
+                onChange={(e) => handleTextChange('statDeliveredLabel', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-gray-300">Omborda (raqam)</label>
+            {/* 3. Omborda */}
+            <div className="space-y-2 p-3 rounded-2xl bg-gray-950 border border-gray-800">
+              <label className="block text-[11px] font-semibold text-gray-300">
+                Omborda (soni) ({aboutLang.toUpperCase()})
+              </label>
               <input
                 type="text"
                 placeholder="200+"
-                value={aboutContent.warehouseItems || ''}
-                onChange={(e) => setAboutContent({ ...aboutContent, warehouseItems: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white font-mono focus:outline-none focus:border-cyan-500"
+                value={getVal(aboutContent.warehouseItems)}
+                onChange={(e) => handleTextChange('warehouseItems', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
               />
-              <span className="text-[11px] text-gray-500">Ombordagi modellar</span>
+              <label className="block text-[11px] font-semibold text-gray-400">
+                Yozuvi ({aboutLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                placeholder={aboutLang === 'uz' ? "Toshkent omborida mavjud" : "Моделей на складе в Ташкенте"}
+                value={getVal((aboutContent as any)?.statWarehouseLabel)}
+                onChange={(e) => handleTextChange('statWarehouseLabel', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-gray-300">Mijozlar (raqam)</label>
+            {/* 4. Mijozlar */}
+            <div className="space-y-2 p-3 rounded-2xl bg-gray-950 border border-gray-800">
+              <label className="block text-[11px] font-semibold text-gray-300">
+                Mijozlar (soni) ({aboutLang.toUpperCase()})
+              </label>
               <input
                 type="text"
                 placeholder="500+"
-                value={aboutContent.partnerClients || ''}
-                onChange={(e) => setAboutContent({ ...aboutContent, partnerClients: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white font-mono focus:outline-none focus:border-cyan-500"
+                value={getVal(aboutContent.partnerClients)}
+                onChange={(e) => handleTextChange('partnerClients', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
               />
-              <span className="text-[11px] text-gray-500">Doimiy B2B hamkorlar</span>
+              <label className="block text-[11px] font-semibold text-gray-400">
+                Yozuvi ({aboutLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                placeholder={aboutLang === 'uz' ? "Hamkor korxonalar" : "Постоянных клиентов и заводов"}
+                value={getVal((aboutContent as any)?.statPartnersLabel)}
+                onChange={(e) => handleTextChange('statPartnersLabel', e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. SEO & OPENGRAPH META SOZLAMALARI */}
+      {/* 3. SUPPLY MODEL */}
+      <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-5">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <Truck className="w-4 h-4 text-blue-400" />
+          <span>3. Ta'minot zanjiri / Supply Model ({aboutLang.toUpperCase()})</span>
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Ta'minot bloki sarlavhasi ({aboutLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              placeholder={aboutLang === 'uz' ? "Ta'minot va savdo jarayoni qanday ishlaydi?" : "Как устроена система поставок MAXTRON?"}
+              value={getVal((aboutContent as any)?.supplySectionTitle)}
+              onChange={(e) => handleTextChange('supplySectionTitle', e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-blue-500 font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Ta'minot bloki ostki sarlavhasi ({aboutLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              placeholder={aboutLang === 'uz' ? "Zavoddan to korxonangiz omborigacha shaffof ta'minot zanjiri" : "Прозрачная и надежная цепочка поставок"}
+              value={getVal((aboutContent as any)?.supplySectionSubtitle)}
+              onChange={(e) => handleTextChange('supplySectionSubtitle', e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          {supplySteps.map((step: any, idx: number) => (
+            <div key={idx} className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-3">
+              <span className="text-[10px] font-mono font-bold text-blue-400">
+                {step.stage || `MAXTRON SUPPLY STAGE 0${idx + 1}`}
+              </span>
+              <div>
+                <label className="block text-[11px] text-gray-400 mb-1">Bosqich nomi</label>
+                <input
+                  type="text"
+                  value={getVal(step.title)}
+                  onChange={(e) => handleSupplyStepChange(idx, 'title', e.target.value)}
+                  placeholder={aboutLang === 'uz' ? `${idx + 1}-bosqich nomi` : `Название этапа ${idx + 1}`}
+                  className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-gray-400 mb-1">Bosqich tavsifi</label>
+                <textarea
+                  rows={2}
+                  value={getVal(step.desc)}
+                  onChange={(e) => handleSupplyStepChange(idx, 'desc', e.target.value)}
+                  placeholder={aboutLang === 'uz' ? `${idx + 1}-bosqich tavsifi` : `Описание этапа ${idx + 1}`}
+                  className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. HAMKORLAR VA MIJOZLAR */}
+      <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <Users className="w-4 h-4 text-emerald-400" />
+          <span>4. Hamkorlar va mijozlar bo'limi ({aboutLang.toUpperCase()})</span>
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Bo'lim sarlavhasi ({aboutLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              placeholder={aboutLang === 'uz' ? "Mijozlarimiz va rasmiy hamkorlar" : "Наши клиенты и партнеры"}
+              value={getVal((aboutContent as any)?.partnersTitle)}
+              onChange={(e) => handleTextChange('partnersTitle', e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-emerald-500 font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Bo'lim ostki sarlavhasi ({aboutLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              placeholder={aboutLang === 'uz' ? "Katta sanoat korxonalari MAXTRON ta'minotiga ishonadi" : "Крупнейшие холдинги доверяют поставкам MAXTRON"}
+              value={getVal((aboutContent as any)?.partnersSubtitle)}
+              onChange={(e) => handleTextChange('partnersSubtitle', e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 5. CTA BANNER */}
+      <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <Megaphone className="w-4 h-4 text-yellow-400" />
+          <span>5. Pastki murojaat banneri (CTA) ({aboutLang.toUpperCase()})</span>
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Banner sarlavhasi ({aboutLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              placeholder={aboutLang === 'uz' ? "Loyihangiz uchun uskunalar kerakmi?" : "Требуется оборудование под ваш проект?"}
+              value={getVal((aboutContent as any)?.ctaTitle)}
+              onChange={(e) => handleTextChange('ctaTitle', e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-yellow-500 font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Banner tavsifi ({aboutLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              placeholder={aboutLang === 'uz' ? "Bizga texnik topshirig'ingizni yuboring..." : "Отправьте нам техническое задание..."}
+              value={getVal((aboutContent as any)?.ctaSubtitle)}
+              onChange={(e) => handleTextChange('ctaSubtitle', e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-yellow-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 6. SEO & OPENGRAPH */}
       <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-cyan-400" />
-          <span>3. SEO & OpenGraph sozlamalari ({aboutLang.toUpperCase()})</span>
+          <span>6. SEO & OpenGraph sozlamalari ({aboutLang.toUpperCase()})</span>
         </h3>
 
         <div className="space-y-4">
@@ -272,8 +695,8 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
             </label>
             <input
               type="text"
-              placeholder="О компании — MAXTRON Industrial Supply"
-              value={aboutSeo.title?.[aboutLang] || aboutSeo.metaTitle?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "Kompaniya haqida — MAXTRON Industrial" : "О компании — MAXTRON Industrial Supply"}
+              value={getVal(aboutSeo.title || aboutSeo.metaTitle)}
               onChange={(e) => handleSeoChange('title', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
@@ -285,8 +708,8 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
             </label>
             <textarea
               rows={2}
-              placeholder="MAXTRON — Надежный поставщик измерительного оборудования для предприятий Узбекистана."
-              value={aboutSeo.description?.[aboutLang] || aboutSeo.metaDescription?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "MAXTRON — O'zbekiston sanoat korxonalari uchun ishonchli ta'minotchi." : "MAXTRON — Надежный поставщик измерительного оборудования."}
+              value={getVal(aboutSeo.description || aboutSeo.metaDescription)}
               onChange={(e) => handleSeoChange('description', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
@@ -298,8 +721,8 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
             </label>
             <input
               type="text"
-              placeholder="о компании maxtron, измерительные приборы, склад ташкент"
-              value={aboutSeo.keywords?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "maxtron kompaniyasi, ulchov asboblari" : "о компании maxtron, измерительные приборы"}
+              value={getVal(aboutSeo.keywords)}
               onChange={(e) => handleSeoChange('keywords', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
@@ -308,23 +731,23 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1.5">
               <Share2 className="w-3.5 h-3.5 text-cyan-400" />
-              <span>OpenGraph Title (Telegram / Facebook) ({aboutLang.toUpperCase()})</span>
+              <span>OpenGraph Title ({aboutLang.toUpperCase()})</span>
             </label>
             <input
               type="text"
-              placeholder="MAXTRON Industrial — О компании"
-              value={aboutSeo.ogTitle?.[aboutLang] || ''}
+              placeholder={aboutLang === 'uz' ? "MAXTRON Industrial — Biz haqimizda" : "MAXTRON Industrial — О компании"}
+              value={getVal(aboutSeo.ogTitle)}
               onChange={(e) => handleSeoChange('ogTitle', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
           </div>
 
-          {/* OpenGraph Image */}
+          {/* OG Rasm */}
           <div className="p-4 rounded-2xl bg-gray-950/80 border border-gray-800 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-cyan-400" />
-                <span>OpenGraph Preview rasmi (Telegram / Facebook banneri)</span>
+                <span>OpenGraph rasmi</span>
               </label>
               <span className="text-[11px] text-gray-500 font-mono">1200x630 px</span>
             </div>
@@ -380,7 +803,7 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
 
                 <input
                   type="text"
-                  placeholder="Yoki to‘g‘ridan-to‘g‘ri rasm havolasi..."
+                  placeholder="Yoki rasm havolasi..."
                   value={aboutSeo.ogImage || ''}
                   onChange={(e) => setPageSeoSettings((prev) => ({ ...prev, about: { ...prev.about, ogImage: e.target.value } }))}
                   className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
@@ -391,7 +814,7 @@ export const AdminAboutSettings: React.FC<AdminAboutSettingsProps> = ({
         </div>
       </div>
 
-      {/* Pastki Saqlash Tugmasi */}
+      {/* Saqlash tugmasi */}
       <div className="flex justify-end pt-2">
         <button
           type="submit"

@@ -14,8 +14,7 @@ const CatalogInteractive = ({ currentLang = 'ru' }: Props) => {
   const router = useRouter();
   const [comparedProducts, setComparedProducts] = useState<string[]>([]);
 
-  const activeCategoryParam =
-    searchParams.get('category') || 'all';
+  const activeCategoryParam = searchParams.get('category') || 'all';
 
   return (
     <CatalogView
@@ -27,9 +26,13 @@ const CatalogInteractive = ({ currentLang = 'ru' }: Props) => {
             ? (p.slug[currentLang] || p.id)
             : (p.slug || p.id);
 
-        router.push(
-          `/product/${encodeURIComponent(productSlug)}`
-        );
+        // Tilga qarab /uz prefiksi bilan yo'naltirish
+        const productUrl =
+          currentLang === 'uz'
+            ? `/uz/product/${encodeURIComponent(productSlug)}`
+            : `/product/${encodeURIComponent(productSlug)}`;
+
+        router.push(productUrl);
       }}
       onOpenQuote={(_p: Product) => {}}
       comparedProducts={comparedProducts}
@@ -50,7 +53,7 @@ const CatalogPageClient = ({ currentLang = 'ru' }: Props) => {
     <Suspense
       fallback={
         <div className="py-20 text-center text-xs text-gray-500">
-          Katalog yuklanmoqda...
+          {currentLang === 'uz' ? 'Katalog yuklanmoqda...' : 'Загрузка каталога...'}
         </div>
       }
     >

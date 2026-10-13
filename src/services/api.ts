@@ -418,6 +418,35 @@ export const ApiService = {
   },
 
   // ==========================================
+  // --- ABOUT PAGE (BIZ HAQIMIZDA - AIVEN MYSQL) ---
+  // ==========================================
+  async getAboutPage(): Promise<any | null> {
+    try {
+      const res = await fetch('/api/about-page', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.success ? json.data : null;
+    } catch (error) {
+      console.error('getAboutPage xatosi:', error);
+      return null;
+    }
+  },
+
+  async saveAboutPage(data: any): Promise<{ success: boolean; message?: string }> {
+    const res = await fetch('/api/about-page', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !json?.success) {
+      throw new Error(json?.message || json?.error || 'About sahifasini saqlab bo‘lmadi');
+    }
+    return json;
+  },
+
+  // ==========================================
   // --- ADMIN USERS (LOGIN VA FOYDALANUVCHILAR) ---
   // ==========================================
   async loginAdmin(username: string, password: string): Promise<any> {

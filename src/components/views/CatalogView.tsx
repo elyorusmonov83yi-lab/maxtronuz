@@ -38,15 +38,17 @@ import {
   getSafeProductSlug, 
   getSafeCategorySlug 
 } from '../../utils/formatters';
+
 interface CatalogViewProps {
   currentLang: Language;
   initialCategory?: string;
-  onSelectProduct: (p: Product) => void;
+  onSelectProduct?: (p: Product) => void;
   onOpenQuote: (product: Product) => void;
   comparedProducts: string[];
   onToggleCompare: (product: Product) => void;
   onShowToast: (msg: string) => void;
 }
+
 const setMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
   if (typeof document === 'undefined' || !content) return;
   let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
@@ -75,12 +77,20 @@ const cleanCategoryTitle = (title: string): string => {
 export const CatalogView: React.FC<CatalogViewProps> = ({
   currentLang,
   initialCategory = 'all',
+  onSelectProduct,
   onOpenQuote,
   comparedProducts,
   onToggleCompare,
 }) => {
   const params = useParams() as { categorySlug?: string; categoryId?: string };
   const navigate = useNavigate();
+
+  // Tilga mos marshrut yasovchi yordamchi funksiya
+  const getLocalizedUrl = (path: string) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    if (currentLang === 'ru') return cleanPath;
+    return `/uz${cleanPath === '/' ? '' : cleanPath}`;
+  };
 
   const rawParam = params?.categorySlug || params?.categoryId || initialCategory || 'all';
   const currentSlugParam = typeof rawParam === 'string' ? rawParam : 'all';
@@ -151,7 +161,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     }
   }, [currentCategoryObj]);
 
-  // Kategoriyalarni Ota-Bola (Tree) daraxt ko'rinishiga keltirish
+  // Kategoriyalarni Ota-Bola daraxt ko'rinishiga keltirish
   const categoryTree = useMemo(() => {
     const rootCategories: (CategoryInfo & { children: CategoryInfo[] })[] = [];
     const childrenMap: Record<string, CategoryInfo[]> = {};
@@ -177,7 +187,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     return rootCategories;
   }, [categoriesList]);
 
-  // Ota kategoriya va uning barcha ichki bolalaridagi tovarlar sonini aniqlash
   const getCategoryTotalCount = (catId: string, children: CategoryInfo[] = []) => {
     const targetIds = [String(catId), ...children.map(c => String(c.id))];
     return productsList.filter(p => targetIds.includes(String(p.category || (p as any).categoryId))).length;
@@ -359,19 +368,19 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const breadcrumbs = (currentSlugParam === 'all' || !currentCategoryObj)
     ? [{ label: currentLang === 'ru' ? 'Каталог' : 'Katalog' }]
     : [
-        { label: currentLang === 'ru' ? 'Каталог' : 'Katalog', to: '/catalog' },
+        { label: currentLang === 'ru' ? 'Каталог' : 'Katalog', to: getLocalizedUrl('/catalog') },
         { label: cleanCategoryTitle(getLocalizedText(currentCategoryObj.name, currentLang, currentCategoryObj.id)) }
       ];
 
   const handleCategoryChange = (target: any) => {
     if (target === 'all' || !target) {
-      navigate('/catalog');
+      navigate(getLocalizedUrl('/catalog'));
     } else {
       const safeSlug = getSafeCategorySlug(target, currentLang);
       if (safeSlug) {
-        navigate(`/catalog/${safeSlug}`);
+        navigate(getLocalizedUrl(`/catalog/${safeSlug}`));
       } else {
-        navigate('/catalog');
+        navigate(getLocalizedUrl('/catalog'));
       }
     }
     setMobileFilterOpen(false);
@@ -383,7 +392,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     setInStockOnly(false);
     setSelectedBrand('all');
     setSortBy('default');
-    navigate('/catalog');
+    navigate(getLocalizedUrl('/catalog'));
   };
 
   const hasActiveFilters = searchQuery !== '' || inStockOnly || selectedBrand !== 'all' || (currentSlugParam !== 'all' && currentSlugParam !== '');
@@ -776,7 +785,8 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                     currentLang={currentLang}
                     onSelect={() => {
                       if (safeSlug) {
-                        navigate(`/product/${safeSlug}`);
+                        // Tilga mos holda to'g'ri URL ga o'tish
+                        navigate(getLocalizedUrl(`/product/${safeSlug}`));
                       }
                     }}
                     onOpenQuote={onOpenQuote}

@@ -1,9 +1,22 @@
 'use client';
+"use client";
 
 import { HomeView } from '@/components/views/HomeView';
-import { Product } from '@/types';
+import { Product, Language } from '@/types';
 
-export default function HomePageClient() {
+interface HomePageClientProps {
+  currentLang?: Language;
+  initialProducts?: Product[];
+  initialCategories?: any[];
+  siteSettings?: any;
+}
+
+export default function HomePageClient({
+  currentLang = 'ru',
+  initialProducts,
+  initialCategories,
+  siteSettings,
+}: HomePageClientProps) {
   const handleOpenQuote = (product?: Product) => {
     console.log('Open quote:', product);
   };
@@ -14,7 +27,7 @@ export default function HomePageClient() {
 
   return (
     <HomeView
-      currentLang="ru"
+      currentLang={currentLang}
       onOpenQuote={handleOpenQuote}
       comparedProducts={[]}
       onToggleCompare={handleToggleCompare}
