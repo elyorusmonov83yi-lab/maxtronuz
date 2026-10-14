@@ -12,25 +12,46 @@ import {
   ImageIcon 
 } from 'lucide-react';
 import { Certificate, Language } from '../../types';
-import { translations } from '../../data/translations';
+import { translations as staticTranslations } from '../../data/translations';
 import { Breadcrumbs } from '../Breadcrumbs';
 import { StorageService } from '../../services/storage';
 import { getLocalizedText } from '../../utils/formatters';
 
-interface CertificatesViewProps {
+export interface CertificatesViewProps {
   currentLang: Language;
+  initialCertificates?: Certificate[];
+  siteSettings?: Record<string, any>;
+  translations?: Record<string, any>;
   onSelectCertificate: (cert: Certificate) => void;
   onShowToast: (msg: string) => void;
 }
 
 export const CertificatesView: React.FC<CertificatesViewProps> = ({
-  currentLang,
+  currentLang = 'ru',
+  initialCertificates,
+  siteSettings,
+  translations: dbTranslations,
   onSelectCertificate,
   onShowToast,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [certsList, setCertsList] = useState<Certificate[]>(() => StorageService.getCertificates());
-  const t = translations[currentLang] || translations.ru;
+  
+  // Serverdan (MariaDB) kelgan initialCertificates bo'lsa darhol oladi, aks holda StorageService
+  const [certsList, setCertsList] = useState<Certificate[]>(() => {
+    if (Array.isArray(initialCertificates) && initialCertificates.length > 0) {
+      return initialCertificates;
+    }
+    return StorageService.getCertificates();
+  });
+
+  const t = dbTranslations || staticTranslations[currentLang] || staticTranslations.ru;
+
+  // Serverdan initialCertificates props yangilanganda state-ni yangilash
+  useEffect(() => {
+    if (Array.isArray(initialCertificates) && initialCertificates.length > 0) {
+      setCertsList(initialCertificates);
+    }
+  }, [initialCertificates]);
 
   useEffect(() => {
     const handleUpdate = (e: any) => {

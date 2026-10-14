@@ -39,14 +39,18 @@ import {
   getSafeCategorySlug 
 } from '../../utils/formatters';
 
-interface CatalogViewProps {
+export interface CatalogViewProps {
   currentLang: Language;
   initialCategory?: string;
+  initialCategories?: CategoryInfo[];
+  catalogSeo?: Record<string, any>;
+  siteSettings?: Record<string, any>;
+  translations?: Record<string, any>;
   onSelectProduct?: (p: Product) => void;
   onOpenQuote: (product: Product) => void;
   comparedProducts: string[];
   onToggleCompare: (product: Product) => void;
-  onShowToast: (msg: string) => void;
+  onShowToast?: (msg: string) => void;
 }
 
 const setMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
@@ -77,15 +81,19 @@ const cleanCategoryTitle = (title: string): string => {
 export const CatalogView: React.FC<CatalogViewProps> = ({
   currentLang,
   initialCategory = 'all',
+  initialCategories = [],
+  catalogSeo = {},
+  siteSettings = {},
+  translations: dbTranslations = {},
   onSelectProduct,
   onOpenQuote,
   comparedProducts,
   onToggleCompare,
+  onShowToast,
 }) => {
   const params = useParams() as { categorySlug?: string; categoryId?: string };
   const navigate = useNavigate();
 
-  // Tilga mos marshrut yasovchi yordamchi funksiya
   const getLocalizedUrl = (path: string) => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     if (currentLang === 'ru') return cleanPath;
@@ -104,29 +112,31 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  // Ochiq turgan ota kategoriyalar ID-lari
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
-
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(9);
 
   const [productsList, setProductsList] = useState<Product[]>([]);
-  const [categoriesList, setCategoriesList] = useState<CategoryInfo[]>([]);
+  // Serverdan (MariaDB) kelgan initialCategories bo'lsa darhol oladi
+  const [categoriesList, setCategoriesList] = useState<CategoryInfo[]>(() => 
+    Array.isArray(initialCategories) && initialCategories.length > 0 ? initialCategories : []
+  );
   const [loading, setLoading] = useState(true);
 
-  // Ma'lumotlarni yuklash
+  // Ma'lumotlarni yuklash (serverdan bo'sh kelsa yoki API dan olish uchun)
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
     Promise.all([
       ApiService.getProducts().catch(() => StorageService.getProducts()),
-      ApiService.getCategories().catch(() => StorageService.getCategories())
+      initialCategories && initialCategories.length > 0 
+        ? Promise.resolve(initialCategories)
+        : ApiService.getCategories().catch(() => StorageService.getCategories())
     ]).then(([prods, cats]) => {
       if (isMounted) {
         if (Array.isArray(prods)) setProductsList(prods);
-        if (Array.isArray(cats)) setCategoriesList(cats);
+        if (Array.isArray(cats) && cats.length > 0) setCategoriesList(cats);
         setLoading(false);
       }
     }).catch(() => {
@@ -136,9 +146,8 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialCategories]);
 
-  // Slug bo'yicha joriy kategoriya
   const currentCategoryObj = useMemo(() => {
     if (currentSlugParam === 'all' || currentSlugParam === '[object Object]') return null;
     return categoriesList.find((c) => {
@@ -150,7 +159,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
   const activeCategoryId = currentCategoryObj ? currentCategoryObj.id : (currentSlugParam === 'all' ? 'all' : currentSlugParam);
 
-  // Tanlangan kategoriya bola bo'lsa, o'sha ota toifani avtomatik ochish
   useEffect(() => {
     if (currentCategoryObj) {
       if (currentCategoryObj.parentId) {
@@ -161,7 +169,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     }
   }, [currentCategoryObj]);
 
-  // Kategoriyalarni Ota-Bola daraxt ko'rinishiga keltirish
   const categoryTree = useMemo(() => {
     const rootCategories: (CategoryInfo & { children: CategoryInfo[] })[] = [];
     const childrenMap: Record<string, CategoryInfo[]> = {};
@@ -200,12 +207,9 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     }));
   };
 
-  // SEO
+  // SEO (MariaDB catalogSeo bo'lsa undan foydalanadi)
   useEffect(() => {
     if (typeof document === 'undefined') return;
-
-    const seoSettings = StorageService.getSeoSettings();
-    const catalogSeo = seoSettings?.pageSeo?.catalog;
 
     let pageTitle = '';
     let pageDesc = '';
@@ -236,7 +240,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
     const ogTitle = pageTitle;
     const ogDesc = pageDesc;
-    let ogImage = seoSettings?.ogImageUrl || '/logo.png';
+    let ogImage = catalogSeo?.ogImageUrl || siteSettings?.defaultOgImage || '/logo.png';
     if (ogImage && !ogImage.startsWith('http') && typeof window !== 'undefined') {
       ogImage = window.location.origin + (ogImage.startsWith('/') ? '' : '/') + ogImage;
     }
@@ -248,7 +252,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     if (typeof window !== 'undefined') {
       setMetaTag('property', 'og:url', window.location.href);
     }
-  }, [currentSlugParam, currentCategoryObj, currentLang]);
+  }, [currentSlugParam, currentCategoryObj, currentLang, catalogSeo, siteSettings]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -785,7 +789,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                     currentLang={currentLang}
                     onSelect={() => {
                       if (safeSlug) {
-                        // Tilga mos holda to'g'ri URL ga o'tish
                         navigate(getLocalizedUrl(`/product/${safeSlug}`));
                       }
                     }}

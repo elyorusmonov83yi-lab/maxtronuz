@@ -4,15 +4,20 @@ import { db } from '@/server/db';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://maxtron.uz';
+
   const defaultRobots = [
     'User-agent: *',
     'Allow: /',
     'Disallow: /admin',
     'Disallow: /admin/',
     'Disallow: /api/',
+    'Disallow: /compare',
+    'Disallow: /uz/compare',
+    'Disallow: /*?*',
     '',
-    'Sitemap: https://maxtron.uz/sitemap.xml',
-    'Host: https://maxtron.uz',
+    `Sitemap: ${baseUrl}/sitemap.xml`,
+    'Host: maxtron.uz',
   ].join('\n');
 
   try {
@@ -23,9 +28,14 @@ export async function GET() {
     let robotsContent = defaultRobots;
 
     if (rows && rows.length > 0 && rows[0].value) {
-      const seoData = typeof rows[0].value === 'string' 
-        ? JSON.parse(rows[0].value) 
-        : rows[0].value;
+      let seoData: any = {};
+      try {
+        seoData = typeof rows[0].value === 'string' 
+          ? JSON.parse(rows[0].value) 
+          : rows[0].value;
+      } catch {
+        seoData = {};
+      }
 
       if (seoData?.robotsTxt && typeof seoData.robotsTxt === 'string' && seoData.robotsTxt.trim()) {
         robotsContent = seoData.robotsTxt.trim();
@@ -45,6 +55,7 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
       },
     });
   }

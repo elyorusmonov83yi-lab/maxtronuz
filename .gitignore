@@ -10,3 +10,8 @@ maxtron_backup.sql
 server.ts.backup
 .vercel
 .next/ca.pem
+
+.next/
+ca.pem
+.env
+.env.local

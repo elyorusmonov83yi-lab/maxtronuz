@@ -16,52 +16,42 @@ import { StorageService } from '../../services/storage';
 import { getLocalizedText } from '../../utils/formatters';
 import { ClientsSlider } from '@/components/ClientsSlider';
 
-interface AboutViewProps {
+export interface AboutViewProps {
   currentLang: Language;
+  content?: Record<string, any>;
+  seo?: Record<string, any>;
+  siteSettings?: Record<string, any>;
+  translations?: Record<string, any>;
   onOpenQuote?: () => void;
 }
 
-const setMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
-  if (typeof document === 'undefined' || !content) return;
-  let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
-  if (!element) {
-    element = document.createElement('meta');
-    element.setAttribute(attrName, attrValue);
-    document.head.appendChild(element);
-  }
-  element.setAttribute('content', content);
-};
+export const AboutView: React.FC<AboutViewProps> = ({ 
+  currentLang = 'ru', 
+  content: serverContent,
+  seo: serverSeo,
+  siteSettings,
+  translations: serverTranslations,
+  onOpenQuote 
+}) => {
+  // Baza ma'lumotlari kelsa - serverContent ustuvor, aks holda StorageService zaxirasi
+  const [aboutData, setAboutData] = useState<AboutContent>(() => {
+    const fromStorage = StorageService.getAboutContent();
+    return {
+      ...fromStorage,
+      ...(serverContent as any)
+    };
+  });
 
-export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenQuote }) => {
-  const [aboutData, setAboutData] = useState<AboutContent>(() => StorageService.getAboutContent());
-
-  // Dinamik SEO
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    if (serverContent && Object.keys(serverContent).length > 0) {
+      setAboutData((prev) => ({
+        ...prev,
+        ...(serverContent as any)
+      }));
+    }
+  }, [serverContent]);
 
-    const seoSettings = StorageService.getSeoSettings();
-    const aboutSeo = seoSettings?.pageSeo?.about;
-
-    const titleText = getLocalizedText(
-      aboutSeo?.title || {
-        uz: "Biz haqimizda — MAXTRON Industrial Supply",
-        ru: "О компании — MAXTRON Industrial Supply"
-      },
-      currentLang
-    );
-    document.title = titleText;
-
-    const descText = getLocalizedText(
-      aboutSeo?.description || {
-        uz: "MAXTRON — O'zbekiston sanoat korxonalari uchun o'lchov va nazorat uskunalarining ishonchli yetkazib beruvchisi.",
-        ru: "MAXTRON — Надежный поставщик измерительного оборудования для предприятий Узбекистана."
-      },
-      currentLang
-    );
-    setMetaTag('name', 'description', descText);
-  }, [currentLang]);
-
-  // Real-time update listener
+  // Real-time update listener (admin paneldan o'zgarsa)
   useEffect(() => {
     const handleUpdate = (e: any) => {
       if (e.detail) setAboutData(e.detail);
@@ -129,6 +119,9 @@ export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenQuote }
         : 'Respublikaning barcha hududlariga va yopiq sanoat obyektlariga belgilangan muddatda yetkazish.'
     }
   ];
+
+  const catalogLink = currentLang === 'uz' ? '/uz/catalog' : '/catalog';
+  const certsLink = currentLang === 'uz' ? '/uz/certificates' : '/certificates';
 
   return (
     <>
@@ -218,7 +211,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenQuote }
 
             <div className="flex flex-wrap items-center gap-4 pt-4">
               <Link
-                href="/catalog"
+                href={catalogLink}
                 className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-blue-500/20"
               >
                 <span>{currentLang === 'ru' ? 'Смотреть каталог' : 'Katalogni ko‘rish'}</span>
@@ -226,7 +219,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenQuote }
               </Link>
 
               <Link
-                href="/certificates"
+                href={certsLink}
                 className="px-6 py-3.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white font-bold text-xs border border-gray-800 transition"
               >
                 <span>{currentLang === 'ru' ? 'Сертификаты' : 'Sertifikatlar'}</span>

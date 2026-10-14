@@ -1,11 +1,12 @@
 import { MetadataRoute } from 'next';
 import { db } from '@/server/db';
 
-const BASE_URL = 'https://maxtron.uz';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://maxtron.uz';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const currentDate = new Date();
 
+  // 1. Asosiy statik sahifalar (noindex bo'lgan /compare chiqarib tashlandi)
   const staticRoutes = [
     '',
     '/catalog',
@@ -15,121 +16,100 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/services',
     '/projects',
     '/equipment-finder',
-    '/compare',
     '/quote',
   ];
 
   const staticEntries: MetadataRoute.Sitemap = [];
 
   for (const route of staticRoutes) {
+    const ruUrl = `${BASE_URL}${route}`;
+    const uzUrl = `${BASE_URL}/uz${route}`;
+
+    // Ruscha versiya
     staticEntries.push({
-      url: `${BASE_URL}${route}`,
+      url: ruUrl,
       lastModified: currentDate,
       changeFrequency: route === '' || route === '/catalog' ? 'daily' : 'weekly',
       priority: route === '' ? 1.0 : 0.8,
       alternates: {
         languages: {
-          ru: `${BASE_URL}${route}`,
-          uz: `${BASE_URL}/uz${route}`,
+          ru: ruUrl,
+          uz: uzUrl,
         },
       },
     });
 
+    // O'zbekcha versiya
     staticEntries.push({
-      url: `${BASE_URL}/uz${route}`,
+      url: uzUrl,
       lastModified: currentDate,
       changeFrequency: route === '' || route === '/catalog' ? 'daily' : 'weekly',
-      priority: route === '' ? 0.9 : 0.7,
+      priority: route === '' ? 0.9 : 0.8,
       alternates: {
         languages: {
-          ru: `${BASE_URL}${route}`,
-          uz: `${BASE_URL}/uz${route}`,
+          ru: ruUrl,
+          uz: uzUrl,
         },
       },
     });
   }
 
-  // Dinamik Mahsulotlar (xatosiz SQL)
+  // 2. Dinamik mahsulotlar (products)
   let productEntries: MetadataRoute.Sitemap = [];
   try {
     const [products]: any = await db.query('SELECT id, slug FROM products');
 
     if (Array.isArray(products)) {
       products.forEach((p) => {
-        let slugRu = p.id;
-        let slugUz = p.id;
+        let slugRu = String(p.id);
+        let slugUz = String(p.id);
 
         if (p.slug) {
           try {
-            const parsedSlug = typeof p.slug === 'string' ? JSON.parse(p.slug) : p.slug;
-            slugRu = parsedSlug.ru || parsedSlug.uz || p.id;
-            slugUz = parsedSlug.uz || parsedSlug.ru || p.id;
+            const parsed = typeof p.slug === 'string' ? JSON.parse(p.slug) : p.slug;
+            slugRu = parsed.ru || parsed.uz || String(p.id);
+            slugUz = parsed.uz || parsed.ru || String(p.id);
           } catch {
-            slugRu = p.slug;
-            slugUz = p.slug;
+            slugRu = String(p.slug);
+            slugUz = String(p.slug);
           }
         }
 
+        const ruUrl = `${BASE_URL}/product/${encodeURIComponent(slugRu)}`;
+        const uzUrl = `${BASE_URL}/uz/product/${encodeURIComponent(slugUz)}`;
+
         productEntries.push({
-          url: `${BASE_URL}/product/${encodeURIComponent(slugRu)}`,
+          url: ruUrl,
           lastModified: currentDate,
           changeFrequency: 'weekly',
           priority: 0.9,
           alternates: {
             languages: {
-              ru: `${BASE_URL}/product/${encodeURIComponent(slugRu)}`,
-              uz: `${BASE_URL}/uz/product/${encodeURIComponent(slugUz)}`,
+              ru: ruUrl,
+              uz: uzUrl,
             },
           },
         });
 
         productEntries.push({
-          url: `${BASE_URL}/uz/product/${encodeURIComponent(slugUz)}`,
+          url: uzUrl,
           lastModified: currentDate,
           changeFrequency: 'weekly',
           priority: 0.8,
           alternates: {
             languages: {
-              ru: `${BASE_URL}/product/${encodeURIComponent(slugRu)}`,
-              uz: `${BASE_URL}/uz/product/${encodeURIComponent(slugUz)}`,
+              ru: ruUrl,
+              uz: uzUrl,
             },
           },
         });
       });
     }
   } catch (err) {
-    console.error('Sitemap products error:', err);
+    console.error('Sitemap products xatoligi:', err);
   }
 
-  // Dinamik Kategoriyalar
-  let categoryEntries: MetadataRoute.Sitemap = [];
-  try {
-    const [categories]: any = await db.query('SELECT id, slug FROM categories');
-
-    if (Array.isArray(categories)) {
-      categories.forEach((cat) => {
-        const slug = cat.slug || cat.id;
-
-        categoryEntries.push({
-          url: `${BASE_URL}/catalog?category=${encodeURIComponent(slug)}`,
-          lastModified: currentDate,
-          changeFrequency: 'weekly',
-          priority: 0.7,
-        });
-
-        categoryEntries.push({
-          url: `${BASE_URL}/uz/catalog?category=${encodeURIComponent(slug)}`,
-          lastModified: currentDate,
-          changeFrequency: 'weekly',
-          priority: 0.7,
-        });
-      });
-    }
-  } catch (err) {
-    console.error('Sitemap categories error:', err);
-  }
-
-  // Dinamik CMS Sahifalar (xatosiz SQL)
+  // 3. Dinamik CMS sahifalar (pages)
   let cmsEntries: MetadataRoute.Sitemap = [];
   try {
     const [pages]: any = await db.query('SELECT slug FROM pages');
@@ -138,36 +118,58 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       pages.forEach((page) => {
         if (!page.slug) return;
 
+        let slugRu = '';
+        let slugUz = '';
+
+        try {
+          const parsed = typeof page.slug === 'string' ? JSON.parse(page.slug) : page.slug;
+          if (typeof parsed === 'object' && parsed !== null) {
+            slugRu = parsed.ru || parsed.uz || '';
+            slugUz = parsed.uz || parsed.ru || '';
+          } else {
+            slugRu = String(page.slug);
+            slugUz = String(page.slug);
+          }
+        } catch {
+          slugRu = String(page.slug);
+          slugUz = String(page.slug);
+        }
+
+        if (!slugRu && !slugUz) return;
+
+        const ruUrl = `${BASE_URL}/page/${encodeURIComponent(slugRu || slugUz)}`;
+        const uzUrl = `${BASE_URL}/uz/page/${encodeURIComponent(slugUz || slugRu)}`;
+
         cmsEntries.push({
-          url: `${BASE_URL}/page/${encodeURIComponent(page.slug)}`,
+          url: ruUrl,
           lastModified: currentDate,
           changeFrequency: 'monthly',
           priority: 0.6,
           alternates: {
             languages: {
-              ru: `${BASE_URL}/page/${encodeURIComponent(page.slug)}`,
-              uz: `${BASE_URL}/uz/page/${encodeURIComponent(page.slug)}`,
+              ru: ruUrl,
+              uz: uzUrl,
             },
           },
         });
 
         cmsEntries.push({
-          url: `${BASE_URL}/uz/page/${encodeURIComponent(page.slug)}`,
+          url: uzUrl,
           lastModified: currentDate,
           changeFrequency: 'monthly',
-          priority: 0.5,
+          priority: 0.6,
           alternates: {
             languages: {
-              ru: `${BASE_URL}/page/${encodeURIComponent(page.slug)}`,
-              uz: `${BASE_URL}/uz/page/${encodeURIComponent(page.slug)}`,
+              ru: ruUrl,
+              uz: uzUrl,
             },
           },
         });
       });
     }
   } catch (err) {
-    console.error('Sitemap pages error:', err);
+    console.error('Sitemap pages xatoligi:', err);
   }
 
-  return [...staticEntries, ...productEntries, ...categoryEntries, ...cmsEntries];
+  return [...staticEntries, ...productEntries, ...cmsEntries];
 }

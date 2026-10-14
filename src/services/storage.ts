@@ -232,6 +232,7 @@ let memoryPages: CustomPage[] = [...defaultPages];
 let memoryHeader: HeaderSettings = defaultHeaderSettings;
 let memoryContact: ContactSettings = defaultContactSettings;
 let memoryClients: any[] = initialClients;
+let memoryComparedIds: string[] = [];
 let memoryAdminUsers: any[] = [
   { id: 'usr-1', name: 'Admin', username: 'admin', password: '123', role: 'super_admin', createdAt: Date.now() }
 ];
@@ -239,6 +240,30 @@ let memoryAdminAuth = false;
 let memoryAdminUser: any = null;
 
 export const StorageService = {
+  // Solishtirish uchun qo'shilgan metodlar (CompareClient va FinderClient uchun)
+  getComparedProductIds(): string[] {
+    if (typeof window === 'undefined') return memoryComparedIds;
+    try {
+      const data = localStorage.getItem('maxtron_compare_ids');
+      return data ? JSON.parse(data) : memoryComparedIds;
+    } catch {
+      return memoryComparedIds;
+    }
+  },
+
+  setComparedProductIds(ids: string[]): boolean {
+    memoryComparedIds = ids;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('maxtron_compare_ids', JSON.stringify(ids));
+      } catch (e) {
+        console.error('Storage setComparedProductIds error:', e);
+      }
+      window.dispatchEvent(new CustomEvent('maxtron_compare_updated', { detail: ids }));
+    }
+    return true;
+  },
+
   getIndustries(): IndustryInfo[] {
     try {
       const data = localStorage.getItem('maxtron_industries_data');

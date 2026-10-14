@@ -1,63 +1,101 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CatalogView } from '@/components/views/CatalogView';
-import { Product } from '@/types';
+import { Product, CategoryInfo } from '@/types';
+import { StorageService } from '@/services/storage';
 
-type Props = {
+export type Props = {
+  lang?: 'ru' | 'uz';
   currentLang?: 'ru' | 'uz';
+  initialCategories?: CategoryInfo[] | any[];
+  siteSettings?: any;
+  catalogSeo?: any;
+  translations?: any;
+  [key: string]: any;
 };
 
-const CatalogInteractive = ({ currentLang = 'ru' }: Props) => {
+const CatalogInteractive = ({
+  lang,
+  currentLang: propCurrentLang,
+  initialCategories = [],
+  siteSettings,
+  catalogSeo,
+  translations,
+}: Props) => {
+  const currentLang = lang || propCurrentLang || 'ru';
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // StorageService orqali solishtirish ro'yxatini yuklash
   const [comparedProducts, setComparedProducts] = useState<string[]>([]);
 
-  const activeCategoryParam = searchParams.get('category') || 'all';
+  useEffect(() => {
+    setComparedProducts(StorageService.getComparedProductIds());
+    const handleCompareUpdate = (e: any) => {
+      if (e.detail) setComparedProducts(e.detail);
+      else setComparedProducts(StorageService.getComparedProductIds());
+    };
+    window.addEventListener('maxtron_compare_updated', handleCompareUpdate);
+    return () => window.removeEventListener('maxtron_compare_updated', handleCompareUpdate);
+  }, []);
+
+  const activeCategoryParam = searchParams ? (searchParams.get('category') || 'all') : 'all';
+
+  const handleToggleCompare = (p: Product) => {
+    const pId = String(p.id);
+    let next: string[];
+    if (comparedProducts.includes(pId)) {
+      next = comparedProducts.filter((id) => id !== pId);
+    } else {
+      next = [...comparedProducts, pId];
+    }
+    setComparedProducts(next);
+    StorageService.setComparedProductIds(next);
+  };
 
   return (
     <CatalogView
       currentLang={currentLang}
       initialCategory={activeCategoryParam}
+      initialCategories={initialCategories}
+      catalogSeo={catalogSeo}
+      siteSettings={siteSettings}
+      translations={translations}
       onSelectProduct={(p: Product) => {
         const productSlug =
           typeof p.slug === 'object'
-            ? (p.slug[currentLang] || p.id)
+            ? (p.slug[currentLang] || p.slug.ru || p.slug.uz || p.id)
             : (p.slug || p.id);
 
-        // Tilga qarab /uz prefiksi bilan yo'naltirish
         const productUrl =
           currentLang === 'uz'
-            ? `/uz/product/${encodeURIComponent(productSlug)}`
-            : `/product/${encodeURIComponent(productSlug)}`;
+            ? `/uz/product/${encodeURIComponent(String(productSlug))}`
+            : `/product/${encodeURIComponent(String(productSlug))}`;
 
         router.push(productUrl);
       }}
       onOpenQuote={(_p: Product) => {}}
       comparedProducts={comparedProducts}
-      onToggleCompare={(p: Product) => {
-        setComparedProducts((prev) =>
-          prev.includes(p.id)
-            ? prev.filter((id) => id !== p.id)
-            : [...prev, p.id]
-        );
-      }}
+      onToggleCompare={handleToggleCompare}
       onShowToast={(msg: string) => console.log(msg)}
     />
   );
 };
 
-const CatalogPageClient = ({ currentLang = 'ru' }: Props) => {
+const CatalogPageClient = (props: Props) => {
+  const activeLang = props.lang || props.currentLang || 'ru';
+
   return (
     <Suspense
       fallback={
         <div className="py-20 text-center text-xs text-gray-500">
-          {currentLang === 'uz' ? 'Katalog yuklanmoqda...' : 'Загрузка каталога...'}
+          {activeLang === 'uz' ? 'Katalog yuklanmoqda...' : 'Загрузка каталога...'}
         </div>
       }
     >
-      <CatalogInteractive currentLang={currentLang} />
+      <CatalogInteractive {...props} />
     </Suspense>
   );
 };

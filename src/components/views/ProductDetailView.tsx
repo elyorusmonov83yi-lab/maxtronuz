@@ -26,7 +26,7 @@ import {
   BookOpen 
 } from 'lucide-react';
 import { Language, Product, CategoryInfo } from '../../types';
-import { translations } from '../../data/translations';
+import { translations as staticTranslations } from '../../data/translations';
 import { Breadcrumbs } from '../Breadcrumbs';
 import { ProductCard } from '../ProductCard';
 import { 
@@ -41,7 +41,8 @@ import { ApiService } from '../../services/api';
 import { StorageService } from '../../services/storage';
 import { SeoManager } from '../SeoManager';
 
-interface ProductDetailViewProps {
+export interface ProductDetailViewProps {
+  product?: Product;
   currentLang: Language;
   onOpenQuote: (product: Product) => void;
   comparedProducts: string[];
@@ -50,7 +51,8 @@ interface ProductDetailViewProps {
 }
 
 export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
-  currentLang,
+  product: initialProduct,
+  currentLang = 'ru',
   onOpenQuote,
   comparedProducts,
   onToggleCompare,
@@ -61,11 +63,17 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const currentIdentifier = decodeURIComponent(rawIdentifier).toLowerCase().trim();
   
   const navigate = useNavigate();
-  const t = translations[currentLang] || translations.ru;
+  const t = staticTranslations[currentLang] || staticTranslations.ru;
+
+  const getLocalizedUrl = (path: string) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    if (currentLang === 'ru') return cleanPath;
+    return `/uz${cleanPath === '/' ? '' : cleanPath}`;
+  };
 
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<CategoryInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialProduct);
   const [imageError, setImageError] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'features' | 'applications' | 'docs'>('description');
@@ -73,7 +81,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
+    if (!initialProduct) setLoading(true);
 
     Promise.all([
       ApiService.getProducts().catch(() => StorageService.getProducts()),
@@ -104,9 +112,11 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialProduct]);
 
+  // Agar serverdan initialProduct kelsa — undan foydalanadi, aks holda identifier bo'yicha topadi
   const product = useMemo(() => {
+    if (initialProduct) return initialProduct;
     if (!currentIdentifier || currentIdentifier === '[object object]') return undefined;
 
     return productsList.find((p) => {
@@ -133,7 +143,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
       return false;
     });
-  }, [productsList, currentIdentifier]);
+  }, [initialProduct, productsList, currentIdentifier]);
 
   useEffect(() => {
     setImageError(false);
@@ -166,7 +176,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
             : 'Siz qidirgan mahsulot mavjud emas yoki o‘chirilgan.'}
         </p>
         <Link
-          href="/catalog"
+          href={getLocalizedUrl('/catalog')}
           className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -225,8 +235,8 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const modelText = typeof product.model === 'object' ? getLocalizedText(product.model, currentLang) : (product.model || '—');
 
   const breadcrumbs = [
-    { label: t.breadcrumb_catalog || (currentLang === 'ru' ? 'Каталог' : 'Katalog'), to: '/catalog' },
-    { label: categoryName, to: `/catalog/${categorySlug}` },
+    { label: t.breadcrumb_catalog || (currentLang === 'ru' ? 'Каталог' : 'Katalog'), to: getLocalizedUrl('/catalog') },
+    { label: categoryName, to: getLocalizedUrl(`/catalog/${categorySlug}`) },
     { label: modelText }
   ];
 
@@ -320,7 +330,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <Link 
-                href={`/catalog/${categorySlug}`}
+                href={getLocalizedUrl(`/catalog/${categorySlug}`)}
                 className="text-xs font-semibold text-blue-400 hover:underline uppercase tracking-wider"
               >
                 {categoryName}
@@ -677,7 +687,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </h3>
             </div>
             <Link
-              href={`/catalog/${categorySlug}`}
+              href={getLocalizedUrl(`/catalog/${categorySlug}`)}
               className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1"
             >
               <span>{currentLang === 'ru' ? 'Смотреть все' : 'Barchasini ko‘rish'}</span>
@@ -693,7 +703,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   key={relSlug || Math.random()}
                   product={rel}
                   currentLang={currentLang}
-                  onSelect={() => navigate(`/product/${relSlug}`)}
+                  onSelect={() => navigate(getLocalizedUrl(`/product/${relSlug}`))}
                   onOpenQuote={onOpenQuote}
                   isCompared={comparedProducts.includes(relSlug) || comparedProducts.includes(String(rel.id))}
                   onToggleCompare={onToggleCompare}

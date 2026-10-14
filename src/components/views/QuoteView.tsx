@@ -18,21 +18,36 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Language, Product, QuoteRequestData } from '../../types';
-import { translations } from '../../data/translations';
+import { translations as staticTranslations } from '../../data/translations';
 import { Breadcrumbs } from '../Breadcrumbs';
 import { StorageService } from '../../services/storage';
 import { ApiService } from '../../services/api';
-import { getProductName } from '../../utils/formatters';
+import { getProductName, getLocalizedText } from '../../utils/formatters';
 
-interface QuoteViewProps {
+export interface QuoteViewProps {
   currentLang: Language;
+  content?: Record<string, any>;
+  translations?: Record<string, any>;
+  siteSettings?: Record<string, any>;
   onShowToast: (msg: string) => void;
 }
 
-export const QuoteView: React.FC<QuoteViewProps> = ({ currentLang, onShowToast }) => {
+export const QuoteView: React.FC<QuoteViewProps> = ({ 
+  currentLang = 'ru',
+  content = {},
+  translations: dbTranslations,
+  siteSettings = {},
+  onShowToast 
+}) => {
   const searchParams = useSearchParams();
   const initialProductId = searchParams ? (searchParams.get('product') || '') : '';
-  const t = translations[currentLang] || {};
+  const t = dbTranslations || staticTranslations[currentLang] || staticTranslations.ru;
+
+  const getLocalizedUrl = (path: string) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    if (currentLang === 'ru') return cleanPath;
+    return `/uz${cleanPath === '/' ? '' : cleanPath}`;
+  };
 
   const [products, setProducts] = useState<Product[]>(() => StorageService.getProducts());
 
@@ -112,27 +127,28 @@ export const QuoteView: React.FC<QuoteViewProps> = ({ currentLang, onShowToast }
     }, 800);
   };
 
+  const contactPhone = siteSettings?.phone || '+998 (71) 200-88-44';
+  const contactEmail = siteSettings?.email || 'info@maxtron.uz';
+
+  const heroBadgeText = getLocalizedText(content?.badge, currentLang, currentLang === 'ru' ? 'Официальный запрос КП (RFQ)' : 'Rasmiy Hujjat va Tijorat Taklifi (RFQ)');
+  const heroTitleText = getLocalizedText(content?.title, currentLang, currentLang === 'ru' ? 'Запрос Официального Коммерческого Предложения' : "Rasmiy Tijorat Taklifi So'rovi");
+  const heroDescText = getLocalizedText(content?.description, currentLang, currentLang === 'ru'
+    ? 'Подготовим официальное коммерческое предложение с печатью и подписью для отдела закупок или тендерной документации за 15 минут.'
+    : "Korxonangiz xaridlar bo'limi yoki tender komissiyasi uchun muhr va imzo qo'yilgan rasmiy narx taklifi (KP)ni 15 daqiqa ichida shakllantirib yuboramiz.");
+
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 animate-in fade-in">
       <Breadcrumbs currentLang={currentLang} items={breadcrumbs} />
 
       <div className="text-center max-w-3xl mx-auto space-y-4">
         <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-          <FileText className="w-4 h-4" /> {currentLang === 'ru' ? 'Официальный запрос КП (RFQ)' : 'Rasmiy Hujjat va Tijorat Taklifi (RFQ)'}
+          <FileText className="w-4 h-4" /> {heroBadgeText}
         </span>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-          {currentLang === 'ru'
-            ? 'Запрос Официального Коммерческого Предложения'
-            : currentLang === 'uz_cyrl'
-            ? 'Расмий Тижорат Таклифи Сўрови'
-            : "Rasmiy Tijorat Taklifi So'rovi"}
+          {heroTitleText}
         </h1>
         <p className="text-base text-gray-300 leading-relaxed">
-          {currentLang === 'ru'
-            ? 'Подготовим официальное коммерческое предложение с печатью и подписью для отдела закупок или тендерной документации за 15 минут.'
-            : currentLang === 'uz_cyrl'
-            ? 'Корхонангиз харидлар бўлими ёки тендер комиссияси учун муҳр ва имзо қўйилган расмий нарх таклифи (КП)ни 15 дақиқа ичида шакллантириб юборамиз.'
-            : "Korxonangiz xaridlar bo'limi yoki tender komissiyasi uchun muhr va imzo qo'yilgan rasmiy narx taklifi (KP)ni 15 daqiqa ichida shakllantirib yuboramiz."}
+          {heroDescText}
         </p>
       </div>
 
@@ -144,17 +160,11 @@ export const QuoteView: React.FC<QuoteViewProps> = ({ currentLang, onShowToast }
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className="text-2xl font-bold text-white">
-                {currentLang === 'ru'
-                  ? 'Заявка успешно принята!'
-                  : currentLang === 'uz_cyrl'
-                  ? 'Сўров муваффақиятли қабул қилинди!'
-                  : "So'rov muvaffaqiyatli qabul qilindi!"}
+                {currentLang === 'ru' ? 'Заявка успешно принята!' : "So'rov muvaffaqiyatli qabul qilindi!"}
               </h3>
               <p className="text-sm text-gray-300 max-w-md mx-auto leading-relaxed">
                 {currentLang === 'ru'
                   ? 'На указанную электронную почту и телефон будет направлен расчет стоимости и проект договора.'
-                  : currentLang === 'uz_cyrl'
-                  ? 'Сиз кўрсатган почта ва телефон рақамига расмий тижорат таклифи (.PDF) ва шартнома лойиҳаси юборилади.'
                   : "Siz ko'rsatgan pochta va telefon raqamiga rasmiy tijorat taklifi (.PDF) va shartnoma loyihasi yuboriladi."}
               </p>
               <div className="pt-4 flex justify-center gap-4">
@@ -180,7 +190,7 @@ export const QuoteView: React.FC<QuoteViewProps> = ({ currentLang, onShowToast }
                   {currentLang === 'ru' ? 'Отправить новый запрос' : "Yangi so'rov yuborish"}
                 </button>
                 <Link
-                  href="/catalog"
+                  href={getLocalizedUrl('/catalog')}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
                 >
                   {currentLang === 'ru' ? 'Вернуться в каталог' : 'Katalogga qaytish'}
@@ -386,8 +396,8 @@ export const QuoteView: React.FC<QuoteViewProps> = ({ currentLang, onShowToast }
 
             <div className="pt-4 border-t border-gray-800 text-xs text-gray-400 space-y-1">
               <div className="font-semibold text-gray-200">{currentLang === 'ru' ? 'Прямой контакт:' : 'Tezkor bog‘lanish:'}</div>
-              <div>Telefon: +998 (71) 200-88-44</div>
-              <div>Email: info@maxtron.uz</div>
+              <div>Telefon: {contactPhone}</div>
+              <div>Email: {contactEmail}</div>
             </div>
           </div>
 

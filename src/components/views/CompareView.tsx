@@ -8,23 +8,25 @@ import {
   Plus, 
   Check, 
   X, 
-  PhoneCall, 
-  ArrowLeft, 
-  ShieldCheck, 
-  Printer, 
-  Info,
-  Calendar,
-  Layers
+  Printer 
 } from 'lucide-react';
 import { Language, Product } from '../../types';
-import { translations } from '../../data/translations';
+import { translations as staticTranslations } from '../../data/translations';
 import { StorageService } from '../../services/storage';
 import { Breadcrumbs } from '../Breadcrumbs';
-import { formatPrice, getLocalizedText, getProductName, getSpecName } from '../../utils/formatters';
+import { 
+  formatPrice, 
+  getLocalizedText, 
+  getProductName, 
+  getSpecName,
+  getSafeProductSlug 
+} from '../../utils/formatters';
 
-interface CompareViewProps {
+export interface CompareViewProps {
   currentLang: Language;
   comparedProductIds: string[];
+  initialProducts?: Product[];
+  translations?: Record<string, any>;
   onRemoveProduct: (id: string) => void;
   onClearAll: () => void;
   onOpenQuote: (product: Product) => void;
@@ -32,26 +34,52 @@ interface CompareViewProps {
 }
 
 export const CompareView: React.FC<CompareViewProps> = ({
-  currentLang,
+  currentLang = 'ru',
   comparedProductIds,
+  initialProducts,
+  translations: dbTranslations,
   onRemoveProduct,
   onClearAll,
   onOpenQuote,
   onShowToast,
 }) => {
   const navigate = useNavigate();
-  const t = translations[currentLang] || translations.ru;
-  const [allProducts, setAllProducts] = useState<Product[]>(() => StorageService.getProducts());
+  const t = dbTranslations || staticTranslations[currentLang] || staticTranslations.ru;
+  
+  const [allProducts, setAllProducts] = useState<Product[]>(() => {
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
+      return initialProducts;
+    }
+    return StorageService.getProducts();
+  });
+
+  useEffect(() => {
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
+      setAllProducts(initialProducts);
+    }
+  }, [initialProducts]);
 
   useEffect(() => {
     const handleProducts = (e: any) => {
       if (e.detail) setAllProducts(e.detail);
+      else setAllProducts(StorageService.getProducts());
     };
     window.addEventListener('maxtron_products_updated', handleProducts);
     return () => window.removeEventListener('maxtron_products_updated', handleProducts);
   }, []);
 
-  const products = allProducts.filter((p) => comparedProductIds.includes(p.id));
+  const getLocalizedUrl = (path: string) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    if (currentLang === 'ru') return cleanPath;
+    return `/uz${cleanPath === '/' ? '' : cleanPath}`;
+  };
+
+  // Mahsulotlarni ID yoki Slug bo'yicha topish
+  const products = allProducts.filter((p) => {
+    const pId = String(p.id);
+    const pSlug = getSafeProductSlug(p, currentLang);
+    return comparedProductIds.includes(pId) || comparedProductIds.includes(pSlug);
+  });
 
   const allSpecKeys = Array.from(
     new Set(products.flatMap((p) => (p.specs || []).map((s) => getSpecName(s, currentLang))))
@@ -66,6 +94,8 @@ export const CompareView: React.FC<CompareViewProps> = ({
       window.print();
     }
   };
+
+  const catalogLink = getLocalizedUrl('/catalog');
 
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -90,6 +120,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
         {products.length > 0 && (
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-800 text-xs font-semibold transition cursor-pointer"
             >
@@ -97,6 +128,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
               <span>{currentLang === 'ru' ? 'Печать' : 'Chop etish'}</span>
             </button>
             <button
+              type="button"
               onClick={onClearAll}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-950/30 hover:bg-red-900/50 text-red-300 border border-red-800/40 text-xs font-semibold transition cursor-pointer"
             >
@@ -121,7 +153,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
               : 'Katalog sahifasidan qiziqtirgan uskunalarni tanlab «Solishtirish» tugmasini bosing (maksimum 4 ta).'}
           </p>
           <Link
-            href="/catalog"
+            href={catalogLink}
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -137,50 +169,59 @@ export const CompareView: React.FC<CompareViewProps> = ({
                   <th className="p-4 sm:p-6 w-1/4 min-w-[200px] text-xs font-bold text-gray-400 uppercase tracking-wider">
                     {currentLang === 'ru' ? 'Параметр' : 'Parametr'}
                   </th>
-                  {products.map((p) => (
-                    <th key={p.id} className="p-4 sm:p-6 w-1/4 min-w-[220px] align-top relative">
-                      <div className="space-y-3">
-                        <button
-                          onClick={() => onRemoveProduct(p.id)}
-                          className="absolute top-4 right-4 p-1.5 rounded-lg bg-gray-800 hover:bg-red-900/40 text-gray-400 hover:text-red-300 transition cursor-pointer"
-                          title="O'chirish"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                  {products.map((p) => {
+                    const safeSlug = getSafeProductSlug(p, currentLang);
+                    const productHref = getLocalizedUrl(`/product/${safeSlug}`);
 
-                        <div 
-                          className="aspect-[4/3] rounded-xl overflow-hidden bg-gray-950 border border-gray-800 cursor-pointer"
-                          onClick={() => navigate(`/product/${p.id}`)}
-                        >
-                          <img
-                            src={p.image || ''}
-                            alt={getProductName(p, currentLang)}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform"
-                          />
-                        </div>
-
-                        <div>
-                          <div className="text-xs text-blue-400 font-mono font-semibold">{p.model}</div>
-                          <Link 
-                            href={`/product/${p.id}`}
-                            className="text-sm font-bold text-white hover:text-blue-400 transition line-clamp-2 mt-0.5"
+                    return (
+                      <th key={p.id} className="p-4 sm:p-6 w-1/4 min-w-[220px] align-top relative">
+                        <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => onRemoveProduct(p.id)}
+                            className="absolute top-4 right-4 p-1.5 rounded-lg bg-gray-800 hover:bg-red-900/40 text-gray-400 hover:text-red-300 transition cursor-pointer"
+                            title={currentLang === 'ru' ? 'Удалить' : "O'chirish"}
                           >
-                            {getProductName(p, currentLang)}
-                          </Link>
-                          <div className="text-sm font-extrabold text-white mt-1">
-                            {typeof p.priceFormatted === 'object' ? getLocalizedText(p.priceFormatted, currentLang) : formatPrice(p.price, currentLang)}
-                          </div>
-                        </div>
+                            <X className="w-4 h-4" />
+                          </button>
 
-                        <button
-                          onClick={() => onOpenQuote(p)}
-                          className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                        >
-                          {t.btn_request_quote || (currentLang === 'ru' ? 'Запросить КП' : 'Taklif olish')}
-                        </button>
-                      </div>
-                    </th>
-                  ))}
+                          <div 
+                            className="aspect-[4/3] rounded-xl overflow-hidden bg-gray-950 border border-gray-800 cursor-pointer"
+                            onClick={() => navigate(productHref)}
+                          >
+                            <img
+                              src={p.image || ''}
+                              alt={getProductName(p, currentLang)}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-blue-400 font-mono font-semibold">{p.model}</div>
+                            <Link 
+                              href={productHref}
+                              className="text-sm font-bold text-white hover:text-blue-400 transition line-clamp-2 mt-0.5"
+                            >
+                              {getProductName(p, currentLang)}
+                            </Link>
+                            <div className="text-sm font-extrabold text-white mt-1">
+                              {typeof p.priceFormatted === 'object' 
+                                ? getLocalizedText(p.priceFormatted, currentLang) 
+                                : formatPrice(p.price, currentLang)}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => onOpenQuote(p)}
+                            className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                          >
+                            {t.btn_request_quote || (currentLang === 'ru' ? 'Запросить КП' : 'Taklif olish')}
+                          </button>
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800 text-sm">
@@ -249,7 +290,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
           {products.length < 4 && (
             <div className="flex justify-center">
               <Link
-                href="/catalog"
+                href={catalogLink}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-blue-500/50 text-xs font-semibold text-gray-300 hover:text-white transition cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-blue-400" />

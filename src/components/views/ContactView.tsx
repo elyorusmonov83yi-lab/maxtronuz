@@ -19,18 +19,36 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Language, ContactSettings } from '../../types';
-import { translations } from '../../data/translations';
+import { translations as staticTranslations } from '../../data/translations';
 import { Breadcrumbs } from '../Breadcrumbs';
 import { StorageService } from '../../services/storage';
 
-interface ContactViewProps {
+export interface ContactViewProps {
   currentLang: Language;
+  siteSettings?: Record<string, any>;
+  contactSeo?: Record<string, any>;
+  translations?: Record<string, any>;
   onShowToast: (msg: string) => void;
 }
 
-export const ContactView: React.FC<ContactViewProps> = ({ currentLang, onShowToast }) => {
-  const t = translations[currentLang] || translations.ru;
-  const [contactSettings, setContactSettings] = useState<ContactSettings>(() => StorageService.getContactSettings());
+export const ContactView: React.FC<ContactViewProps> = ({ 
+  currentLang = 'ru', 
+  siteSettings,
+  contactSeo,
+  translations: dbTranslations,
+  onShowToast 
+}) => {
+  // DB dan kelgan tarjimalar bo'lsa ularni, aks holda statik faylni ishlatamiz
+  const t = dbTranslations || staticTranslations[currentLang] || staticTranslations.ru;
+  
+  // StorageService'dan dastlabki qiymat
+  const [contactSettings, setContactSettings] = useState<ContactSettings>(() => {
+    const fromStorage = StorageService.getContactSettings();
+    return {
+      ...fromStorage,
+      ...(siteSettings as any)
+    };
+  });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -42,29 +60,60 @@ export const ContactView: React.FC<ContactViewProps> = ({ currentLang, onShowToa
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Serverdan yangi siteSettings prop kelganda yangilash
+  useEffect(() => {
+    if (siteSettings && Object.keys(siteSettings).length > 0) {
+      setContactSettings((prev) => ({
+        ...prev,
+        ...(siteSettings as any)
+      }));
+    }
+  }, [siteSettings]);
+
   useEffect(() => {
     const handleContactUpdated = (e: any) => {
-      if (e.detail) setContactSettings(e.detail);
-      else setContactSettings(StorageService.getContactSettings());
+      if (e.detail) {
+        setContactSettings(e.detail);
+      } else {
+        setContactSettings(StorageService.getContactSettings());
+      }
     };
     window.addEventListener('maxtron_contact_updated', handleContactUpdated);
     return () => window.removeEventListener('maxtron_contact_updated', handleContactUpdated);
   }, []);
 
-  const getLocalized = (obj: any, fallback: string = '') => {
+  const getLocalized = (obj: any, fallback: string = ''): string => {
     if (!obj) return fallback;
-    return obj[currentLang] || obj.ru || obj.uz || fallback;
+    if (typeof obj === 'string') return obj;
+    if (typeof obj === 'object') {
+      return obj[currentLang] || obj.ru || obj.uz || fallback;
+    }
+    return String(obj);
   };
 
   const breadcrumbs = [
     { label: currentLang === 'ru' ? 'Контакты' : 'Aloqa' }
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      // Backend api mavjud bo'lsa arizani jo'natamiz
+      await fetch('/api/admin/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.name,
+          company: formData.company,
+          phone: formData.phone,
+          email: formData.email,
+          comment: formData.message,
+          createdAt: new Date().toISOString()
+        })
+      }).catch(() => null);
+
       setLoading(false);
       setSubmitted(true);
       try {
@@ -76,14 +125,48 @@ export const ContactView: React.FC<ContactViewProps> = ({ currentLang, onShowToa
       } catch (err) {}
 
       onShowToast(currentLang === 'ru' ? 'Заявка успешно отправлена!' : 'So‘rovingiz muvaffaqiyatli yuborildi!');
-    }, 700);
+    } catch {
+      setLoading(false);
+      onShowToast(currentLang === 'ru' ? 'Ошибка отправки заявки.' : 'So‘rovni yuborishda xatolik yuz berdi.');
+    }
   };
 
-  const badgeText = getLocalized(contactSettings?.badge, currentLang === 'ru' ? '24/7 Поддержка' : '24/7 Muloqot');
-  const heroTitle = getLocalized(contactSettings?.heroTitle, currentLang === 'ru' ? 'Свяжитесь с нами и сервисные центры' : 'Biz bilan bog‘lanish va Servis markazlari');
-  const heroSubtitle = getLocalized(contactSettings?.heroSubtitle, currentLang === 'ru' ? 'Наши сертифицированные инженеры помогут подобрать оборудование, пройти поверку и составить ТЗ.' : 'Mutaxassislarimiz uskunalarni tanlash va texnik masalalarda yordam beradi.');
-  const mainAddress = getLocalized(contactSettings?.address, currentLang === 'ru' ? 'г. Ташкент, Юнусабадский р-н, проспект Амира Темура, 107Б' : 'Toshkent sh., Yunusobod tumani, Amir Temur shoh ko‘chasi, 107B');
-  const workingHours = getLocalized(contactSettings?.workingHours, currentLang === 'ru' ? 'Понедельник — Суббота: с 09:00 до 18:00' : 'Dushanba — Shanba: 09:00 dan 18:00 gacha');
+  // MariaDB contactSeo va siteSettings ustuvorligi
+  const badgeText = getLocalized(
+    contactSettings?.badge, 
+    currentLang === 'ru' ? '24/7 Поддержка' : '24/7 Muloqot'
+  );
+  
+  const heroTitle = getLocalized(
+    contactSeo?.title || contactSettings?.heroTitle, 
+    currentLang === 'ru' ? 'Свяжитесь с нами и сервисные центры' : 'Biz bilan bog‘lanish va Servis markazlari'
+  );
+  
+  const heroSubtitle = getLocalized(
+    contactSeo?.description || contactSettings?.heroSubtitle, 
+    currentLang === 'ru' 
+      ? 'Наши сертифицированные инженеры помогут подобрать оборудование, пройти поверку и составить ТЗ.' 
+      : 'Mutaxassislarimiz uskunalarni tanlash va texnik masalalarda yordam beradi.'
+  );
+
+  const mainAddress = getLocalized(
+    siteSettings?.address?.street || siteSettings?.address || contactSettings?.address, 
+    currentLang === 'ru' 
+      ? 'г. Ташкент, Юнусабадский р-н, проспект Амира Темура, 107Б' 
+      : 'Toshkent sh., Yunusobod tumani, Amir Temur shoh ko‘chasi, 107B'
+  );
+
+  const mainPhone = siteSettings?.phone || contactSettings?.phone || '+998 71 200-88-44';
+  const mainEmail = siteSettings?.email || contactSettings?.email || 'sales@maxtron.uz';
+
+  const workingHours = getLocalized(
+    siteSettings?.workingHours || contactSettings?.workingHours, 
+    currentLang === 'ru' 
+      ? 'Понедельник — Суббота: с 09:00 до 18:00' 
+      : 'Dushanba — Shanba: 09:00 dan 18:00 gacha'
+  );
+
+  const mapIframeUrl = siteSettings?.mapIframe || siteSettings?.mapUrl || contactSettings?.mapIframe;
 
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -248,8 +331,8 @@ export const ContactView: React.FC<ContactViewProps> = ({ currentLang, onShowToa
                   <div className="text-gray-400 font-medium">{currentLang === 'ru' ? 'Телефоны:' : 'Telefonlar:'}</div>
                   <div className="text-gray-200 font-semibold mt-0.5 font-mono space-y-0.5">
                     <div>
-                      <a href={`tel:${(contactSettings?.phone || '+998712008844').replace(/[^0-9+]/g, '')}`} className="hover:text-blue-400 text-sm">
-                        {contactSettings?.phone || '+998 71 200-88-44'}
+                      <a href={`tel:${mainPhone.replace(/[^0-9+]/g, '')}`} className="hover:text-blue-400 text-sm">
+                        {mainPhone}
                       </a>
                     </div>
                   </div>
@@ -261,8 +344,8 @@ export const ContactView: React.FC<ContactViewProps> = ({ currentLang, onShowToa
                 <div>
                   <div className="text-gray-400 font-medium">{currentLang === 'ru' ? 'Электронная почта:' : 'Elektron pochta:'}</div>
                   <div className="text-gray-200 font-medium mt-0.5 font-mono">
-                    <a href={`mailto:${contactSettings?.email || 'sales@maxtron.uz'}`} className="hover:text-blue-400">
-                      {contactSettings?.email || 'sales@maxtron.uz'}
+                    <a href={`mailto:${mainEmail}`} className="hover:text-blue-400">
+                      {mainEmail}
                     </a>
                   </div>
                 </div>
@@ -320,10 +403,10 @@ export const ContactView: React.FC<ContactViewProps> = ({ currentLang, onShowToa
           </div>
 
           {/* Xarita (Map Iframe) */}
-          {contactSettings?.mapIframe && (
+          {mapIframeUrl && (
             <div className="rounded-3xl overflow-hidden border border-gray-800 h-64 bg-gray-950 shadow-lg">
               <iframe
-                src={contactSettings.mapIframe}
+                src={mapIframeUrl}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}

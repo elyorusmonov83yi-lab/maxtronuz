@@ -9,39 +9,50 @@ import {
   Calendar, 
   ShieldCheck, 
   FileText, 
-  Sparkles,
-  PhoneCall,
-  Layers,
-  ArrowRight
+  Sparkles, 
+  PhoneCall, 
+  Layers, 
+  ArrowRight 
 } from 'lucide-react';
-import { Language, CustomPage } from '../../types';
+import { Language, CustomPage, Product } from '../../types';
 import { StorageService } from '../../services/storage';
-import { translations } from '../../data/translations';
-import { getLocalizedText } from '../../utils/formatters';
+import { translations as staticTranslations } from '../../data/translations';
 
-interface CustomPageViewProps {
+export interface CustomPageViewProps {
+  page?: CustomPage | any;
   currentLang: Language;
-  onOpenQuoteModal: () => void;
+  translations?: Record<string, any>;
+  siteSettings?: Record<string, any>;
+  onOpenQuoteModal?: (product?: Product) => void;
   onShowToast: (msg: string) => void;
 }
 
 export const CustomPageView: React.FC<CustomPageViewProps> = ({
-  currentLang,
+  page: initialPage,
+  currentLang = 'ru',
+  translations: dbTranslations,
+  siteSettings = {},
   onOpenQuoteModal,
   onShowToast
 }) => {
   const params = useParams() as { slug?: string };
   const targetSlug = params?.slug || '';
-  const t = translations[currentLang] || translations.ru;
+  const t = dbTranslations || staticTranslations[currentLang] || staticTranslations.ru;
 
-  const [page, setPage] = useState<CustomPage | null>(null);
+  // Serverdan page kelgan bo'lsa - darhol oladi, aks holda StorageService dan qidiradi
+  const [page, setPage] = useState<CustomPage | null>(() => initialPage || null);
   const [allPages, setAllPages] = useState<CustomPage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialPage);
 
   const loadPageData = () => {
-    setIsLoading(true);
     const pages = StorageService.getPages();
     setAllPages(pages);
+
+    if (initialPage) {
+      setPage(initialPage);
+      setIsLoading(false);
+      return;
+    }
 
     if (targetSlug) {
       const found = StorageService.getPageBySlug(targetSlug);
@@ -53,7 +64,12 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
   };
 
   useEffect(() => {
-    loadPageData();
+    if (initialPage) {
+      setPage(initialPage);
+      setIsLoading(false);
+    } else {
+      loadPageData();
+    }
 
     const handlePagesUpdated = () => {
       loadPageData();
@@ -63,7 +79,7 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
     return () => {
       window.removeEventListener('maxtron_pages_updated', handlePagesUpdated);
     };
-  }, [targetSlug]);
+  }, [targetSlug, initialPage]);
 
   const handleShare = () => {
     if (typeof window !== 'undefined' && navigator.clipboard) {
@@ -78,17 +94,24 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
     }
   };
 
-  const getLocalized = (obj: any) => {
+  const getLocalized = (obj: any): string => {
     if (!obj) return '';
-    return obj[currentLang] || obj.uz_cyrl || obj.uz || obj.ru || obj.en || '';
+    if (typeof obj === 'string') return obj;
+    if (typeof obj === 'object') {
+      return obj[currentLang] || obj.uz_cyrl || obj.uz || obj.ru || obj.en || '';
+    }
+    return String(obj);
   };
 
   const getLocalizedUrl = (path: string) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
     if (currentLang === 'ru') {
-      return path;
+      return cleanPath;
     }
-    return `/${currentLang}${path === '/' ? '' : path}`;
+    return `/${currentLang}${cleanPath === '/' ? '' : cleanPath}`;
   };
+
+  const contactPhone = siteSettings?.phone || '+998 (71) 200-45-77';
 
   if (isLoading) {
     return (
@@ -123,13 +146,13 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
             href={getLocalizedUrl('/catalog')}
             className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition cursor-pointer"
           >
-            {t.nav_catalog || 'Katalog'}
+            {t.nav_catalog || (currentLang === 'uz' ? 'Katalog' : 'Каталог')}
           </Link>
           <Link
             href={getLocalizedUrl('/')}
             className="px-6 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800 font-semibold text-xs transition cursor-pointer"
           >
-            {t.nav_home || 'Bosh sahifa'}
+            {t.nav_home || (currentLang === 'uz' ? 'Bosh sahifa' : 'Главная')}
           </Link>
         </div>
       </div>
@@ -148,7 +171,7 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs text-gray-400">
           <div className="flex items-center space-x-2 overflow-x-auto whitespace-nowrap scrollbar-none">
             <Link href={getLocalizedUrl('/')} className="hover:text-blue-400 transition flex items-center gap-1">
-              <span>{t.nav_home || 'Bosh sahifa'}</span>
+              <span>{t.nav_home || (currentLang === 'uz' ? 'Bosh sahifa' : 'Главная')}</span>
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-gray-600 shrink-0" />
             <span className="text-gray-500">
@@ -253,7 +276,7 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {page.sections.map((sec, idx) => {
+              {page.sections.map((sec: any, idx: number) => {
                 const secTitle = getLocalized(sec.title);
                 const secContent = getLocalized(sec.content);
                 const secBadge = getLocalized(sec.badge);
@@ -326,17 +349,17 @@ export const CustomPageView: React.FC<CustomPageViewProps> = ({
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
             <button
               type="button"
-              onClick={onOpenQuoteModal}
+              onClick={() => onOpenQuoteModal && onOpenQuoteModal()}
               className="px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-blue-500/30 transition transform hover:-translate-y-0.5 cursor-pointer"
             >
               {t.cta_btn || (currentLang === 'ru' ? 'Запросить КП' : 'Taklif olish')}
             </button>
             <a
-              href="tel:+998712004577"
+              href={`tel:${contactPhone.replace(/\D/g, '')}`}
               className="px-5 py-3.5 rounded-2xl bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 font-semibold text-xs sm:text-sm transition flex items-center gap-2"
             >
               <PhoneCall className="w-4 h-4 text-blue-400" />
-              <span>+998 (71) 200-45-77</span>
+              <span>{contactPhone}</span>
             </a>
           </div>
         </div>

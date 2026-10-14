@@ -17,16 +17,22 @@ import {
 import { Product, Language, IndustryInfo } from '../../types';
 import { StorageService } from '../../services/storage';
 import { ApiService } from '../../services/api';
-import { translations } from '../../data/translations';
+import { translations as staticTranslations } from '../../data/translations';
 import { Breadcrumbs } from '../Breadcrumbs';
 import { ProductCard } from '../ProductCard';
-import { getLocalizedText } from '../../utils/formatters';
+import { getLocalizedText, getSafeProductSlug } from '../../utils/formatters';
 
-interface FinderViewProps {
+export interface FinderViewProps {
   currentLang: Language;
+  initialIndustries?: IndustryInfo[];
+  initialProducts?: Product[];
+  finderSeo?: Record<string, any>;
+  siteSettings?: Record<string, any>;
+  translations?: Record<string, any>;
   onOpenQuote: (product: Product) => void;
   comparedProducts: string[];
   onToggleCompare: (product: Product) => void;
+  onShowToast?: (msg: string) => void;
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -39,41 +45,64 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export const FinderView: React.FC<FinderViewProps> = ({
-  currentLang,
+  currentLang = 'ru',
+  initialIndustries,
+  initialProducts,
+  finderSeo,
+  siteSettings,
+  translations: dbTranslations,
   onOpenQuote,
   comparedProducts,
   onToggleCompare,
+  onShowToast,
 }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedIndustry, setSelectedIndustry] = useState<string>('');
   const [selectedTask, setSelectedTask] = useState<string>('');
 
-  const [industries, setIndustries] = useState<IndustryInfo[]>(() => StorageService.getIndustries());
-  const [products, setProducts] = useState<Product[]>(() => StorageService.getProducts());
+  const [industries, setIndustries] = useState<IndustryInfo[]>(() => {
+    if (Array.isArray(initialIndustries) && initialIndustries.length > 0) {
+      return initialIndustries;
+    }
+    return StorageService.getIndustries();
+  });
 
-  const t = translations[currentLang] || {};
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
+      return initialProducts;
+    }
+    return StorageService.getProducts();
+  });
+
+  const t = dbTranslations || staticTranslations[currentLang] || {};
+
+  const getLocalizedUrl = (path: string) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    if (currentLang === 'ru') return cleanPath;
+    return `/uz${cleanPath === '/' ? '' : cleanPath}`;
+  };
 
   useEffect(() => {
-    ApiService.getIndustries?.()
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setIndustries(data);
-        }
-      })
-      .catch(() => {
-        setIndustries(StorageService.getIndustries());
-      });
+    if (Array.isArray(initialIndustries) && initialIndustries.length > 0) {
+      setIndustries(initialIndustries);
+    } else {
+      ApiService.getIndustries?.()
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) setIndustries(data);
+        })
+        .catch(() => setIndustries(StorageService.getIndustries()));
+    }
 
-    ApiService.getProducts()
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setProducts(data);
-        }
-      })
-      .catch(() => {
-        setProducts(StorageService.getProducts());
-      });
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
+      setProducts(initialProducts);
+    } else {
+      ApiService.getProducts()
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) setProducts(data);
+        })
+        .catch(() => setProducts(StorageService.getProducts()));
+    }
 
     const handleIndustriesUpdate = (e: any) => e.detail && setIndustries(e.detail);
     const handleProductsUpdate = (e: any) => e.detail && setProducts(e.detail);
@@ -85,7 +114,7 @@ export const FinderView: React.FC<FinderViewProps> = ({
       window.removeEventListener('maxtron_industries_updated', handleIndustriesUpdate);
       window.removeEventListener('maxtron_products_updated', handleProductsUpdate);
     };
-  }, []);
+  }, [initialIndustries, initialProducts]);
 
   const currentIndustryObj = industries.find(
     (ind) => String(ind.id) === String(selectedIndustry) || ind.slug === selectedIndustry
@@ -355,18 +384,16 @@ export const FinderView: React.FC<FinderViewProps> = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recommendedProducts.map((p) => {
-                  const productSlug = typeof p.slug === 'object' 
-                    ? (p.slug[currentLang as 'uz' | 'ru'] || p.slug.ru || p.slug.uz || p.id)
-                    : (p.slug || p.id);
+                  const safeSlug = getSafeProductSlug(p, currentLang);
 
                   return (
                     <ProductCard
                       key={p.id}
                       product={p}
                       currentLang={currentLang}
-                      onSelect={() => navigate(`/product/${productSlug}`)}
+                      onSelect={() => navigate(getLocalizedUrl(`/product/${safeSlug}`))}
                       onOpenQuote={onOpenQuote}
-                      isCompared={comparedProducts.includes(p.id)}
+                      isCompared={comparedProducts.includes(String(p.id)) || comparedProducts.includes(safeSlug)}
                       onToggleCompare={onToggleCompare}
                     />
                   );
