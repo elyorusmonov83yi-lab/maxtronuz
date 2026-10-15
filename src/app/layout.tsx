@@ -4,7 +4,6 @@ import { MainLayoutClient } from '@/components/MainLayoutClient';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { db } from '@/server/db';
 
-// Xavfsiz JSON parser
 function safeParse(val: any): Record<string, any> {
   if (!val) return {};
   if (typeof val === 'object') return val;
@@ -18,64 +17,69 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Bazadan sayt umumiy va header sozlamalarini olish
-async function getSiteSettings(): Promise<Record<string, any>> {
+// Bazadagi haqiqiy kalitlar: 'home', 'seo', 'about', 'contact'
+async function getSettings(): Promise<{ home: Record<string, any>; seo: Record<string, any> }> {
   try {
     const [rows]: any = await db.query(
-      `SELECT \`key\`, value FROM settings WHERE \`key\` IN ('site_settings', 'header_settings')`
+      `SELECT \`key\`, value FROM settings WHERE \`key\` IN ('home', 'seo')`
     );
 
-    let siteSettings: Record<string, any> = {};
-    let headerSettings: Record<string, any> = {};
+    let home: Record<string, any> = {};
+    let seo: Record<string, any> = {};
 
     if (rows && rows.length > 0) {
       for (const row of rows) {
-        if (row.key === 'site_settings') {
-          siteSettings = safeParse(row.value);
-        } else if (row.key === 'header_settings') {
-          headerSettings = safeParse(row.value);
+        if (row.key === 'home') {
+          home = safeParse(row.value);
+        } else if (row.key === 'seo') {
+          seo = safeParse(row.value);
         }
       }
     }
 
-    return {
-      ...siteSettings,
-      ...headerSettings,
-      faviconUrl: headerSettings.faviconUrl || siteSettings.faviconUrl || '',
-    };
+    return { home, seo };
   } catch (err) {
-    console.error('RootLayout sozlamalar xatosi:', err);
-    return {};
+    console.error('RootLayout getSettings xatosi:', err);
+    return { home: {}, seo: {} };
   }
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const site: Record<string, any> = await getSiteSettings();
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const { home, seo } = await getSettings();
+  const baseUrl = 'https://maxtron.uz';
 
-  const siteNameUz = site.siteName?.uz || site.logoText || site.name || 'MAXTRON';
-  const siteNameRu = site.siteName?.ru || site.logoText || site.name || 'MAXTRON';
+  // 1. Sarlavha (SEO Title)
+  const titleRu = home.seoTitle?.ru || home.ogTitle?.ru || 'MAXTRON — Контрольно-измерительные приборы';
+  const titleUz = home.seoTitle?.uz || home.ogTitle?.uz || 'MAXTRON — O‘lchov va nazorat uskunalari';
 
-  const defaultDesc = site.description?.uz || site.description?.ru || '';
-  const keywordsList = Array.isArray(site.keywords)
-    ? site.keywords
-    : (typeof site.keywords === 'string' ? site.keywords.split(',').map((k: string) => k.trim()) : []);
+  // 2. Tavsif (SEO Description)
+  const description =
+    home.seoDescription?.ru ||
+    home.seoDescription?.uz ||
+    home.heroSubtitle?.ru ||
+    home.heroSubtitle?.uz ||
+    'MAXTRON — промышленное оборудование и контрольно-измерительные приборы в Узбекистане';
 
-  let ogImage = site.defaultOgImage || site.ogImageUrl || site.logoImageUrl || '';
-  if (ogImage && !ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
-    ogImage = `${baseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`;
+  // 3. OpenGraph rasm manzili (faqat toza URL olinadi, base64 bloklanadi)
+  let rawOg =
+    (typeof home.ogImage === 'object' ? (home.ogImage?.ru || home.ogImage?.uz) : home.ogImage) || '';
+
+  if (rawOg.startsWith('data:')) {
+    rawOg = '';
   }
 
-  const activeFavicon = site.faviconUrl || '/favicon.ico';
+  let finalOgImage = '';
+  if (rawOg) {
+    finalOgImage = rawOg.startsWith('http') ? rawOg : `${baseUrl}/${rawOg.replace(/^\//, '')}`;
+  }
 
   return {
     metadataBase: new URL(baseUrl),
     title: {
-      default: `${siteNameUz} — ${site.heroTitle?.uz || 'Industrial Supply'}`,
-      template: `%s | ${siteNameUz}`,
+      default: titleRu,
+      template: `%s | MAXTRON`,
     },
-    description: defaultDesc,
-    keywords: keywordsList.length > 0 ? keywordsList : undefined,
+    description,
     alternates: {
       canonical: '/',
       languages: {
@@ -84,15 +88,26 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     icons: {
-      icon: activeFavicon,
-      shortcut: activeFavicon,
-      apple: site.appleTouchIcon || activeFavicon,
+      icon: '/favicon.ico',
+      shortcut: '/favicon.ico',
     },
     openGraph: {
       type: 'website',
-      siteName: siteNameUz,
+      siteName: 'MAXTRON',
       url: baseUrl,
-      images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : [],
+      title: titleRu,
+      description,
+      images: finalOgImage ? [{ url: finalOgImage, width: 1200, height: 630, alt: titleRu }] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: titleRu,
+      description,
+      images: finalOgImage ? [finalOgImage] : [],
+    },
+    verification: {
+      google: seo.googleVerification || undefined,
+      yandex: seo.yandexVerification || undefined,
     },
     robots: {
       index: true,
@@ -106,16 +121,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const site = await getSiteSettings();
-  const favicon = site.faviconUrl || '/favicon.ico';
-
   return (
     <html lang="uz" className="dark" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href={favicon} type={favicon.endsWith('.ico') ? 'image/x-icon' : 'image/png'} />
-        <link rel="shortcut icon" href={favicon} type={favicon.endsWith('.ico') ? 'image/x-icon' : 'image/png'} />
-        <link rel="apple-touch-icon" href={site.appleTouchIcon || favicon} />
-      </head>
       <body className="bg-gray-950 text-white antialiased selection:bg-blue-500 selection:text-white min-h-screen">
         <ErrorBoundary>
           <MainLayoutClient>
