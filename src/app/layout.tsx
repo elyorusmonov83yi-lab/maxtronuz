@@ -19,7 +19,7 @@ function safeParse(val: any): Record<string, any> {
 }
 
 // Bazadan sayt umumiy va header sozlamalarini olish
-async function getSiteSettings() {
+async function getSiteSettings(): Promise<Record<string, any>> {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings WHERE \`key\` IN ('site_settings', 'header_settings')`
@@ -38,7 +38,6 @@ async function getSiteSettings() {
       }
     }
 
-    // Har ikkala joydan ma'lumotlarni birlashtirish (favicon ikkalasida ham bo'lishi mumkin)
     return {
       ...siteSettings,
       ...headerSettings,
@@ -51,7 +50,7 @@ async function getSiteSettings() {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const site = await getSiteSettings();
+  const site: Record<string, any> = await getSiteSettings();
   const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
 
   const siteNameUz = site.siteName?.uz || site.logoText || site.name || 'MAXTRON';
