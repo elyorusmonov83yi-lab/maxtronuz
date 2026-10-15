@@ -15,15 +15,43 @@ const ALLOWED_EXTENSIONS = new Set([
 const ALLOWED_MIME_TYPES = new Set([
   'image/webp',
   'image/avif',
-  'image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/ico',
+  'image/png',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+  'image/ico',
   'image/jpeg',
   'image/svg+xml',
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/octet-stream' // Ba'zi brauzerlar .ico yoki fayllarni shunday yuboradi
 ]);
 
+// Kengaytma bo'yicha to'g'ri ContentType ni kafolatlash
+function resolveContentType(extension: string, fallbackType: string): string {
+  switch (extension) {
+    case '.ico':
+      return 'image/x-icon';
+    case '.png':
+      return 'image/png';
+    case '.svg':
+      return 'image/svg+xml';
+    case '.webp':
+      return 'image/webp';
+    case '.avif':
+      return 'image/avif';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.pdf':
+      return 'application/pdf';
+    default:
+      return fallbackType || 'application/octet-stream';
+  }
+}
+
 function getSubdirectory(extension: string): string {
+  if (extension === '.ico') return 'site';
   if (extension === '.pdf') return 'certificates';
   if (extension === '.docx' || extension === '.xlsx') return 'documents';
   return 'products';
@@ -64,7 +92,10 @@ export async function POST(req: NextRequest) {
     const originalName = file.name || 'document';
     const extension = path.extname(originalName).toLowerCase();
 
-    if (!ALLOWED_EXTENSIONS.has(extension) || !ALLOWED_MIME_TYPES.has(file.type)) {
+    const isExtensionAllowed = ALLOWED_EXTENSIONS.has(extension);
+    const isMimeAllowed = !file.type || ALLOWED_MIME_TYPES.has(file.type);
+
+    if (!isExtensionAllowed || !isMimeAllowed) {
       return NextResponse.json(
         { success: false, message: 'Ruxsat etilmagan fayl formati' },
         { status: 400 }
@@ -80,16 +111,18 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 7. Cloudflare R2 ga yuklash (Bucket nomini avtomatik tozalash va himoya)
+    // 7. Cloudflare R2 ga yuklash (MIME turini aniq ko'rsatish)
     const rawBucket = process.env.R2_BUCKET_NAME || 'maxtron-media';
     const cleanBucket = rawBucket.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+    const finalContentType = resolveContentType(extension, file.type);
 
     await r2.send(
       new PutObjectCommand({
         Bucket: cleanBucket,
         Key: r2Key,
         Body: buffer,
-        ContentType: file.type,
+        ContentType: finalContentType,
+        CacheControl: 'public, max-age=31536000, immutable',
       })
     );
 
