@@ -144,8 +144,7 @@ export default async function CatalogPage({ params }: Props) {
   let categories: any[] = [];
   try {
     const [catRows]: any = await db.query(
-      'SELECT id, slug, name, description, image, icon FROM categories ORDER BY sort_order ASC, id ASC'
-    );
+         'SELECT id, slug, name, description, image, icon FROM categories ORDER BY id ASC'    );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
       name: safeJsonParse(cat.name),
