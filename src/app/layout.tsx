@@ -18,16 +18,32 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Bazadan sayt umumiy sozlamalarini olish
+// Bazadan sayt umumiy va header sozlamalarini olish
 async function getSiteSettings() {
   try {
     const [rows]: any = await db.query(
-      `SELECT value FROM settings WHERE \`key\` = 'site_settings' LIMIT 1`
+      `SELECT \`key\`, value FROM settings WHERE \`key\` IN ('site_settings', 'header_settings')`
     );
+
+    let siteSettings: Record<string, any> = {};
+    let headerSettings: Record<string, any> = {};
+
     if (rows && rows.length > 0) {
-      return safeParse(rows[0].value);
+      for (const row of rows) {
+        if (row.key === 'site_settings') {
+          siteSettings = safeParse(row.value);
+        } else if (row.key === 'header_settings') {
+          headerSettings = safeParse(row.value);
+        }
+      }
     }
-    return {};
+
+    // Har ikkala joydan ma'lumotlarni birlashtirish (favicon ikkalasida ham bo'lishi mumkin)
+    return {
+      ...siteSettings,
+      ...headerSettings,
+      faviconUrl: headerSettings.faviconUrl || siteSettings.faviconUrl || '',
+    };
   } catch (err) {
     console.error('RootLayout sozlamalar xatosi:', err);
     return {};
@@ -38,18 +54,20 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteSettings();
   const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
 
-  const siteNameUz = site.siteName?.uz || site.name || 'MAXTRON';
-  const siteNameRu = site.siteName?.ru || site.name || 'MAXTRON';
+  const siteNameUz = site.siteName?.uz || site.logoText || site.name || 'MAXTRON';
+  const siteNameRu = site.siteName?.ru || site.logoText || site.name || 'MAXTRON';
 
   const defaultDesc = site.description?.uz || site.description?.ru || '';
   const keywordsList = Array.isArray(site.keywords)
     ? site.keywords
     : (typeof site.keywords === 'string' ? site.keywords.split(',').map((k: string) => k.trim()) : []);
 
-  let ogImage = site.defaultOgImage || site.ogImageUrl || '';
+  let ogImage = site.defaultOgImage || site.ogImageUrl || site.logoImageUrl || '';
   if (ogImage && !ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
     ogImage = `${baseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`;
   }
+
+  const activeFavicon = site.faviconUrl || '/favicon.ico';
 
   return {
     metadataBase: new URL(baseUrl),
@@ -67,8 +85,14 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     icons: {
-      icon: site.faviconUrl || '/favicon.ico',
-      apple: site.appleTouchIcon || '/apple-touch-icon.png',
+      icon: [
+        {
+          url: activeFavicon,
+          type: activeFavicon.endsWith('.ico') ? 'image/x-icon' : 'image/png',
+        },
+      ],
+      shortcut: activeFavicon,
+      apple: site.appleTouchIcon || activeFavicon,
     },
     openGraph: {
       type: 'website',
