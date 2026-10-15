@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Language, Product, HomeContent } from '../types';
 import { StorageService } from '../services/storage';
-import { getLocalizedText, getProductName } from '../utils/formatters';
+import { getProductName } from '../utils/formatters';
 
 interface SeoManagerProps {
   currentLang: Language;
@@ -47,6 +47,12 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       return obj[currentLang] || obj.ru || obj.uz || fallback;
     };
 
+    const sanitizeUrl = (url: any): string => {
+      if (!url || typeof url !== 'string' || url.startsWith('data:')) return '';
+      if (url.startsWith('http')) return url;
+      return `https://maxtron.uz${url.startsWith('/') ? '' : '/'}${url}`;
+    };
+
     let title = '';
     let description = '';
     let keywords = '';
@@ -76,7 +82,7 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       title = getLocalized(resolvedProduct.seoTitle, `${prodName} ${resolvedProduct.model ? `(${resolvedProduct.model})` : ''} | MAXTRON`);
       description = getLocalized(resolvedProduct.seoDescription, getLocalized(resolvedProduct.description, ''));
       keywords = getLocalized(resolvedProduct.seoKeywords, `${resolvedProduct.model || ''}, ${prodName}, sanoat uskunalari`);
-      ogImage = resolvedProduct.ogImage || resolvedProduct.image || '';
+      ogImage = sanitizeUrl(resolvedProduct.ogImage || resolvedProduct.image);
     } 
     // 2. Bosh sahifa SEO
     else if (normalizedPath === '/') {
@@ -95,9 +101,11 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       keywords = getLocalized(homeData?.seoKeywords, 'maxtron, kipia, datchik, manometr, toshkent');
       
       const homeOg = homeData?.ogImage;
-      ogImage = typeof homeOg === 'object' 
+      const rawOg = typeof homeOg === 'object' 
         ? (homeOg?.[currentLang] || homeOg?.ru || homeOg?.uz || '') 
         : (homeOg || '');
+
+      ogImage = sanitizeUrl(rawOg);
 
       robots = homeData?.robotsIndex || 'index, follow';
       if (homeData?.canonicalUrl) canonical = homeData.canonicalUrl;
@@ -107,7 +115,7 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       title = getLocalized(pageSeo?.title, seoSettings?.defaultTitle || 'MAXTRON — Sanoat va O‘lchov Uskunalari');
       description = getLocalized(pageSeo?.description, seoSettings?.defaultDescription || 'Professional sanoat datchiklari va o‘lchov uskunalari');
       keywords = getLocalized(pageSeo?.keywords, seoSettings?.defaultKeywords || 'maxtron, sanoat uskunalari');
-      ogImage = pageSeo?.ogImage || seoSettings?.ogImageUrl || '';
+      ogImage = sanitizeUrl(pageSeo?.ogImage || seoSettings?.ogImageUrl);
     }
 
     // --- DOM teglarni yangilash ---
@@ -165,17 +173,21 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       else script.addEventListener('load', initMetrika, { once: true });
     }
 
-    // OpenGraph & Twitter
+    // OpenGraph & Twitter (faqat toza URL bo'lsa yoziladi)
     setMeta('property', 'og:title', title);
     setMeta('property', 'og:description', description);
     setMeta('property', 'og:type', resolvedProduct ? 'product' : 'website');
     setMeta('property', 'og:url', canonical);
-    if (ogImage) setMeta('property', 'og:image', ogImage);
+    if (ogImage && !ogImage.startsWith('data:')) {
+      setMeta('property', 'og:image', ogImage);
+    }
 
     setMeta('name', 'twitter:card', 'summary_large_image');
     setMeta('name', 'twitter:title', title);
     setMeta('name', 'twitter:description', description);
-    if (ogImage) setMeta('name', 'twitter:image', ogImage);
+    if (ogImage && !ogImage.startsWith('data:')) {
+      setMeta('name', 'twitter:image', ogImage);
+    }
 
     // Canonical link
     let linkCanonical = document.querySelector('link[rel="canonical"]');
