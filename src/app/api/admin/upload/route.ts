@@ -8,14 +8,14 @@ import { r2 } from '@/lib/r2';
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
 
 const ALLOWED_EXTENSIONS = new Set([
-  '.webp', '.avif', '.png', '.jpg', '.jpeg', '.svg',
+  '.webp', '.avif', '.png', '.ico', '.jpg', '.jpeg', '.svg',
   '.pdf', '.docx', '.xlsx'
 ]);
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/webp',
   'image/avif',
-  'image/png',
+  'image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/ico',
   'image/jpeg',
   'image/svg+xml',
   'application/pdf',
