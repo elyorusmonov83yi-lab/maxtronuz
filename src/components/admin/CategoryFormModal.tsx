@@ -33,11 +33,13 @@ import {
   Cog,
   Box,
   Globe,
-  FolderTree
+  FolderTree,
+  Loader2
 } from 'lucide-react';
 import { CategoryInfo } from '../../types';
 import { RichTextEditor } from './sections/RichTextEditor';
 import { getLocalizedText } from '../../utils/formatters';
+import { ApiService } from '../../services/api';
 
 interface CategoryFormModalProps {
   isOpen: boolean;
@@ -47,7 +49,6 @@ interface CategoryFormModalProps {
   onSave: (category: CategoryInfo) => void | Promise<void>;
 }
 
-// Matnni avtomatik toza URL Slug ga aylantiruvchi yordamchi
 function generateSlug(text: string): string {
   if (!text) return '';
   const cyrillicToLatinMap: Record<string, string> = {
@@ -70,7 +71,6 @@ function generateSlug(text: string): string {
     .replace(/^-|-$/g, '');
 }
 
-// Universal Ikonka chiqaruvchi (Lucide yoki SVG base64/URL)
 const RenderCategoryIcon: React.FC<{ iconName?: string; className?: string }> = ({ 
   iconName = 'Layers', 
   className = 'w-5 h-5' 
@@ -119,6 +119,8 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
   const [activeLang, setActiveLang] = useState<'ru' | 'uz'>('ru');
   const [iconSearch, setIconSearch] = useState('');
   const [manualSlugs, setManualSlugs] = useState<{ uz: boolean; ru: boolean }>({ uz: false, ru: false });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const svgIconInputRef = useRef<HTMLInputElement>(null);
 
@@ -242,35 +244,50 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
     );
   }, [iconSearch]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Rasm hajmi 5 MB dan oshmasligi kerak!");
-        return;
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Rasm hajmi 5 MB dan oshmasligi kerak!");
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      const url = await ApiService.uploadFile(file);
+      setFormData((prev) => ({ 
+        ...prev, 
+        image: url,
+        ogImage: prev.ogImage || url
+      }));
+    } catch (err: any) {
+      alert("Rasm yuklashda xatolik yuz berdi: " + (err?.message || "Server xatosi"));
+      console.error("Upload error:", err);
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const base64 = uploadEvent.target?.result as string;
-        setFormData((prev) => ({ 
-          ...prev, 
-          image: base64,
-          ogImage: prev.ogImage || base64
-        }));
-      };
-      reader.readAsDataURL(file);
     }
   };
 
-  const handleSvgIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSvgIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const base64 = uploadEvent.target?.result as string;
-        setFormData((prev) => ({ ...prev, icon: base64 }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      setIsUploadingIcon(true);
+      const url = await ApiService.uploadFile(file);
+      setFormData((prev) => ({ ...prev, icon: url }));
+    } catch (err: any) {
+      alert("Ikonka yuklashda xatolik: " + (err?.message || "Server xatosi"));
+      console.error("Upload icon error:", err);
+    } finally {
+      setIsUploadingIcon(false);
+      if (svgIconInputRef.current) {
+        svgIconInputRef.current.value = '';
+      }
     }
   };
 
@@ -332,8 +349,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
         className="w-full max-w-5xl bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        
-        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-950/60 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
@@ -360,7 +375,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Switcher */}
         <div className="px-6 border-b border-gray-800 bg-gray-900/90 flex gap-2 py-2 shrink-0">
           <button
             type="button"
@@ -389,14 +403,9 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           </button>
         </div>
 
-        {/* Form Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-6 flex-1">
-          
-          {/* TAB 1: GENERAL */}
           {activeTab === 'general' && (
             <div className="space-y-5 animate-in fade-in duration-150">
-              
-              {/* Ota toifa tanlash */}
               <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-2">
                 <label className="text-xs font-bold text-white flex items-center gap-2">
                   <FolderTree className="w-4 h-4 text-cyan-400" />
@@ -429,7 +438,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                 </p>
               </div>
 
-              {/* Til Switcher (RU / UZ) */}
               <div className="flex gap-2 p-1.5 rounded-2xl bg-gray-950 border border-gray-800 w-fit">
                 {[
                   { code: 'ru' as const, label: '🇷🇺 Русский' },
@@ -450,7 +458,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                 ))}
               </div>
 
-              {/* Nomi va Slug */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-300 mb-1">
@@ -516,7 +523,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                 </div>
               </div>
 
-              {/* Ikonka tanlash */}
               <div className="space-y-4 p-4 rounded-2xl bg-gray-950 border border-gray-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-800/80">
                   <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
@@ -524,7 +530,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                       <RenderCategoryIcon iconName={formData.icon} className="w-4 h-4" />
                     </span>
                     <span>
-                      {activeLang === 'ru' ? 'Выбранная иконка:' : 'Tanlangan ikonka:'} <span className="text-blue-400 font-mono">{formData.icon?.startsWith('data:') ? 'SVG' : formData.icon}</span>
+                      {activeLang === 'ru' ? 'Выбранная иконка:' : 'Tanlangan ikonka:'} <span className="text-blue-400 font-mono">{formData.icon?.startsWith('http') || formData.icon?.startsWith('data:') ? 'SVG' : formData.icon}</span>
                     </span>
                   </label>
 
@@ -532,7 +538,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                     <input
                       type="text"
                       placeholder="Lucide Icon (Layers, Gauge)..."
-                      value={formData.icon?.startsWith('data:') ? '' : formData.icon}
+                      value={formData.icon?.startsWith('http') || formData.icon?.startsWith('data:') ? '' : formData.icon}
                       onChange={(e) => setFormData({ ...formData, icon: e.target.value.trim() || 'Layers' })}
                       className="px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono w-48 transition"
                     />
@@ -546,12 +552,13 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                     />
                     <button
                       type="button"
+                      disabled={isUploadingIcon}
                       onClick={() => svgIconInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 flex items-center gap-1.5 transition cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                       title="SVG yuklash"
                     >
-                      <Upload className="w-3.5 h-3.5 text-blue-400" />
-                      <span>SVG</span>
+                      {isUploadingIcon ? <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-blue-400" />}
+                      <span>{isUploadingIcon ? '...' : 'SVG'}</span>
                     </button>
                   </div>
                 </div>
@@ -593,7 +600,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                 </div>
               </div>
 
-              {/* Rasm yuklash */}
               <div className="p-4 rounded-2xl bg-gray-950/80 border border-gray-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
@@ -629,11 +635,12 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
 
                     <button
                       type="button"
+                      disabled={isUploadingImage}
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{activeLang === 'ru' ? 'Загрузить фото' : 'Rasm yuklash'}</span>
+                      {isUploadingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      <span>{isUploadingImage ? (activeLang === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (activeLang === 'ru' ? 'Загрузить фото' : 'Rasm yuklash')}</span>
                     </button>
 
                     <input
@@ -646,14 +653,11 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                   </div>
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* TAB 2: SEO */}
           {activeTab === 'seo' && (
             <div className="space-y-5 animate-in fade-in duration-150">
-              
               <div className="flex gap-2 p-1.5 rounded-2xl bg-gray-950 border border-gray-800 w-fit">
                 {[
                   { code: 'ru' as const, label: '🇷🇺 Русский' },
@@ -751,13 +755,10 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                   />
                 </div>
               </div>
-
             </div>
           )}
-
         </form>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-800 bg-gray-950/60 flex items-center justify-between shrink-0">
           <button
             type="button"
@@ -776,7 +777,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
             <span>{categoryToEdit ? (activeLang === 'ru' ? 'Сохранить изменения' : "O'zgarishlarni saqlash") : (activeLang === 'ru' ? 'Сохранить категорию' : 'Kategoriyani saqlash')}</span>
           </button>
         </div>
-
       </div>
     </div>
   );

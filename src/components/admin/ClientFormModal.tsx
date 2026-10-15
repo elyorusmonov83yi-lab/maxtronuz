@@ -53,14 +53,14 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
       setIsUploading(true);
       const url = await ApiService.uploadFile(file);
       setClientLogoPreview(url);
-    } catch {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setClientLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    } catch (err: any) {
+      alert("Fayl yuklashda xatolik yuz berdi: " + (err?.message || "Server xatosi"));
+      console.error("Client logo upload error:", err);
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 

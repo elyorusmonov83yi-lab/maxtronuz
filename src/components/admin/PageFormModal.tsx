@@ -147,7 +147,7 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({
   if (!isOpen) return null;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+   const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
@@ -160,16 +160,12 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({
       const url = await ApiService.uploadFile(file);
       setCoverImage(url);
       if (!ogImage) setOgImage(url);
-    } catch {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const base64 = uploadEvent.target?.result as string;
-        setCoverImage(base64);
-        if (!ogImage) setOgImage(base64);
-      };
-      reader.readAsDataURL(file);
+    } catch (err: any) {
+      alert('Rasm yuklashda xatolik yuz berdi: ' + (err?.message || 'Server xatosi'));
+      console.error('Page cover upload error:', err);
     } finally {
       setIsUploadingCover(false);
+      e.target.value = '';
     }
   };
 

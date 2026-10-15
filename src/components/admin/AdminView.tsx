@@ -448,20 +448,26 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
         }
       }
     });
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  };const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const base64 = ev.target?.result as string;
-        setHeaderSettings((prev) => ({ ...prev, logoImageUrl: base64 }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('Rasm hajmi 5 MB dan oshmasligi kerak!', 'error');
+      return;
+    }
+
+    try {
+      showNotification('Logotip R2 ga yuklanmoqda...', 'success');
+      const url = await ApiService.uploadFile(file);
+      setHeaderSettings((prev) => ({ ...prev, logoImageUrl: url }));
+      showNotification('Logotip muvaffaqiyatli yuklandi!', 'success');
+    } catch (err: any) {
+      showNotification('Logotip yuklashda xatolik: ' + (err?.message || 'Server xatosi'), 'error');
+    } finally {
+      e.target.value = '';
     }
   };
-
   const handleSaveHome = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     try {

@@ -33,7 +33,7 @@ export const AdminHomeSettings: React.FC<AdminHomeSettingsProps> = ({
   const [isUploadingOg, setIsUploadingOg] = useState(false);
   const ogFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -53,25 +53,16 @@ export const AdminHomeSettings: React.FC<AdminHomeSettingsProps> = ({
         ...homeContent,
         ogImage: { ...currentOg, [homeLang]: url }
       });
-    } catch {
-      // API orqali yuklab bo'lmasa fallback sifatida DataURL
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const base64 = ev.target?.result as string;
-        const currentOg: LocalizedString = typeof homeContent.ogImage === 'object' && homeContent.ogImage 
-          ? homeContent.ogImage 
-          : { uz: '', ru: '' };
-        setHomeContent({
-          ...homeContent,
-          ogImage: { ...currentOg, [homeLang]: base64 }
-        });
-      };
-      reader.readAsDataURL(file);
+    } catch (error: any) {
+      alert("Rasm yuklashda xatolik yuz berdi: " + (error?.message || "Server xatosi"));
+      console.error("Upload error:", error);
     } finally {
       setIsUploadingOg(false);
+      if (ogFileInputRef.current) {
+        ogFileInputRef.current.value = '';
+      }
     }
   };
-
   const currentOgImage = typeof homeContent.ogImage === 'object' 
     ? (homeContent.ogImage?.[homeLang] || homeContent.ogImage?.ru || homeContent.ogImage?.uz || '') 
     : (homeContent.ogImage || '');

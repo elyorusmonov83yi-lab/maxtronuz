@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import fs from 'fs/promises';
 import crypto from 'crypto';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAdminToken } from '@/server/auth';
+import { r2 } from '@/lib/r2';
 
-const BASE_UPLOAD_DIR = path.resolve(process.cwd(), 'public', 'uploads');
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
 
 const ALLOWED_EXTENSIONS = new Set([
@@ -71,25 +71,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Papkani aniqlash va yaratish
+    // 5. R2 kaliti (yo'li) va fayl nomini shakllantirish
     const subDir = getSubdirectory(extension);
-    const targetDir = path.join(BASE_UPLOAD_DIR, subDir);
-    await fs.mkdir(targetDir, { recursive: true });
-
-    // 6. Takrorlanmas nom yaratish va diskka yozish
     const filename = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-    const filePath = path.join(targetDir, filename);
+    const r2Key = `uploads/${subDir}/${filename}`;
 
+    // 6. Faylni Buffer ko'rinishida olish
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    await fs.writeFile(filePath, buffer);
 
-    const publicUrl = `/uploads/${subDir}/${filename}`;
+    // 7. Cloudflare R2 ga yuklash
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: r2Key,
+        Body: buffer,
+        ContentType: file.type,
+      })
+    );
+
+    // 8. Ommaviy doimiy havola yasash
+    const publicBaseUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/$/, '');
+    const permanentUrl = `${publicBaseUrl}/${r2Key}`;
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
-      name: originalName
+      url: permanentUrl,
+      name: originalName,
     });
   } catch (error: any) {
     console.error('Upload API Error:', error?.message);
