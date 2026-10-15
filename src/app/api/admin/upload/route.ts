@@ -80,10 +80,13 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 7. Cloudflare R2 ga yuklash
+    // 7. Cloudflare R2 ga yuklash (Bucket nomini avtomatik tozalash va himoya)
+    const rawBucket = process.env.R2_BUCKET_NAME || 'maxtron-media';
+    const cleanBucket = rawBucket.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+
     await r2.send(
       new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
+        Bucket: cleanBucket,
         Key: r2Key,
         Body: buffer,
         ContentType: file.type,
@@ -91,7 +94,11 @@ export async function POST(req: NextRequest) {
     );
 
     // 8. Ommaviy doimiy havola yasash
-    const publicBaseUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/$/, '');
+    const publicBaseUrl = (
+      process.env.R2_PUBLIC_URL || 
+      'https://pub-c5bf1cc313b64b11a814e82fc55b22d5.r2.dev'
+    ).replace(/\/$/, '');
+    
     const permanentUrl = `${publicBaseUrl}/${r2Key}`;
 
     return NextResponse.json({
