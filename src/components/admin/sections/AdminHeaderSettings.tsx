@@ -28,21 +28,37 @@ export const AdminHeaderSettings: React.FC<AdminHeaderSettingsProps> = ({
       setIsUploadingFavicon(true);
       const formData = new FormData();
       formData.append('file', file);
-      const token = typeof window !== 'undefined' ? localStorage.getItem('maxtron_token') : null;
-      
+
+      // Brauzerdagi barcha mumkin bo'lgan auth token kalitlarini tekshirish
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('token') ||
+            localStorage.getItem('admin_token') ||
+            localStorage.getItem('maxtron_token')
+          : null;
+
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
+        credentials: 'include', // Cookie orqali sessiyalar uchun shart
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
+
       const data = await res.json();
-      if (data.success && data.url) {
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || `Xatolik yuz berdi: ${res.status}`);
+      }
+
+      if (data.url) {
         setHeaderSettings((prev) => ({ ...prev, faviconUrl: data.url }));
       }
-    } catch {
-      // Server yuklay olmasa o'tkazib yuboramiz
+    } catch (err: any) {
+      console.error('Favicon yuklash xatosi:', err);
+      alert(err.message || 'Favicon yuklashda xatolik yuz berdi');
     } finally {
       setIsUploadingFavicon(false);
+      e.target.value = ''; // Bir xil faylni qayta tanlay olish uchun tozalash
     }
   };
 
@@ -198,7 +214,7 @@ export const AdminHeaderSettings: React.FC<AdminHeaderSettingsProps> = ({
             <input
               type="file"
               id="faviconInput"
-              accept="image/png, image/x-icon, image/vnd.microsoft.icon"
+              accept=".ico,.png,.svg,image/*"
               onChange={handleFaviconUpload}
               className="hidden"
             />
