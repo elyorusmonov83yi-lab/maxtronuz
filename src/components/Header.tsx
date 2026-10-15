@@ -318,11 +318,14 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-3 group shrink-0"
             onClick={() => setMobileMenuOpen(false)}
           >
-            {headerSettings.logoImageUrl ? (
+            {headerSettings.logoImageUrl && !headerSettings.logoImageUrl.endsWith('.ico') ? (
               <img 
                 src={headerSettings.logoImageUrl} 
                 alt={headerSettings.logoText || 'MAXTRON'} 
                 className="h-9 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
               />
             ) : (
               <div className="flex items-center gap-2.5">
