@@ -84,12 +84,7 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     icons: {
-      icon: [
-        {
-          url: activeFavicon,
-          type: activeFavicon.endsWith('.ico') ? 'image/x-icon' : 'image/png',
-        },
-      ],
+      icon: activeFavicon,
       shortcut: activeFavicon,
       apple: site.appleTouchIcon || activeFavicon,
     },
@@ -111,8 +106,16 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const site = await getSiteSettings();
+  const favicon = site.faviconUrl || '/favicon.ico';
+
   return (
     <html lang="uz" className="dark" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href={favicon} type={favicon.endsWith('.ico') ? 'image/x-icon' : 'image/png'} />
+        <link rel="shortcut icon" href={favicon} type={favicon.endsWith('.ico') ? 'image/x-icon' : 'image/png'} />
+        <link rel="apple-touch-icon" href={site.appleTouchIcon || favicon} />
+      </head>
       <body className="bg-gray-950 text-white antialiased selection:bg-blue-500 selection:text-white min-h-screen">
         <ErrorBoundary>
           <MainLayoutClient>
