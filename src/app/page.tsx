@@ -2,6 +2,9 @@ import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from './HomePageClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type Props = {
   params?: Promise<{ locale?: string }>;
 };
@@ -25,7 +28,7 @@ async function getSettingsBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('home', 'site_settings')`
+       WHERE \`key\` IN ('home', 'site_settings', 'seo')`
     );
 
     const bundle: Record<string, any> = {};
@@ -46,34 +49,52 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
 
   const bundle = await getSettingsBundle();
-  const seo = bundle.home || {};
+  const home = bundle.home || {};
   const site = bundle.site_settings || {};
+  const seoSettings = bundle.seo || {};
 
-  const baseUrl = site.baseUrl || site.url || '';
-  const siteName = site.siteName?.[lang] || site.name || '';
+  const baseUrl = 'https://maxtronuz.vercel.app';
+  const siteName =
+    site.siteName?.[lang] ||
+    home.heroTitle?.[lang] ||
+    'MAXTRON';
 
-  // Barcha matnlar faqat bazadan olinadi (statik so'z yo'q)
   const title =
-    seo.seoTitle?.[lang] ||
-    seo.title?.[lang] ||
-    seo.heroTitle?.[lang] ||
+    home.seoTitle?.[lang] ||
+    home.ogTitle?.[lang] ||
+    home.heroTitle?.[lang] ||
     siteName;
 
   const description =
-    seo.seoDescription?.[lang] ||
-    seo.description?.[lang] ||
-    seo.heroSubtitle?.[lang] ||
+    home.seoDescription?.[lang] ||
+    home.ogDescription?.[lang] ||
+    home.heroSubtitle?.[lang] ||
+    'Поставки промышленного и измерительного оборудования в Ташкенте';
+
+  // Получаем OG изображение: приоритет текущего языка, затем второго, затем общих полей
+  let rawImage =
+    home.ogImage?.[lang] ||
+    home.ogImage?.[lang === 'ru' ? 'uz' : 'ru'] ||
+    (typeof home.ogImage === 'string' ? home.ogImage : '') ||
+    site.defaultOgImage ||
     '';
 
-  let imageUrl = seo.ogImage?.[lang] || seo.ogImageUrl || site.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  // Полная блокировка data:image/base64
+  if (typeof rawImage === 'string' && rawImage.startsWith('data:')) {
+    rawImage = '';
+  }
+
+  let imageUrl = '';
+  if (rawImage) {
+    imageUrl = rawImage.startsWith('http')
+      ? rawImage
+      : `${baseUrl}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
   }
 
   const currentPath = lang === 'uz' ? '/uz' : '/';
 
   return {
-    ...(baseUrl ? { metadataBase: new URL(baseUrl) } : {}),
+    metadataBase: new URL(baseUrl),
     title,
     description,
     alternates: {
@@ -82,6 +103,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ru: '/',
         uz: '/uz',
       },
+    },
+    verification: {
+      google: seoSettings.googleVerification || undefined,
+      yandex: seoSettings.yandexVerification || undefined,
     },
     openGraph: {
       title,
@@ -93,8 +118,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ? [
             {
               url: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
+              width: 1200,
+              height: 630,
               alt: title,
             },
           ]
@@ -115,12 +140,19 @@ export default async function HomePage({ params }: Props) {
   const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
 
   const bundle = await getSettingsBundle();
-  const seo = bundle.home || {};
+  const home = bundle.home || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || '';
-  const siteName = site.siteName?.[lang] || site.name || '';
-  const siteDesc = site.description?.[lang] || seo.description?.[lang] || '';
+  const baseUrl = 'https://maxtronuz.vercel.app';
+  const siteName =
+    site.siteName?.[lang] ||
+    home.heroTitle?.[lang] ||
+    'MAXTRON';
+
+  const siteDesc =
+    home.seoDescription?.[lang] ||
+    home.heroSubtitle?.[lang] ||
+    '';
 
   let products: any[] = [];
   let categories: any[] = [];
@@ -148,7 +180,7 @@ export default async function HomePage({ params }: Props) {
     console.error('Home data error:', err);
   }
 
-  // Schema.org: Organization va WebSite ham to'liq bazadagi ma'lumotlar bilan to'ldiriladi
+  // Schema.org разметка
   const homeJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -157,25 +189,14 @@ export default async function HomePage({ params }: Props) {
         '@id': `${baseUrl}/#organization`,
         name: siteName,
         url: baseUrl,
-        logo: site.logoUrl ? `${baseUrl}${site.logoUrl.startsWith('/') ? '' : '/'}${site.logoUrl}` : undefined,
         description: siteDesc,
-        address: site.address
-          ? {
-              '@type': 'PostalAddress',
-              streetAddress: site.address.street?.[lang] || site.address.street || '',
-              addressLocality: site.address.city?.[lang] || site.address.city || '',
-              addressCountry: site.address.country || 'UZ',
-            }
-          : undefined,
-        contactPoint: site.phone
-          ? {
-              '@type': 'ContactPoint',
-              telephone: site.phone,
-              contactType: site.contactType || 'customer service',
-              areaServed: site.areaServed || 'UZ',
-              availableLanguage: site.languages || ['Russian', 'Uzbek'],
-            }
-          : undefined,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: home.ctaPhone || '+998712008844',
+          contactType: 'customer service',
+          areaServed: 'UZ',
+          availableLanguage: ['Russian', 'Uzbek'],
+        },
       },
       {
         '@type': 'WebSite',
@@ -187,7 +208,7 @@ export default async function HomePage({ params }: Props) {
         },
         potentialAction: {
           '@type': 'SearchAction',
-          target: `${baseUrl}/search?q={search_term_string}`,
+          target: `${baseUrl}/catalog?q={search_term_string}`,
           'query-input': 'required name=search_term_string',
         },
       },
@@ -204,7 +225,11 @@ export default async function HomePage({ params }: Props) {
         currentLang={lang}
         initialProducts={products}
         initialCategories={categories}
-        siteSettings={site}
+        siteSettings={{
+          ...site,
+          home,
+          homeContent: home,
+        }}
       />
     </>
   );
