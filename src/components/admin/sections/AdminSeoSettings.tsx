@@ -1,12 +1,12 @@
 "use client";
 
-import React from 'react';
-import { Sparkles, CheckCircle2, Download, FileText, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, CheckCircle2, Download, FileText, ExternalLink, Layers, Globe } from 'lucide-react';
 import { SeoSettings } from '../../../types';
 
 interface AdminSeoSettingsProps {
-  seoSettings: SeoSettings;
-  setSeoSettings: React.Dispatch<React.SetStateAction<SeoSettings>>;
+  seoSettings: SeoSettings & { catalog_seo?: any };
+  setSeoSettings: React.Dispatch<React.SetStateAction<any>>;
   handleSaveSeo: (e: React.FormEvent) => void;
   downloadSitemap: () => void;
   downloadRobotsTxt: () => void;
@@ -19,6 +19,36 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
   downloadSitemap,
   downloadRobotsTxt
 }) => {
+  const [catalogLang, setCatalogLang] = useState<'uz' | 'ru'>('uz');
+
+  // catalog_seo xavfsiz obyektini olish
+  const catalogSeo = (seoSettings as any)?.catalog_seo || {};
+
+  const handleCatalogChange = (field: string, value: string, lang?: 'uz' | 'ru') => {
+    setSeoSettings((prev: any) => {
+      const currentCatalog = prev.catalog_seo || {};
+      if (lang) {
+        return {
+          ...prev,
+          catalog_seo: {
+            ...currentCatalog,
+            [field]: {
+              ...(currentCatalog[field] || {}),
+              [lang]: value
+            }
+          }
+        };
+      }
+      return {
+        ...prev,
+        catalog_seo: {
+          ...currentCatalog,
+          [field]: value
+        }
+      };
+    });
+  };
+
   return (
     <form onSubmit={handleSaveSeo} className="space-y-6">
       
@@ -86,7 +116,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">Standart Meta Title</label>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Standart Meta Title (Bosh sahifa)</label>
             <input
               type="text"
               value={seoSettings?.defaultTitle || ''}
@@ -97,7 +127,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">Standart Meta Description</label>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Standart Meta Description (Bosh sahifa)</label>
             <input
               type="text"
               value={seoSettings?.defaultDescription || ''}
@@ -120,7 +150,110 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
         </div>
       </div>
 
-      {/* 2. Dinamik Robots.txt Muharriri */}
+      {/* 2. YANGI: Asosiy Katalog Sahifasi (/catalog) SEO Sozlamalari */}
+      <div className="p-6 rounded-3xl bg-gray-900 border border-emerald-500/30 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-800">
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Layers className="w-4 h-4 text-emerald-400" />
+              <span>Katalog Sahifasi SEO (/catalog)</span>
+            </h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              Ushbu parametrlar asosiy <span className="text-emerald-400 font-mono">/catalog</span> sahifasining sarlavhasi va tavsifini belgilaydi
+            </p>
+          </div>
+
+          {/* Til almashtirgich (UZ / RU) */}
+          <div className="flex items-center gap-1 p-1 bg-gray-950 rounded-xl border border-gray-800 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setCatalogLang('uz')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                catalogLang === 'uz'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Globe className="w-3 h-3" />
+              <span>O‘zbekcha (UZ)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCatalogLang('ru')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                catalogLang === 'ru'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Globe className="w-3 h-3" />
+              <span>Русский (RU)</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Katalog Title ({catalogLang.toUpperCase()})
+            </label>
+            <input
+              type="text"
+              value={catalogSeo.title?.[catalogLang] || ''}
+              onChange={(e) => handleCatalogChange('title', e.target.value, catalogLang)}
+              placeholder={catalogLang === 'uz' ? "Sanoat asboblari va uskunalari katalogi" : "Каталог промышленного оборудования и КИПиА"}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              Katalog Description ({catalogLang.toUpperCase()})
+            </label>
+            <textarea
+              rows={3}
+              value={catalogSeo.description?.[catalogLang] || ''}
+              onChange={(e) => handleCatalogChange('description', e.target.value, catalogLang)}
+              placeholder={
+                catalogLang === 'uz'
+                  ? "Barcha turdagi datchiklar, klapanlar, nasoslar va sanoat avtomatika vositalari katalogi..."
+                  : "Полный перечень контрольно-измерительных приборов, насосов и запорной арматуры с доставкой по Узбекистану..."
+              }
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Katalog Keywords ({catalogLang.toUpperCase()})
+              </label>
+              <input
+                type="text"
+                value={catalogSeo.keywords?.[catalogLang] || ''}
+                onChange={(e) => handleCatalogChange('keywords', e.target.value, catalogLang)}
+                placeholder="uskunalar, datchik, avtomatika, maxtron"
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Katalog OpenGraph Rasm URL (Banner yoki rasm havolasi)
+              </label>
+              <input
+                type="text"
+                value={catalogSeo.ogImageUrl || ''}
+                onChange={(e) => handleCatalogChange('ogImageUrl', e.target.value)}
+                placeholder="/images/catalog-og.jpg yoki https://..."
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white font-mono focus:outline-none focus:border-emerald-500 transition"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Dinamik Robots.txt Muharriri */}
       <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -153,7 +286,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
         </div>
       </div>
 
-      {/* 3. Sitemap & Fayl Eksporti */}
+      {/* 4. Sitemap & Fayl Eksporti */}
       <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -200,7 +333,7 @@ export const AdminSeoSettings: React.FC<AdminSeoSettingsProps> = ({
       <div className="flex justify-end pt-2">
         <button
           type="submit"
-          className="px-8 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-xl shadow-blue-500/25 transition flex items-center gap-2 cursor-pointer"
+          className="px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs shadow-xl shadow-emerald-500/25 transition flex items-center gap-2 cursor-pointer"
         >
           <CheckCircle2 className="w-4 h-4" />
           <span>SEO sozlamalarini saqlash</span>

@@ -24,7 +24,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'admin' | 'manager'>('admin');
+  const [newUserRole, setNewUserRole] = useState<'superadmin' | 'admin' | 'manager'>('admin');
   const [isAddingUser, setIsAddingUser] = useState(false);
 
   // Bazadan to'g'ridan-to'g'ri foydalanuvchilarni olish
@@ -198,7 +198,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                 onChange={(e) => setNewUserRole(e.target.value as any)}
                 className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
               >
-                <option value="admin">Bosh Administrator (Admin)</option>
+                <option value="superadmin">Bosh Administrator (Superadmin)</option>
+                <option value="admin">Administrator (Admin)</option>
                 <option value="manager">Menejer (Manager)</option>
               </select>
             </div>
@@ -276,11 +277,17 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
 
                 <div className="pt-3 border-t border-gray-800 flex items-center justify-between text-[11px]">
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
-                    user.role === 'admin' 
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                    user.role === 'superadmin'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                      : user.role === 'admin'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                       : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                   }`}>
-                    {user.role === 'admin' ? '⭐ Admin' : '💼 Manager'}
+                    {user.role === 'superadmin' 
+                      ? '👑 Superadmin' 
+                      : user.role === 'admin' 
+                      ? '⭐ Admin' 
+                      : '💼 Manager'}
                   </span>
                   <span className="text-gray-500 font-mono">
                     {formatDate(user.createdAt)}

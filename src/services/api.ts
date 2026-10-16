@@ -394,9 +394,9 @@ export const ApiService = {
   },
 
   // ==========================================
-  // --- SITE SETTINGS (HOME, ABOUT, CONTACT, SEO) ---
+  // --- SITE SETTINGS (HOME, ABOUT, CONTACT, SEO, CATALOG_SEO) ---
   // ==========================================
-  async getSetting(key: 'home' | 'about' | 'contact' | 'seo'): Promise<any> {
+  async getSetting(key: string): Promise<any> {
     try {
       const res = await fetch(`/api/admin/settings/${key}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
@@ -407,7 +407,7 @@ export const ApiService = {
     }
   },
 
-  async saveSetting(key: 'home' | 'about' | 'contact' | 'seo', data: any): Promise<{ success: boolean; message?: string }> {
+  async saveSetting(key: string, data: any): Promise<{ success: boolean; message?: string }> {
     const res = await fetch(`/api/admin/settings/${key}`, {
       method: 'POST',
       headers: getAuthHeaders(),
