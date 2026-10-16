@@ -23,6 +23,28 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
+// Domenni avtomatik va dinamik aniqlash
+function getBaseUrl(canonicalFromDb?: string): string {
+  // 1. Agar admin panelda kiritilgan bo'lsa
+  if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
+    return canonicalFromDb.trim().replace(/\/$/, '');
+  }
+  // 2. Environment o'zgaruvchisi
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  }
+  // 3. Vercel production domen
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  // 4. Vercel joriy deployment domen
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // 5. Zaxira domen
+  return 'https://maxtron.uz';
+}
+
 // Baza orqali umumiy sayt va bosh sahifa sozlamalarini olish
 async function getSettingsBundle() {
   try {
@@ -53,7 +75,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = bundle.site_settings || {};
   const seoSettings = bundle.seo || {};
 
-  const baseUrl = 'https://maxtronuz.vercel.app';
+  // Dinamik baseUrl
+  const baseUrl = getBaseUrl(home.canonicalUrl);
   const siteName =
     site.siteName?.[lang] ||
     home.heroTitle?.[lang] ||
@@ -71,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     home.heroSubtitle?.[lang] ||
     'Поставки промышленного и измерительного оборудования в Ташкенте';
 
-  // Получаем OG изображение: приоритет текущего языка, затем второго, затем общих полей
+  // OG rasmni saralash
   let rawImage =
     home.ogImage?.[lang] ||
     home.ogImage?.[lang === 'ru' ? 'uz' : 'ru'] ||
@@ -79,7 +102,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     site.defaultOgImage ||
     '';
 
-  // Полная блокировка data:image/base64
+  // Base64 rasmlarni bloklash
   if (typeof rawImage === 'string' && rawImage.startsWith('data:')) {
     rawImage = '';
   }
@@ -143,7 +166,8 @@ export default async function HomePage({ params }: Props) {
   const home = bundle.home || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = 'https://maxtronuz.vercel.app';
+  // Dinamik baseUrl
+  const baseUrl = getBaseUrl(home.canonicalUrl);
   const siteName =
     site.siteName?.[lang] ||
     home.heroTitle?.[lang] ||
@@ -180,7 +204,7 @@ export default async function HomePage({ params }: Props) {
     console.error('Home data error:', err);
   }
 
-  // Schema.org разметка
+  // Schema.org mikroma'lumotlari
   const homeJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [

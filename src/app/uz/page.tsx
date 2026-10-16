@@ -2,6 +2,9 @@ import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from '@/app/HomePageClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Xavfsiz JSON parser
 function safeParse(val: any): Record<string, any> {
   if (!val) return {};
@@ -16,12 +19,29 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
+// Domenni dinamik aniqlash
+function getBaseUrl(canonicalFromDb?: string): string {
+  if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
+    return canonicalFromDb.trim().replace(/\/$/, '');
+  }
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'https://maxtron.uz';
+}
+
 // Baza orqali sozlamalarni olish
 async function getSettingsBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('home', 'site_settings')`
+       WHERE \`key\` IN ('home', 'site_settings', 'seo')`
     );
 
     const bundle: Record<string, any> = {};
@@ -41,28 +61,46 @@ export async function generateMetadata(): Promise<Metadata> {
   const lang: 'uz' = 'uz';
 
   const bundle = await getSettingsBundle();
-  const seo = bundle.home || {};
+  const home = bundle.home || {};
   const site = bundle.site_settings || {};
+  const seoSettings = bundle.seo || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
-  const siteName = site.siteName?.uz || site.name || 'MAXTRON';
+  const baseUrl = getBaseUrl(home.canonicalUrl);
+  const siteName =
+    site.siteName?.uz ||
+    home.heroTitle?.uz ||
+    'MAXTRON';
 
   // O'zbek tili uchun dinamik SEO
   const title =
-    seo.seoTitle?.uz ||
-    seo.title?.uz ||
-    seo.heroTitle?.uz ||
+    home.seoTitle?.uz ||
+    home.ogTitle?.uz ||
+    home.heroTitle?.uz ||
     siteName;
 
   const description =
-    seo.seoDescription?.uz ||
-    seo.description?.uz ||
-    seo.heroSubtitle?.uz ||
+    home.seoDescription?.uz ||
+    home.ogDescription?.uz ||
+    home.heroSubtitle?.uz ||
     '';
 
-  let imageUrl = seo.ogImage?.uz || seo.ogImageUrl || site.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  let rawImage =
+    home.ogImage?.uz ||
+    home.ogImage?.ru ||
+    (typeof home.ogImage === 'string' ? home.ogImage : '') ||
+    site.defaultOgImage ||
+    '';
+
+  // Base64 rasmlarni bloklash
+  if (typeof rawImage === 'string' && rawImage.startsWith('data:')) {
+    rawImage = '';
+  }
+
+  let imageUrl = '';
+  if (rawImage) {
+    imageUrl = rawImage.startsWith('http')
+      ? rawImage
+      : `${baseUrl}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
   }
 
   const currentPath = '/uz';
@@ -78,6 +116,10 @@ export async function generateMetadata(): Promise<Metadata> {
         uz: '/uz',
       },
     },
+    verification: {
+      google: seoSettings.googleVerification || undefined,
+      yandex: seoSettings.yandexVerification || undefined,
+    },
     openGraph: {
       title,
       description,
@@ -88,8 +130,8 @@ export async function generateMetadata(): Promise<Metadata> {
         ? [
             {
               url: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
+              width: 1200,
+              height: 630,
               alt: title,
             },
           ]
@@ -109,12 +151,19 @@ export default async function UzbekHomePage() {
   const lang: 'uz' = 'uz';
 
   const bundle = await getSettingsBundle();
-  const seo = bundle.home || {};
+  const home = bundle.home || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
-  const siteName = site.siteName?.uz || site.name || 'MAXTRON';
-  const siteDesc = site.description?.uz || seo.description?.uz || '';
+  const baseUrl = getBaseUrl(home.canonicalUrl);
+  const siteName =
+    site.siteName?.uz ||
+    home.heroTitle?.uz ||
+    'MAXTRON';
+
+  const siteDesc =
+    home.seoDescription?.uz ||
+    home.heroSubtitle?.uz ||
+    '';
 
   let products: any[] = [];
   let categories: any[] = [];
@@ -158,7 +207,7 @@ export default async function UzbekHomePage() {
         },
         potentialAction: {
           '@type': 'SearchAction',
-          target: `${baseUrl}/uz/search?q={search_term_string}`,
+          target: `${baseUrl}/uz/catalog?q={search_term_string}`,
           'query-input': 'required name=search_term_string',
         },
       },
@@ -167,25 +216,14 @@ export default async function UzbekHomePage() {
         '@id': `${baseUrl}/#organization`,
         name: siteName,
         url: baseUrl,
-        logo: site.logoUrl ? `${baseUrl}${site.logoUrl.startsWith('/') ? '' : '/'}${site.logoUrl}` : undefined,
         description: siteDesc,
-        address: site.address
-          ? {
-              '@type': 'PostalAddress',
-              streetAddress: site.address.street?.uz || site.address.street || '',
-              addressLocality: site.address.city?.uz || site.address.city || '',
-              addressCountry: site.address.country || 'UZ',
-            }
-          : undefined,
-        contactPoint: site.phone
-          ? {
-              '@type': 'ContactPoint',
-              telephone: site.phone,
-              contactType: site.contactType || 'customer service',
-              areaServed: site.areaServed || 'UZ',
-              availableLanguage: ['Uzbek', 'Russian'],
-            }
-          : undefined,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: home.ctaPhone || '+998 70 049-99-00',
+          contactType: 'customer service',
+          areaServed: 'UZ',
+          availableLanguage: ['Uzbek', 'Russian'],
+        },
       },
     ],
   };
@@ -200,7 +238,11 @@ export default async function UzbekHomePage() {
         currentLang={lang}
         initialProducts={products}
         initialCategories={categories}
-        siteSettings={site}
+        siteSettings={{
+          ...site,
+          home,
+          homeContent: home,
+        }}
       />
     </>
   );
