@@ -3,6 +3,7 @@ import '../index.css';
 import { MainLayoutClient } from '@/components/MainLayoutClient';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { db } from '@/server/db';
+import NextTopLoader from 'nextjs-toploader';
 
 function safeParse(val: any): Record<string, any> {
   if (!val) return {};
@@ -124,6 +125,18 @@ export default async function RootLayout({
   return (
     <html lang="uz" className="dark" suppressHydrationWarning>
       <body className="bg-gray-950 text-white antialiased selection:bg-blue-500 selection:text-white min-h-screen">
+        <NextTopLoader
+          color="#38bdf8"
+          initialPosition={0.15}
+          crawlSpeed={150}
+          height={3}
+          crawl={true}
+          showSpinner={true}
+          easing="ease"
+          speed={200}
+          shadow="0 0 14px #38bdf8, 0 0 6px #0284c7"
+          zIndex={9999999}
+        />
         <ErrorBoundary>
           <MainLayoutClient>
             {children}

@@ -585,7 +585,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
           <span>«Aloqa» sozlamalarini saqlash</span>
         </button>
       </div>
-
+cl  s
     </form>
   );
 };

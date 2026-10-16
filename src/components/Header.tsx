@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from '@/utils/navigation';
 import { 
-  Activity, 
   Search, 
   Menu, 
   X, 
@@ -37,6 +36,7 @@ interface HeaderProps {
   onLanguageChange: (lang: Language) => void;
   compareCount?: number;
   onOpenQuoteModal: () => void;
+  initialSettings?: HeaderSettings;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -44,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLanguageChange,
   compareCount = 0,
   onOpenQuoteModal,
+  initialSettings,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -63,13 +64,16 @@ export const Header: React.FC<HeaderProps> = ({
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
-  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>({
+  
+  // Boshlang'ich holat: 2-rasmdagi toza ma'lumotlar (sakrashsiz)
+  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(initialSettings || {
+    logoImageUrl: '/images/logo.png',
     logoText: 'MAXTRON',
-    logoAccentText: '.UZ',
+    logoAccentText: '',
     logoSubtitle: { uz: "O'lchov va nazorat uskunalari", ru: 'КИПиА & Метрология' },
-    topbarWarehouse: { uz: 'Toshkent ombori: 200+ model', ru: 'Склад в Ташкенте: 200+ моделей' },
-    topbarDelivery: { uz: 'O‘zbekiston bo‘ylab yetkazish', ru: 'Доставка по всему Узбекистану' },
-    topbarSchedule: { uz: '09:00 - 18:00', ru: '09:00 - 18:00' },
+    topbarWarehouse: { uz: 'Toshkent ombori: 200+ model mavjud', ru: 'Склад в Ташкенте: 200+ моделей в наличии' },
+    topbarDelivery: { uz: 'O‘zbekiston bo‘ylab ekspress yetkazish', ru: 'Экспресс-доставка по всему Узбекистану' },
+    topbarSchedule: { uz: 'Dush-Shan: 09:00 - 18:00', ru: 'Пн-Сб: 09:00 - 18:00' },
     phone: '+998 71 200-88-44',
     email: 'info@maxtron.uz',
     telegramUser: '@maxtron_uz',
@@ -96,10 +100,10 @@ export const Header: React.FC<HeaderProps> = ({
     const fetchData = async () => {
       try {
         const [cats, prods, pages, settings] = await Promise.all([
-          ApiService.getCategories(),
-          ApiService.getProducts(),
-          ApiService.getPages(),
-          ApiService.getHeaderSettings(),
+          ApiService.getCategories().catch(() => []),
+          ApiService.getProducts().catch(() => []),
+          ApiService.getPages().catch(() => []),
+          ApiService.getHeaderSettings().catch(() => null),
         ]);
         if (cats && Array.isArray(cats)) {
           setCategories(cats);
@@ -264,8 +268,8 @@ export const Header: React.FC<HeaderProps> = ({
     return childIds.includes(p.category);
   });
 
-  const topbarWarehouseText = getLocalizedText(headerSettings.topbarWarehouse, currentLang, currentLang === 'ru' ? 'Склад в Ташкенте: 200+ моделей' : 'Toshkent ombori: 200+ model');
-  const topbarDeliveryText = getLocalizedText(headerSettings.topbarDelivery, currentLang, currentLang === 'ru' ? 'Доставка по всему Узбекистану' : 'O‘zbekiston bo‘ylab yetkazish');
+  const topbarWarehouseText = getLocalizedText(headerSettings.topbarWarehouse, currentLang, currentLang === 'ru' ? 'Склад в Ташкенте: 200+ моделей в наличии' : 'Toshkent ombori: 200+ model mavjud');
+  const topbarDeliveryText = getLocalizedText(headerSettings.topbarDelivery, currentLang, currentLang === 'ru' ? 'Экспресс-доставка по всему Узбекистану' : 'O‘zbekiston bo‘ylab ekspress yetkazish');
   const phoneNumber = headerSettings.phonePrimary || headerSettings.phone || '+998 71 200-88-44';
 
   return (
@@ -302,7 +306,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-gray-700">|</span>
             <span className="flex items-center gap-1 text-gray-400">
               <Clock className="w-3 h-3 text-gray-500" />
-              <span suppressHydrationWarning>{getLocalizedText(headerSettings.topbarSchedule, currentLang, '09:00 - 18:00')}</span>
+              <span suppressHydrationWarning>{getLocalizedText(headerSettings.topbarSchedule, currentLang, 'Пн-Сб: 09:00 - 18:00')}</span>
             </span>
           </div>
         </div>
@@ -312,7 +316,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center justify-between gap-4">
           
-          {/* Logotip */}
+          {/* Logotip: 2-rasmdagi toza logotip */}
           <Link 
             href={getLocalizedUrl('/')}
             className="flex items-center gap-3 group shrink-0"
@@ -322,26 +326,15 @@ export const Header: React.FC<HeaderProps> = ({
               <img 
                 src={headerSettings.logoImageUrl} 
                 alt={headerSettings.logoText || 'MAXTRON'} 
-                className="h-9 w-auto object-contain"
+                className="h-8 sm:h-9 w-auto object-contain"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
                 }}
               />
             ) : (
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition">
-                  <Activity className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <span className="text-lg font-black tracking-wider text-white flex items-center gap-0.5 leading-none">
-                    {headerSettings.logoText || 'MAXTRON'}
-                    <span className="text-blue-500 text-xs">{headerSettings.logoAccentText || '.UZ'}</span>
-                  </span>
-                  <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-tight mt-0.5" suppressHydrationWarning>
-                    {getLocalizedText(headerSettings.logoSubtitle, currentLang, currentLang === 'ru' ? 'КИПиА & Метрология' : 'O‘lchov uskunalari')}
-                  </p>
-                </div>
-              </div>
+              <span className="text-xl sm:text-2xl font-black tracking-widest text-white">
+                {headerSettings.logoText || 'MAXTRON'}
+              </span>
             )}
           </Link>
 
@@ -539,7 +532,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="flex items-center gap-3 py-1.5 text-xs">
             <Link
-              href="/compare"
+              href={getLocalizedUrl('/compare')}
               className="flex items-center gap-1.5 text-gray-400 hover:text-white transition px-2.5 py-1.5 rounded-xl hover:bg-gray-900"
             >
               <Scale className="w-3.5 h-3.5 text-blue-400" />
@@ -552,7 +545,7 @@ export const Header: React.FC<HeaderProps> = ({
             </Link>
 
             <Link
-              href="/admin"
+              href={getLocalizedUrl('/admin')}
               className="flex items-center gap-1.5 text-gray-400 hover:text-blue-400 transition px-2.5 py-1.5 rounded-xl hover:bg-gray-900"
             >
               <Lock className="w-3 h-3 text-blue-400/80" />

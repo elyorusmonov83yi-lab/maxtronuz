@@ -21,6 +21,7 @@
     "motion": "^12.23.24",
     "mysql2": "^3.24.2",
     "next": "^16.3.5",
+    "nextjs-toploader": "^3.9.17",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-quill-new": "^3.8.3"
