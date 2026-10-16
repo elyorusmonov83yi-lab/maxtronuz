@@ -74,8 +74,11 @@ async function getProduct(rawSlug: string) {
   return null;
 }
 
-function resolveImageUrl(rawImage: any, baseUrl: string, defaultImage = ''): string {
-  let img = rawImage;
+// Telegram va OpenGraph uchun mutlaq va toza rasm URL'ini aniqlash
+function resolveImageUrl(product: any, baseUrl: string, defaultImage = ''): string {
+  let img = product?.image;
+
+  // Agar massiv bo'lsa yoki string json bo'lsa birinchi rasmni olamiz
   if (typeof img === 'string' && img.startsWith('[')) {
     try {
       const arr = JSON.parse(img);
@@ -85,18 +88,31 @@ function resolveImageUrl(rawImage: any, baseUrl: string, defaultImage = ''): str
     }
   }
 
+  // Agar asosiy rasm bo'lmasa, og_image ni tekshiramiz
+  if (!img) {
+    img = product?.og_image;
+  }
+
+  // Base64 rasmlarni OpenGraph uchun umuman qabul qilmaymiz (Telegram ularni o'qiy olmaydi)
+  if (typeof img === 'string' && img.startsWith('data:')) {
+    img = '';
+  }
+
   const finalImg = img || defaultImage;
   if (!finalImg) return '';
-  if (finalImg.startsWith('http://') || finalImg.startsWith('https://') || finalImg.startsWith('data:')) {
+
+  if (finalImg.startsWith('http://') || finalImg.startsWith('https://')) {
     return finalImg;
   }
-  return `${baseUrl}${finalImg.startsWith('/') ? '' : '/'}${finalImg}`;
+
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  const cleanPath = String(finalImg).replace(/^\/+/, '');
+  return `${cleanBase}/${cleanPath}`;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const decodedSlug = decodeURIComponent(slug).trim();
-  const lang: 'ru' = 'ru';
 
   const [product, config] = await Promise.all([
     getProduct(slug),
@@ -104,7 +120,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   ]);
 
   const site = config.site_settings || {};
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = site.siteName?.ru || site.name || 'MAXTRON';
 
   if (!product) {
@@ -114,15 +130,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const rawTitle =
-    product.seo_title?.ru ||
-    product.name?.ru ||
-    product.model ||
-    '';
+  const modelText = typeof product.model === 'string' ? product.model.trim() : '';
+  const rawName = product.name?.ru || (product as any).title?.ru || product.name || '';
+  const productName = typeof rawName === 'string' ? rawName.trim() : '';
 
-  const title = siteName && !rawTitle.includes(siteName)
-    ? `${rawTitle} — ${siteName}`
-    : rawTitle;
+  // Sarlavhani shakllantirish
+  let baseTitle = productName;
+  if (modelText && !baseTitle.toLowerCase().includes(modelText.toLowerCase())) {
+    baseTitle = `${baseTitle} (${modelText})`;
+  }
+  if (!baseTitle) {
+    baseTitle = modelText || 'Оборудование';
+  }
+
+  const title = product.seo_title?.ru || `${baseTitle} — ${siteName}`;
 
   const description = (
     product.seo_description?.ru ||
@@ -135,13 +156,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .slice(0, 160);
 
   const imageUrl = resolveImageUrl(
-    product.og_image || product.image,
+    product,
     baseUrl,
-    site.defaultOgImage
+    site.defaultOgImage || 'https://maxtron.uz/og-image.jpg'
   );
 
   const slugRu = product.slug?.ru || decodedSlug;
   const slugUz = product.slug?.uz || decodedSlug;
+  const canonicalUrl = `${baseUrl}/product/${slugRu}`;
 
   return {
     metadataBase: new URL(baseUrl),
@@ -157,20 +179,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: `/product/${slugRu}`,
+      url: canonicalUrl,
       siteName,
       locale: 'ru_RU',
+      type: 'website',
       images: imageUrl
         ? [
             {
               url: imageUrl,
+              secureUrl: imageUrl,
               width: 1200,
               height: 630,
               alt: title,
             },
           ]
         : [],
-      type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
@@ -198,19 +221,22 @@ export default async function ProductPage({ params }: Props) {
   const site = config.site_settings || {};
   const t = config.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = site.siteName?.ru || site.name || 'MAXTRON';
   const currency = site.currency || 'UZS';
 
-  const productName = product.name?.ru || product.model || '';
+  const modelText = typeof product.model === 'string' ? product.model.trim() : '';
+  const rawName = product.name?.ru || (product as any).title?.ru || product.name || '';
+  const productName = typeof rawName === 'string' ? rawName.trim() : (modelText || 'Оборудование');
+
   const productDesc = (product.description?.ru || '')
     .replace(/<[^>]*>/g, '')
     .slice(0, 250);
 
   const imageUrl = resolveImageUrl(
-    product.og_image || product.image,
+    product,
     baseUrl,
-    site.defaultOgImage
+    site.defaultOgImage || 'https://maxtron.uz/og-image.jpg'
   );
 
   const currentPath = `/product/${decodedSlug}`;

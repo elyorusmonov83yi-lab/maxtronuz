@@ -1447,18 +1447,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-300">
-                    OpenGraph Image
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="/uploads/products/... yoki https://..."
-                    value={formData.ogImage || ''}
-                    onChange={(e) => setFormData({ ...formData, ogImage: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition"
-                  />
-                </div>
+             
               </div>
 
             </div>

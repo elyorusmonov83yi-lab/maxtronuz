@@ -232,14 +232,21 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     }
   };
 
-  const modelText = typeof product.model === 'object' ? getLocalizedText(product.model, currentLang) : (product.model || '—');
+const modelText = typeof product.model === 'object' ? getLocalizedText(product.model, currentLang) : (product.model || '');
+  
+  // Mahsulot nomini h1 bilan bir xil usulda ishonchli olamiz:
+  const rawTitle = (product as any).title || product.name;
+  const productName = getLocalizedText(rawTitle, currentLang, '').trim();
+
+  const breadcrumbProductLabel = productName 
+    ? (modelText && !productName.toLowerCase().includes(modelText.toLowerCase()) ? `${productName} (${modelText})` : productName)
+    : (modelText || '—');
 
   const breadcrumbs = [
     { label: t.breadcrumb_catalog || (currentLang === 'ru' ? 'Каталог' : 'Katalog'), to: getLocalizedUrl('/catalog') },
     { label: categoryName, to: getLocalizedUrl(`/catalog/${categorySlug}`) },
-    { label: modelText }
+    { label: breadcrumbProductLabel }
   ];
-
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
       <SeoManager currentLang={currentLang} product={product} />
