@@ -3,11 +3,14 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import CatalogPageClient from './CatalogPageClient';
 
+// Bazadagi SEO o'zgarishlari darhol ko'rinishi uchun keshni o'chiramiz
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type Props = {
-  params: Promise<{ locale?: string }>;
+  params?: Promise<{ locale?: string }>;
 };
 
-// Xavfsiz JSON parser
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
   if (typeof data === 'object') return data as Record<string, any>;
@@ -21,7 +24,6 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-// Baza orqali kerakli sozlamalar paketini olish
 async function getCatalogSettingsBundle() {
   try {
     const [rows]: any = await db.query(
@@ -48,22 +50,26 @@ function normalizePath(path: string): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const resolvedParams = await params;
+  const resolvedParams = params ? await params : undefined;
   const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
   const bundle = await getCatalogSettingsBundle();
 
   const seo = bundle.catalog_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || '';
-  const siteName = site.siteName?.[lang] || site.name || '';
+  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || siteName;
+  // Admin paneldan kiritilgan Title (ru)
+  const rawTitle = seo.title?.[lang] || site.catalogTitle?.[lang] || siteName;
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
+  // Admin paneldan kiritilgan Description (ru)
   const description = seo.description?.[lang] || site.description?.[lang] || '';
+
+  // Admin paneldan kiritilgan Keywords
   const keywords = Array.isArray(seo.keywords?.[lang] || seo.keywords)
     ? seo.keywords?.[lang] || seo.keywords
     : (seo.keywords?.[lang] || seo.keywords || '')
@@ -71,6 +77,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .map((k: string) => k.trim())
         .filter(Boolean);
 
+  // Cloudflare R2 dagi rasm
   let imageUrl = seo.ogImageUrl || site.defaultOgImage || '';
   if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
     imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
@@ -80,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const currentPath = lang === 'uz' ? `/uz${rawPath}` : rawPath;
 
   return {
-    ...(baseUrl ? { metadataBase: new URL(baseUrl) } : {}),
+    metadataBase: new URL(baseUrl),
     title,
     description,
     ...(keywords.length > 0 ? { keywords } : {}),
@@ -119,7 +126,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CatalogPage({ params }: Props) {
-  const resolvedParams = await params;
+  const resolvedParams = params ? await params : undefined;
   const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
   const bundle = await getCatalogSettingsBundle();
 
@@ -127,8 +134,8 @@ export default async function CatalogPage({ params }: Props) {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || '';
-  const siteName = site.siteName?.[lang] || site.name || '';
+  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
   const title = seo.title?.[lang] || siteName;
   const description = seo.description?.[lang] || site.description?.[lang] || '';
 
@@ -140,11 +147,11 @@ export default async function CatalogPage({ params }: Props) {
   const catalogLabel = t.breadcrumbCatalog?.[lang] || title;
   const loadingText = t.loading?.[lang] || '...';
 
-  // Kategoriyalar va tovarlarni dastlabki yuklash
   let categories: any[] = [];
   try {
     const [catRows]: any = await db.query(
-         'SELECT id, slug, name, description, image, icon FROM categories ORDER BY id ASC'    );
+      'SELECT id, slug, name, description, image, icon FROM categories ORDER BY id ASC'
+    );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
       name: safeJsonParse(cat.name),
@@ -154,46 +161,43 @@ export default async function CatalogPage({ params }: Props) {
     console.error('Katalog toifalarini yuklashda xatolik:', err);
   }
 
-  // Schema.org: CollectionPage + BreadcrumbList (statik so'zsiz)
-  const catalogJsonLd = baseUrl
-    ? {
-        '@context': 'https://schema.org',
-        '@graph': [
+  const catalogJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': `${baseUrl}${currentPath}#collection`,
+        url: `${baseUrl}${currentPath}`,
+        name: title,
+        inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
+        description,
+        isPartOf: {
+          '@type': 'WebSite',
+          '@id': `${baseUrl}/#website`,
+          name: siteName,
+          url: baseUrl,
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${baseUrl}${currentPath}#breadcrumb`,
+        itemListElement: [
           {
-            '@type': 'CollectionPage',
-            '@id': `${baseUrl}${currentPath}#collection`,
-            url: `${baseUrl}${currentPath}`,
-            name: title,
-            inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
-            description,
-            isPartOf: {
-              '@type': 'WebSite',
-              '@id': `${baseUrl}/#website`,
-              name: siteName,
-              url: baseUrl,
-            },
+            '@type': 'ListItem',
+            position: 1,
+            name: homeLabel,
+            item: homePath,
           },
           {
-            '@type': 'BreadcrumbList',
-            '@id': `${baseUrl}${currentPath}#breadcrumb`,
-            itemListElement: [
-              {
-                '@type': 'ListItem',
-                position: 1,
-                name: homeLabel,
-                item: homePath,
-              },
-              {
-                '@type': 'ListItem',
-                position: 2,
-                name: catalogLabel,
-                item: `${baseUrl}${currentPath}`,
-              },
-            ],
+            '@type': 'ListItem',
+            position: 2,
+            name: catalogLabel,
+            item: `${baseUrl}${currentPath}`,
           },
         ],
-      }
-    : null;
+      },
+    ],
+  };
 
   return (
     <>
