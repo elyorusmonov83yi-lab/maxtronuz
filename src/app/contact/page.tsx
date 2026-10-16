@@ -54,15 +54,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const seo = bundle.contact_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || '';
-  const siteName = site.siteName?.[lang] || site.name || '';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || siteName;
+  const defaultTitle = lang === 'uz' ? 'Bog‘lanish va Rekvizitlar' : 'Контакты и реквизиты';
+  const rawTitle = seo.title?.[lang] || defaultTitle;
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
-  const description = seo.description?.[lang] || site.description?.[lang] || '';
+  const description =
+    seo.description?.[lang] ||
+    site.description?.[lang] ||
+    (lang === 'uz'
+      ? 'MAXTRON kompaniyasi bilan bog‘lanish: Toshkent shahridagi manzil, telefon raqamlari, elektron pochta va rekvizitlar.'
+      : 'Свяжитесь с компанией MAXTRON: контакты офиса в Ташкенте, телефоны отдела продаж, email и официальные реквизиты.');
+
   const keywords = Array.isArray(seo.keywords?.[lang] || seo.keywords)
     ? seo.keywords?.[lang] || seo.keywords
     : (seo.keywords?.[lang] || seo.keywords || '')
@@ -70,16 +77,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .map((k: string) => k.trim())
         .filter(Boolean);
 
-  let imageUrl = seo.ogImageUrl || site.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  // Base64 bo'lmagan toza va mutlaq URL olish
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = 'https://maxtron.uz/og-image.jpg';
+  }
+
+  let imageUrl = rawImg;
+  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    const cleanPath = imageUrl.replace(/^\/+/, '');
+    imageUrl = `${baseUrl}/${cleanPath}`;
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/contact');
   const currentPath = lang === 'uz' ? `/uz${rawPath}` : rawPath;
+  const canonicalUrl = `${baseUrl}${currentPath}`;
 
   return {
-    ...(baseUrl ? { metadataBase: new URL(baseUrl) } : {}),
+    metadataBase: new URL(baseUrl),
     title,
     description,
     ...(keywords.length > 0 ? { keywords } : {}),
@@ -93,20 +108,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: currentPath,
+      url: canonicalUrl,
       siteName,
       locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
+      type: 'website',
       images: imageUrl
         ? [
             {
               url: imageUrl,
+              secureUrl: imageUrl,
               width: Number(seo.ogImageWidth) || 1200,
               height: Number(seo.ogImageHeight) || 630,
               alt: title,
             },
           ]
         : [],
-      type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
@@ -126,103 +142,105 @@ export default async function ContactPage({ params }: Props) {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || '';
-  const siteName = site.siteName?.[lang] || site.name || '';
-  const title = seo.title?.[lang] || siteName;
-  const description = seo.description?.[lang] || site.description?.[lang] || '';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+
+  const defaultTitle = lang === 'uz' ? 'Bog‘lanish va Rekvizitlar' : 'Контакты и реквизиты';
+  const title = seo.title?.[lang] || defaultTitle;
+  const description =
+    seo.description?.[lang] ||
+    site.description?.[lang] ||
+    (lang === 'uz'
+      ? 'MAXTRON kompaniyasi bilan bog‘lanish: Toshkent shahridagi manzil, telefon raqamlari, elektron pochta va rekvizitlar.'
+      : 'Свяжитесь с компанией MAXTRON: контакты офиса в Ташкенте, телефоны отдела продаж, email и официальные реквизиты.');
 
   const rawPath = normalizePath(seo.canonicalPath || '/contact');
   const currentPath = lang === 'uz' ? `/uz${rawPath}` : rawPath;
   const homePath = lang === 'uz' ? `${baseUrl}/uz` : baseUrl;
 
-  const homeLabel = t.breadcrumbHome?.[lang] || '';
-  const contactLabel = t.breadcrumbContact?.[lang] || title;
+  const homeLabel = t.breadcrumbHome?.[lang] || (lang === 'uz' ? 'Bosh sahifa' : 'Главная');
+  const contactLabel = t.breadcrumbContact?.[lang] || (lang === 'uz' ? 'Kontaktlar' : 'Контакты');
 
-  // Google uchun Schema.org (ContactPage + LocalBusiness + BreadcrumbList) — statik so‘zlarsiz
-  const contactJsonLd = baseUrl
-    ? {
-        '@context': 'https://schema.org',
-        '@graph': [
+  const contactJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'ContactPage',
+        '@id': `${baseUrl}${currentPath}#webpage`,
+        url: `${baseUrl}${currentPath}`,
+        name: title,
+        inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
+        description,
+        isPartOf: {
+          '@type': 'WebSite',
+          '@id': `${baseUrl}/#website`,
+          name: siteName,
+          url: baseUrl,
+        },
+      },
+      {
+        '@type': 'LocalBusiness',
+        '@id': `${baseUrl}/#business`,
+        name: siteName,
+        url: baseUrl,
+        logo: site.logoUrl ? `${baseUrl}/${site.logoUrl.replace(/^\/+/, '')}` : undefined,
+        image: site.defaultOgImage ? `${baseUrl}/${site.defaultOgImage.replace(/^\/+/, '')}` : undefined,
+        telephone: site.phone || undefined,
+        email: site.email || undefined,
+        address: site.address
+          ? {
+              '@type': 'PostalAddress',
+              streetAddress: site.address.street?.[lang] || site.address.street || '',
+              addressLocality: site.address.city?.[lang] || site.address.city || '',
+              postalCode: site.address.postalCode || undefined,
+              addressCountry: site.address.country || 'UZ',
+            }
+          : undefined,
+        geo: site.geo
+          ? {
+              '@type': 'GeoCoordinates',
+              latitude: site.geo.lat,
+              longitude: site.geo.lng,
+            }
+          : undefined,
+        openingHoursSpecification: site.openingHours
+          ? [
+              {
+                '@type': 'OpeningHoursSpecification',
+                dayOfWeek: site.openingHours.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                opens: site.openingHours.opens || '09:00',
+                closes: site.openingHours.closes || '18:00',
+              },
+            ]
+          : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${baseUrl}${currentPath}#breadcrumb`,
+        itemListElement: [
           {
-            '@type': 'ContactPage',
-            '@id': `${baseUrl}${currentPath}#webpage`,
-            url: `${baseUrl}${currentPath}`,
-            name: title,
-            inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
-            description,
-            isPartOf: {
-              '@type': 'WebSite',
-              '@id': `${baseUrl}/#website`,
-              name: siteName,
-              url: baseUrl,
-            },
+            '@type': 'ListItem',
+            position: 1,
+            name: homeLabel,
+            item: homePath,
           },
           {
-            '@type': 'LocalBusiness',
-            '@id': `${baseUrl}/#business`,
-            name: siteName,
-            url: baseUrl,
-            logo: site.logoUrl ? `${baseUrl}${site.logoUrl.startsWith('/') ? '' : '/'}${site.logoUrl}` : undefined,
-            image: site.defaultOgImage ? `${baseUrl}${site.defaultOgImage.startsWith('/') ? '' : '/'}${site.defaultOgImage}` : undefined,
-            telephone: site.phone || undefined,
-            email: site.email || undefined,
-            address: site.address
-              ? {
-                  '@type': 'PostalAddress',
-                  streetAddress: site.address.street?.[lang] || site.address.street || '',
-                  addressLocality: site.address.city?.[lang] || site.address.city || '',
-                  postalCode: site.address.postalCode || undefined,
-                  addressCountry: site.address.country || 'UZ',
-                }
-              : undefined,
-            geo: site.geo
-              ? {
-                  '@type': 'GeoCoordinates',
-                  latitude: site.geo.lat,
-                  longitude: site.geo.lng,
-                }
-              : undefined,
-            openingHoursSpecification: site.openingHours
-              ? [
-                  {
-                    '@type': 'OpeningHoursSpecification',
-                    dayOfWeek: site.openingHours.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                    opens: site.openingHours.opens || '09:00',
-                    closes: site.openingHours.closes || '18:00',
-                  },
-                ]
-              : undefined,
-          },
-          {
-            '@type': 'BreadcrumbList',
-            '@id': `${baseUrl}${currentPath}#breadcrumb`,
-            itemListElement: [
-              {
-                '@type': 'ListItem',
-                position: 1,
-                name: homeLabel,
-                item: homePath,
-              },
-              {
-                '@type': 'ListItem',
-                position: 2,
-                name: contactLabel,
-                item: `${baseUrl}${currentPath}`,
-              },
-            ],
+            '@type': 'ListItem',
+            position: 2,
+            name: contactLabel,
+            item: `${baseUrl}${currentPath}`,
           },
         ],
-      }
-    : null;
+      },
+    ],
+  };
 
   return (
     <>
-      {contactJsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }}
-        />
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }}
+      />
       <ContactClient
         lang={lang}
         siteSettings={site}

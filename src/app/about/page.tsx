@@ -58,7 +58,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const lang: 'ru' = 'ru';
   const { seo, siteSettings } = await getAboutDataBundle();
 
-  const baseUrl = siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz';
+  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const rawTitle = seo.title?.[lang] || seo.title || 'О компании';
@@ -66,14 +66,26 @@ export async function generateMetadata(): Promise<Metadata> {
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
-  const description = seo.description?.[lang] || seo.description || siteSettings.description?.[lang] || '';
+  const description =
+    seo.description?.[lang] ||
+    seo.description ||
+    siteSettings.description?.[lang] ||
+    'Поставки промышленного контрольно-измерительного оборудования, автоматики и метрологических приборов в Ташкенте и по всему Узбекистану.';
 
-  let imageUrl = seo.ogImageUrl || siteSettings.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  // Base64 dan tozalangan toza rasm olish
+  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = 'https://maxtron.uz/og-image.jpg';
+  }
+
+  let imageUrl = rawImg;
+  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    const cleanPath = imageUrl.replace(/^\/+/, '');
+    imageUrl = `${baseUrl}/${cleanPath}`;
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/about');
+  const canonicalUrl = `${baseUrl}${rawPath}`;
 
   return {
     metadataBase: new URL(baseUrl),
@@ -89,20 +101,21 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: rawPath,
+      url: canonicalUrl,
       siteName,
       locale: 'ru_RU',
+      type: 'website',
       images: imageUrl
         ? [
             {
               url: imageUrl,
+              secureUrl: imageUrl,
               width: Number(seo.ogImageWidth) || 1200,
               height: Number(seo.ogImageHeight) || 630,
               alt: title,
             },
           ]
         : [],
-      type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
@@ -117,7 +130,7 @@ export default async function AboutPage() {
   const lang: 'ru' = 'ru';
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
-  const baseUrl = siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz';
+  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
   const title = seo.title?.[lang] || seo.title || 'О компании';
   const description = seo.description?.[lang] || seo.description || siteSettings.description?.[lang] || '';
@@ -143,7 +156,7 @@ export default async function AboutPage() {
           '@id': `${baseUrl}/#organization`,
           name: siteName,
           url: baseUrl,
-          logo: siteSettings.logoUrl ? `${baseUrl}${siteSettings.logoUrl.startsWith('/') ? '' : '/'}${siteSettings.logoUrl}` : undefined,
+          logo: siteSettings.logoUrl ? `${baseUrl}/${siteSettings.logoUrl.replace(/^\/+/, '')}` : undefined,
           description,
         },
       },

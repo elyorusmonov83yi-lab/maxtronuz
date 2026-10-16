@@ -36,16 +36,16 @@ async function getContactDataBundle() {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = 'uz'; // <-- O'ZBEK TILI
+  const lang = 'uz';
   const bundle = await getContactDataBundle();
 
   const seo = bundle.contact_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || (lang === 'uz' ? 'Aloqa va manzil' : siteName);
+  const rawTitle = seo.title?.[lang] || 'Bog‘lanish va rekvizitlar';
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
@@ -53,44 +53,74 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     seo.description?.[lang] ||
     site.description?.[lang] ||
-    "MAXTRON korxonasi bilan bog'lanish: telefonlar, manzil va rekvizitlar.";
+    "MAXTRON korxonasi bilan bog'lanish: Toshkentdagi manzil, telefonlar, elektron pochta va rasmiy rekvizitlar.";
 
   const currentPath = '/uz/contact';
+  const canonicalUrl = `${baseUrl}${currentPath}`;
+
+  // Mutlaq va Base64'dan tozalangan rasm URL
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = 'https://maxtron.uz/og-image.jpg';
+  }
+
+  let imageUrl = rawImg;
+  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    const cleanPath = imageUrl.replace(/^\/+/, '');
+    imageUrl = `${baseUrl}/${cleanPath}`;
+  }
 
   return {
     metadataBase: new URL(baseUrl),
     title,
     description,
     alternates: {
-      canonical: `${baseUrl}${currentPath}`,
+      canonical: canonicalUrl,
       languages: {
         ru: `${baseUrl}/contact`,
-        uz: `${baseUrl}/uz/contact`,
+        uz: canonicalUrl,
       },
     },
     openGraph: {
       title,
       description,
-      url: `${baseUrl}${currentPath}`,
+      url: canonicalUrl,
       siteName,
       locale: 'uz_UZ',
       type: 'website',
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              secureUrl: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: title,
+            },
+          ]
+        : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: imageUrl ? [imageUrl] : [],
     },
   };
 }
 
 export default async function UzbekContactPage() {
-  const lang = 'uz'; // <-- O'ZBEK TILI
+  const lang = 'uz';
   const bundle = await getContactDataBundle();
 
   const seo = bundle.contact_seo || {};
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || (lang === 'uz' ? 'Bog‘lanish' : siteName);
+  const rawTitle = seo.title?.[lang] || 'Bog‘lanish va rekvizitlar';
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
@@ -116,6 +146,12 @@ export default async function UzbekContactPage() {
         name: title,
         inLanguage: 'uz-UZ',
         description,
+        isPartOf: {
+          '@type': 'WebSite',
+          '@id': `${baseUrl}/#website`,
+          name: siteName,
+          url: baseUrl,
+        },
       },
       {
         '@type': 'BreadcrumbList',
@@ -144,7 +180,6 @@ export default async function UzbekContactPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }}
       />
-      {/* ContactClient ga aynan lang="uz" uzatiladi */}
       <ContactClient
         lang={lang}
         siteSettings={site}

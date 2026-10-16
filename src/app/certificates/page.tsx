@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = bundle.certificates_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const title =
@@ -55,6 +55,13 @@ export async function generateMetadata(): Promise<Metadata> {
     'Свидетельства Госреестра Узстандарт, сертификаты ISO 9001 и разрешительная документация на поставляемое контрольно-измерительное оборудование.';
 
   const canonicalPath = '/certificates';
+  const canonicalUrl = `${baseUrl}${canonicalPath}`;
+
+  // Формируем чистый абсолютный URL для превью-изображения (без base64)
+  let imageUrl = seo.ogImageUrl || site.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  }
 
   return {
     metadataBase: new URL(baseUrl),
@@ -70,15 +77,27 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: canonicalPath,
+      url: canonicalUrl,
       siteName,
       locale: 'ru_RU',
       type: 'website',
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              secureUrl: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: title,
+            },
+          ]
+        : [],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: imageUrl ? [imageUrl] : [],
     },
   };
 }
@@ -89,7 +108,7 @@ export default async function CertificatesPage() {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const currentPath = '/certificates';

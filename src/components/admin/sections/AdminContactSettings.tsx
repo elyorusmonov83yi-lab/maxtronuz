@@ -44,7 +44,11 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
   const [isUploadingOg, setIsUploadingOg] = useState(false);
   const ogInputRef = useRef<HTMLInputElement>(null);
 
-  // OG Rasm yuklash
+  // SEO kontakt obyektini olish
+  const contactSeo = (pageSeoSettings?.contact || {}) as any;
+  const currentOgImage = contactSeo.ogImage || contactSeo.ogImageUrl || '';
+
+  // OG Rasm yuklash (Serverga yuklab toza URL oladi)
   const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -61,7 +65,8 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
         ...prev,
         contact: {
           ...prev.contact,
-          ogImage: url
+          ogImage: url,
+          ogImageUrl: url
         }
       }));
     } catch (err: any) {
@@ -88,8 +93,6 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
   };
 
   // SEO maydonlarini yangilash
-  const contactSeo = (pageSeoSettings?.contact || {}) as any;
-
   const handleSeoChange = (field: string, value: string) => {
     setPageSeoSettings?.((prev) => ({
       ...prev,
@@ -146,7 +149,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">nishon / Badge ({contactLang.toUpperCase()})</label>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Nishon / Badge ({contactLang.toUpperCase()})</label>
             <input
               type="text"
               placeholder={contactLang === 'ru' ? "24/7 Поддержка" : "24/7 Muloqot"}
@@ -480,8 +483,8 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
               <div className="sm:col-span-4 flex justify-center">
                 <div className="w-32 h-20 rounded-xl border border-gray-800 bg-gray-900 overflow-hidden flex items-center justify-center relative">
-                  {contactSeo.ogImage ? (
-                    <img src={contactSeo.ogImage} alt="OG Preview" className="w-full h-full object-cover" />
+                  {currentOgImage ? (
+                    <img src={currentOgImage} alt="OG Preview" className="w-full h-full object-cover" />
                   ) : (
                     <ImageIcon className="w-8 h-8 text-gray-700" />
                   )}
@@ -514,10 +517,17 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
                     <span>Rasm yuklash</span>
                   </button>
 
-                  {contactSeo.ogImage && (
+                  {currentOgImage && (
                     <button
                       type="button"
-                      onClick={() => setPageSeoSettings?.((prev) => ({ ...prev, contact: { ...prev.contact, ogImage: '' } }))}
+                      onClick={() => setPageSeoSettings?.((prev) => ({
+                        ...prev,
+                        contact: {
+                          ...prev.contact,
+                          ogImage: '',
+                          ogImageUrl: ''
+                        }
+                      }))}
                       className="p-2 rounded-xl bg-gray-800 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 transition cursor-pointer"
                       title="Tozalash"
                     >
@@ -529,8 +539,18 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
                 <input
                   type="text"
                   placeholder="Yoki to‘g‘ridan-to‘g‘ri rasm havolasi..."
-                  value={contactSeo.ogImage || ''}
-                  onChange={(e) => setPageSeoSettings?.((prev) => ({ ...prev, contact: { ...prev.contact, ogImage: e.target.value } }))}
+                  value={currentOgImage}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setPageSeoSettings?.((prev) => ({
+                      ...prev,
+                      contact: {
+                        ...prev.contact,
+                        ogImage: val,
+                        ogImageUrl: val
+                      }
+                    }));
+                  }}
                   className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
                 />
               </div>
