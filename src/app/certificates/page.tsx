@@ -2,24 +2,26 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { CertificatesClient } from './CertificatesClient';
 
-function safeParse(val: any): Record<string, any> {
-  if (!val) return {};
+export const dynamic = 'force-dynamic';
+
+function safeParse(val: any): any {
+  if (!val) return null;
   if (typeof val === 'object') return val;
   if (typeof val === 'string') {
     try {
       return JSON.parse(val);
     } catch {
-      return {};
+      return null;
     }
   }
-  return {};
+  return null;
 }
 
-async function getCertificatesSeoBundle() {
+async function getCertificatesDataBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('certificates_seo', 'site_settings', 'translations')`
+       WHERE \`key\` IN ('certificates', 'site_certificates', 'certificates_seo', 'site_settings', 'translations')`
     );
 
     const bundle: Record<string, any> = {};
@@ -28,21 +30,32 @@ async function getCertificatesSeoBundle() {
         bundle[row.key] = safeParse(row.value);
       }
     }
-    return bundle;
+
+    const certificatesList = bundle.certificates || bundle.site_certificates || [];
+
+    return {
+      certificates: Array.isArray(certificatesList) ? certificatesList : [],
+      seo: bundle.certificates_seo || {},
+      siteSettings: bundle.site_settings || {},
+      translations: bundle.translations || {},
+    };
   } catch (err) {
-    console.error('Certificates SEO bundle yuklashda xatolik:', err);
-    return {};
+    console.error('Certificates bundle yuklashda xatolik:', err);
+    return {
+      certificates: [],
+      seo: {},
+      siteSettings: {},
+      translations: {},
+    };
   }
 }
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang: 'ru' = 'ru';
-  const bundle = await getCertificatesSeoBundle();
-  const seo = bundle.certificates_seo || {};
-  const site = bundle.site_settings || {};
+  const { seo, siteSettings } = await getCertificatesDataBundle();
 
-  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
-  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const title =
     seo.title?.[lang] ||
@@ -57,8 +70,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalPath = '/certificates';
   const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  // Формируем чистый абсолютный URL для превью-изображения (без base64)
-  let imageUrl = seo.ogImageUrl || site.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  let imageUrl = seo.ogImageUrl || siteSettings.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
   if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
     imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
   }
@@ -104,18 +116,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function CertificatesPage() {
   const lang: 'ru' = 'ru';
-  const bundle = await getCertificatesSeoBundle();
-  const site = bundle.site_settings || {};
-  const t = bundle.translations || {};
+  const { certificates, siteSettings, translations } = await getCertificatesDataBundle();
 
-  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
-  const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
+  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const currentPath = '/certificates';
   const homePath = baseUrl;
 
-  const homeBreadcrumb = t.breadcrumbHome?.[lang] || 'Главная';
-  const certsBreadcrumb = t.breadcrumb_certificates?.[lang] || 'Сертификаты';
+  const homeBreadcrumb = translations.breadcrumbHome?.[lang] || 'Главная';
+  const certsBreadcrumb = translations.breadcrumb_certificates?.[lang] || 'Сертификаты';
 
   const certsJsonLd = {
     '@context': 'https://schema.org',
@@ -161,7 +171,10 @@ export default async function CertificatesPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(certsJsonLd) }}
       />
-      <CertificatesClient lang={lang} />
+      <CertificatesClient 
+        lang={lang} 
+        initialCertificates={certificates} 
+      />
     </>
   );
 }

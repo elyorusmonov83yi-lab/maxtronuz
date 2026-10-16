@@ -7,11 +7,15 @@ import { Certificate, Language } from '@/types';
 import { X, Download } from 'lucide-react';
 import { getLocalizedText } from '@/utils/formatters';
 
-interface CertificatesClientProps {
+export interface CertificatesClientProps {
   lang?: Language;
+  initialCertificates?: Certificate[];
 }
 
-export const CertificatesClient: React.FC<CertificatesClientProps> = ({ lang }) => {
+export const CertificatesClient: React.FC<CertificatesClientProps> = ({ 
+  lang,
+  initialCertificates = []
+}) => {
   const pathname = usePathname();
   const currentLang: Language = lang || (pathname?.startsWith('/uz') ? 'uz' : 'ru');
 
@@ -34,6 +38,7 @@ export const CertificatesClient: React.FC<CertificatesClientProps> = ({ lang }) 
     <>
       <CertificatesView
         currentLang={currentLang}
+        initialCertificates={initialCertificates}
         onSelectCertificate={(cert) => setSelectedCert(cert)}
         onShowToast={(msg) => console.log(msg)}
       />
