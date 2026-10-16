@@ -41,12 +41,44 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const getLocalized = (obj: any, fallback: string = '') => {
+    // 1. JSON satr bo'lsa ham pars qilib joriy tilni oluvchi xavfsiz funksiya
+    const getLocalized = (obj: any, fallback: string = ''): string => {
       if (!obj) return fallback;
-      if (typeof obj === 'string') return obj;
-      return obj[currentLang] || obj.ru || obj.uz || fallback;
+      let target = obj;
+
+      if (typeof target === 'string') {
+        const trimmed = target.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          try {
+            target = JSON.parse(trimmed);
+          } catch {
+            return trimmed;
+          }
+        } else {
+          return trimmed;
+        }
+      }
+
+      if (typeof target === 'object' && target !== null) {
+        const val = target[currentLang] || target.ru || target.uz || fallback;
+        if (typeof val === 'string') return val;
+        return typeof val === 'object' ? (val[currentLang] || val.ru || val.uz || '') : String(val || '');
+      }
+
+      return String(target || fallback);
     };
 
+    // 2. HTML va keraksiz belgilarni tozalash
+    const stripHtml = (html: string): string => {
+      if (!html) return '';
+      return html
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    // 3. Rasmlardan faqat to'g'ri URLlarni qabul qilish (Base64 chiqarib tashlanadi)
     const sanitizeUrl = (url: any): string => {
       if (!url || typeof url !== 'string' || url.startsWith('data:')) return '';
       if (url.startsWith('http')) return url;
@@ -59,10 +91,8 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     let ogImage = '';
     let robots = 'index, follow';
     
-    const canonicalUrl = new URL(window.location.href);
-    canonicalUrl.search = '';
-    canonicalUrl.hash = '';
-    let canonical = canonicalUrl.toString();
+    // Kanonik manzilni doim rasmiy domen asosida shakllantirish (Vercel domenini chetlab o'tish)
+    let canonical = `https://maxtron.uz${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
 
     const normalizedPath = pathname.replace(/^\/(?:uz|ru|uz_cyrl|en)(?=\/|$)/, '') || '/';
     const pathParts = normalizedPath.split('/').filter(Boolean);
@@ -74,14 +104,18 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     const resolvedProduct = product || StorageService.getProducts().find((item) => {
       if (!productSlug) return false;
       const slugs = typeof item.slug === 'object' ? Object.values(item.slug) : [item.slug];
-      return item.id === productSlug || slugs.some((slug) => slug === productSlug);
+      return String(item.id) === productSlug || slugs.some((slug) => slug === productSlug);
     });
 
     if (resolvedProduct) {
-      const prodName = getProductName(resolvedProduct, currentLang);
-      title = getLocalized(resolvedProduct.seoTitle, `${prodName} ${resolvedProduct.model ? `(${resolvedProduct.model})` : ''} | MAXTRON`);
-      description = getLocalized(resolvedProduct.seoDescription, getLocalized(resolvedProduct.description, ''));
-      keywords = getLocalized(resolvedProduct.seoKeywords, `${resolvedProduct.model || ''}, ${prodName}, sanoat uskunalari`);
+      const prodName = stripHtml(getProductName(resolvedProduct, currentLang));
+      const rawTitle = getLocalized(resolvedProduct.seoTitle, `${prodName} ${resolvedProduct.model ? `(${resolvedProduct.model})` : ''} | MAXTRON`);
+      title = stripHtml(rawTitle);
+
+      const rawDesc = getLocalized(resolvedProduct.seoDescription, getLocalized(resolvedProduct.description, ''));
+      description = stripHtml(rawDesc).slice(0, 160);
+
+      keywords = stripHtml(getLocalized(resolvedProduct.seoKeywords, `${resolvedProduct.model || ''}, ${prodName}, sanoat uskunalari`));
       ogImage = sanitizeUrl(resolvedProduct.ogImage || resolvedProduct.image);
     } 
     // 2. Bosh sahifa SEO
@@ -96,9 +130,9 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
         ? 'Прямые поставки контрольно-измерительных приборов со склада в Ташкенте с гарантией.'
         : "Toshkent omboridan sanoat o'lchov asboblarini to'g'ridan-to'g'ri yetkazib berish va kafolat.";
 
-      title = getLocalized(homeData?.seoTitle, defaultTitle);
-      description = getLocalized(homeData?.seoDescription, defaultDesc);
-      keywords = getLocalized(homeData?.seoKeywords, 'maxtron, kipia, datchik, manometr, toshkent');
+      title = stripHtml(getLocalized(homeData?.seoTitle, defaultTitle));
+      description = stripHtml(getLocalized(homeData?.seoDescription, defaultDesc)).slice(0, 160);
+      keywords = stripHtml(getLocalized(homeData?.seoKeywords, 'maxtron, kipia, datchik, manometr, toshkent'));
       
       const homeOg = homeData?.ogImage;
       const rawOg = typeof homeOg === 'object' 
@@ -112,13 +146,13 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     } 
     // 3. Qolgan ichki sahifalar
     else {
-      title = getLocalized(pageSeo?.title, seoSettings?.defaultTitle || 'MAXTRON — Sanoat va O‘lchov Uskunalari');
-      description = getLocalized(pageSeo?.description, seoSettings?.defaultDescription || 'Professional sanoat datchiklari va o‘lchov uskunalari');
-      keywords = getLocalized(pageSeo?.keywords, seoSettings?.defaultKeywords || 'maxtron, sanoat uskunalari');
+      title = stripHtml(getLocalized(pageSeo?.title, seoSettings?.defaultTitle || 'MAXTRON — Sanoat va O‘lchov Uskunalari'));
+      description = stripHtml(getLocalized(pageSeo?.description, seoSettings?.defaultDescription || 'Professional sanoat datchiklari va o‘lchov uskunalari')).slice(0, 160);
+      keywords = stripHtml(getLocalized(pageSeo?.keywords, seoSettings?.defaultKeywords || 'maxtron, sanoat uskunalari'));
       ogImage = sanitizeUrl(pageSeo?.ogImage || seoSettings?.ogImageUrl);
     }
 
-    // --- DOM teglarni yangilash ---
+    // --- DOM teglarni toza yangilash ---
     if (title) document.title = title;
 
     const setMeta = (attr: string, val: string, content: string) => {
@@ -173,7 +207,7 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       else script.addEventListener('load', initMetrika, { once: true });
     }
 
-    // OpenGraph & Twitter (faqat toza URL bo'lsa yoziladi)
+    // OpenGraph & Twitter
     setMeta('property', 'og:title', title);
     setMeta('property', 'og:description', description);
     setMeta('property', 'og:type', resolvedProduct ? 'product' : 'website');
