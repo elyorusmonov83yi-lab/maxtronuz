@@ -10,6 +10,8 @@ export type Props = {
   lang?: 'ru' | 'uz';
   currentLang?: 'ru' | 'uz';
   initialCategories?: CategoryInfo[] | any[];
+  selectedCategoryId?: string;
+  categorySeo?: any;
   siteSettings?: any;
   catalogSeo?: any;
   translations?: any;
@@ -20,6 +22,8 @@ const CatalogInteractive = ({
   lang,
   currentLang: propCurrentLang,
   initialCategories = [],
+  selectedCategoryId,
+  categorySeo,
   siteSettings,
   catalogSeo,
   translations,
@@ -28,7 +32,6 @@ const CatalogInteractive = ({
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // StorageService orqali solishtirish ro'yxatini yuklash
   const [comparedProducts, setComparedProducts] = useState<string[]>([]);
 
   useEffect(() => {
@@ -41,7 +44,9 @@ const CatalogInteractive = ({
     return () => window.removeEventListener('maxtron_compare_updated', handleCompareUpdate);
   }, []);
 
-  const activeCategoryParam = searchParams ? (searchParams.get('category') || 'all') : 'all';
+  const activeCategoryParam =
+    selectedCategoryId ||
+    (searchParams ? searchParams.get('category') || 'all' : 'all');
 
   const handleToggleCompare = (p: Product) => {
     const pId = String(p.id);
@@ -60,7 +65,7 @@ const CatalogInteractive = ({
       currentLang={currentLang}
       initialCategory={activeCategoryParam}
       initialCategories={initialCategories}
-      catalogSeo={catalogSeo}
+      catalogSeo={categorySeo || catalogSeo}
       siteSettings={siteSettings}
       translations={translations}
       onSelectProduct={(p: Product) => {
@@ -84,7 +89,7 @@ const CatalogInteractive = ({
   );
 };
 
-const CatalogPageClient = (props: Props) => {
+export default function CatalogPageClient(props: Props) {
   const activeLang = props.lang || props.currentLang || 'ru';
 
   return (
@@ -98,6 +103,4 @@ const CatalogPageClient = (props: Props) => {
       <CatalogInteractive {...props} />
     </Suspense>
   );
-};
-
-export default CatalogPageClient;
+}

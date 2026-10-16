@@ -23,57 +23,45 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-async function getCategoryBySlug(slug: string, lang: 'ru' | 'uz') {
+async function getCategoryData(slug: string, lang: 'ru' | 'uz') {
   try {
-    // 1. To'g'ridan-to'g'ri slug ustuni bo'yicha (id yoki JSON qiymat orqali) qidirish
-    const [rows]: any = await db.query(
-      `SELECT * FROM categories 
-       WHERE id = ? 
-          OR slug = ? 
-          OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.ru')) = ? 
-          OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.uz')) = ? 
-       LIMIT 1`,
-      [slug, slug, slug, slug]
-    );
+    const decodedSlug = decodeURIComponent(slug).trim().toLowerCase();
 
-    if (rows && rows.length > 0) {
-      const cat = rows[0];
-      return {
+    const [allCats]: any = await db.query('SELECT * FROM categories ORDER BY id ASC');
+    let targetCategory: any = null;
+
+    const parsedCategories = (allCats || []).map((cat: any) => {
+      const pSlug = safeJsonParse(cat.slug);
+      const parsedCat = {
         ...cat,
+        slugParsed: pSlug,
+        slug: pSlug?.[lang] || pSlug?.ru || cat.id,
         name: safeJsonParse(cat.name),
         description: safeJsonParse(cat.description),
         seoTitle: safeJsonParse(cat.seoTitle),
         seoDescription: safeJsonParse(cat.seoDescription),
         seoKeywords: safeJsonParse(cat.seoKeywords),
-        slugParsed: safeJsonParse(cat.slug),
       };
-    }
 
-    // 2. Agar JSON_EXTRACT ishlamasa (matnli JSON bo'lsa), barcha toifalarni olib xavfsiz tekshirish
-    const [allCats]: any = await db.query('SELECT * FROM categories');
-    for (const cat of allCats || []) {
-      const parsedSlug = safeJsonParse(cat.slug);
       if (
-        cat.id === slug ||
-        cat.slug === slug ||
-        parsedSlug.ru === slug ||
-        parsedSlug.uz === slug
+        String(cat.id).toLowerCase() === decodedSlug ||
+        String(pSlug?.ru || '').toLowerCase() === decodedSlug ||
+        String(pSlug?.uz || '').toLowerCase() === decodedSlug ||
+        String(cat.slug || '').toLowerCase() === decodedSlug
       ) {
-        return {
-          ...cat,
-          name: safeJsonParse(cat.name),
-          description: safeJsonParse(cat.description),
-          seoTitle: safeJsonParse(cat.seoTitle),
-          seoDescription: safeJsonParse(cat.seoDescription),
-          seoKeywords: safeJsonParse(cat.seoKeywords),
-          slugParsed: parsedSlug,
-        };
+        targetCategory = parsedCat;
       }
-    }
+      return parsedCat;
+    });
 
-    return null;
+    if (!targetCategory) return null;
+
+    return {
+      category: targetCategory,
+      categories: parsedCategories,
+    };
   } catch (err) {
-    console.error('Kategoriyani yuklashda xatolik:', err);
+    console.error('Ошибка загрузки категории:', err);
     return null;
   }
 }
@@ -84,9 +72,7 @@ async function getSettingsBundle() {
       `SELECT \`key\`, value FROM settings WHERE \`key\` IN ('site_settings', 'translations')`
     );
     const bundle: Record<string, any> = {};
-    for (const row of rows || []) {
-      bundle[row.key] = safeJsonParse(row.value);
-    }
+    for (const r of rows || []) bundle[r.key] = safeJsonParse(r.value);
     return bundle;
   } catch {
     return {};
@@ -96,9 +82,10 @@ async function getSettingsBundle() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const lang = 'ru';
-  const category = await getCategoryBySlug(slug, lang);
+  const data = await getCategoryData(slug, lang);
 
-  if (!category) return {};
+  if (!data) return {};
+  const { category } = data;
 
   const bundle = await getSettingsBundle();
   const site = bundle.site_settings || {};
@@ -114,7 +101,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     category.seoDescription?.[lang] ||
     category.description?.[lang] ||
-    `${catName} по выгодным ценам в Узбекистане.`;
+    `${catName} по выгодным ценам в Ташкенте и Узбекистане.`;
 
   const keywords = Array.isArray(category.seoKeywords?.[lang])
     ? category.seoKeywords[lang]
@@ -150,7 +137,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName,
       locale: 'ru_RU',
       type: 'website',
-      images: imageUrl ? [{ url: imageUrl, alt: title }] : [],
+      images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: title }] : [],
     },
     twitter: {
       card: 'summary_large_image',
@@ -164,39 +151,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
   const lang = 'ru';
-  const category = await getCategoryBySlug(slug, lang);
+  const data = await getCategoryData(slug, lang);
 
-  if (!category) {
-    notFound();
-  }
+  if (!data) notFound();
 
+  const { category, categories } = data;
   const bundle = await getSettingsBundle();
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
+
   const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
-
   const catName = category.name?.[lang] || 'Категория';
+  const catDesc = category.seoDescription?.[lang] || category.description?.[lang] || '';
   const currentPath = `/catalog/${category.slugParsed?.ru || slug}`;
-
-  // Barcha toifalarni sidebar / filtr uchun olish
-  let allCategories: any[] = [];
-  try {
-    const [rows]: any = await db.query(
-      'SELECT id, slug, name, description, image, icon FROM categories ORDER BY id ASC'
-    );
-    allCategories = (rows || []).map((c: any) => {
-      const parsedSlug = safeJsonParse(c.slug);
-      return {
-        ...c,
-        slug: parsedSlug[lang] || parsedSlug.ru || c.id,
-        name: safeJsonParse(c.name),
-        description: safeJsonParse(c.description),
-      };
-    });
-  } catch (err) {
-    console.error('Kategoriyalar ro‘yxati xatosi:', err);
-  }
 
   const categoryJsonLd = {
     '@context': 'https://schema.org',
@@ -207,6 +175,7 @@ export default async function CategoryPage({ params }: Props) {
         url: `${baseUrl}${currentPath}`,
         name: catName,
         inLanguage: 'ru-RU',
+        description: catDesc,
         isPartOf: {
           '@type': 'WebSite',
           '@id': `${baseUrl}/#website`,
@@ -241,6 +210,18 @@ export default async function CategoryPage({ params }: Props) {
     ],
   };
 
+  const categorySeo = {
+    title: {
+      ru: category.seoTitle?.ru || catName,
+      uz: category.seoTitle?.uz || catName,
+    },
+    description: {
+      ru: catDesc,
+      uz: category.seoDescription?.uz || category.description?.uz || '',
+    },
+    ogImageUrl: category.ogImage || category.image || category.imageUrl || '',
+  };
+
   return (
     <>
       <script
@@ -249,8 +230,9 @@ export default async function CategoryPage({ params }: Props) {
       />
       <CatalogPageClient
         lang={lang}
-        initialCategories={allCategories}
+        initialCategories={categories}
         selectedCategoryId={category.id}
+        categorySeo={categorySeo}
         siteSettings={site}
         translations={t}
       />

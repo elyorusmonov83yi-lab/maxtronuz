@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { db } from '@/server/db';
-import CatalogPageClient from '../../../catalog/CatalogPageClient';
+import CategoryDetailView from '@/components/views/CategoryDetailView';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -23,55 +23,59 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-async function getCategoryBySlug(slug: string, lang: 'ru' | 'uz') {
+async function getCategoryData(slug: string, lang: 'ru' | 'uz') {
   try {
-    const [rows]: any = await db.query(
-      `SELECT * FROM categories 
-       WHERE id = ? 
-          OR slug = ? 
-          OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.uz')) = ? 
-          OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.ru')) = ? 
-       LIMIT 1`,
-      [slug, slug, slug, slug]
-    );
+    const decodedSlug = decodeURIComponent(slug).trim().toLowerCase();
 
-    if (rows && rows.length > 0) {
-      const cat = rows[0];
-      return {
+    // 1. Bazadagi barcha toifalarni olish
+    const [allCats]: any = await db.query('SELECT * FROM categories ORDER BY id ASC');
+    let targetCategory: any = null;
+
+    const parsedCategories = (allCats || []).map((cat: any) => {
+      const pSlug = safeJsonParse(cat.slug);
+      const parsedCat = {
         ...cat,
+        slugParsed: pSlug,
         name: safeJsonParse(cat.name),
         description: safeJsonParse(cat.description),
         seoTitle: safeJsonParse(cat.seoTitle),
         seoDescription: safeJsonParse(cat.seoDescription),
         seoKeywords: safeJsonParse(cat.seoKeywords),
-        slugParsed: safeJsonParse(cat.slug),
       };
-    }
 
-    const [allCats]: any = await db.query('SELECT * FROM categories');
-    for (const cat of allCats || []) {
-      const parsedSlug = safeJsonParse(cat.slug);
       if (
-        cat.id === slug ||
-        cat.slug === slug ||
-        parsedSlug.uz === slug ||
-        parsedSlug.ru === slug
+        String(cat.id).toLowerCase() === decodedSlug ||
+        String(pSlug?.uz || '').toLowerCase() === decodedSlug ||
+        String(pSlug?.ru || '').toLowerCase() === decodedSlug ||
+        String(cat.slug || '').toLowerCase() === decodedSlug
       ) {
-        return {
-          ...cat,
-          name: safeJsonParse(cat.name),
-          description: safeJsonParse(cat.description),
-          seoTitle: safeJsonParse(cat.seoTitle),
-          seoDescription: safeJsonParse(cat.seoDescription),
-          seoKeywords: safeJsonParse(cat.seoKeywords),
-          slugParsed: parsedSlug,
-        };
+        targetCategory = parsedCat;
       }
-    }
+      return parsedCat;
+    });
 
-    return null;
+    if (!targetCategory) return null;
+
+    // 2. Aynan shu toifaga tegishli mahsulotlarni bazadan to'g'ridan-to'g'ri olish
+    const [productsRows]: any = await db.query(
+      'SELECT * FROM products WHERE categoryId = ? OR category = ?',
+      [targetCategory.id, targetCategory.id]
+    );
+
+    const products = (productsRows || []).map((p: any) => ({
+      ...p,
+      name: safeJsonParse(p.name),
+      slugParsed: safeJsonParse(p.slug),
+      description: safeJsonParse(p.description),
+    }));
+
+    return {
+      category: targetCategory,
+      categories: parsedCategories,
+      products,
+    };
   } catch (err) {
-    console.error('Kategoriyani yuklashda xatolik:', err);
+    console.error('Kategoriya ma’lumotlarini yuklashda xatolik:', err);
     return null;
   }
 }
@@ -82,9 +86,7 @@ async function getSettingsBundle() {
       `SELECT \`key\`, value FROM settings WHERE \`key\` IN ('site_settings', 'translations')`
     );
     const bundle: Record<string, any> = {};
-    for (const row of rows || []) {
-      bundle[row.key] = safeJsonParse(row.value);
-    }
+    for (const r of rows || []) bundle[r.key] = safeJsonParse(r.value);
     return bundle;
   } catch {
     return {};
@@ -94,9 +96,10 @@ async function getSettingsBundle() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const lang = 'uz';
-  const category = await getCategoryBySlug(slug, lang);
+  const data = await getCategoryData(slug, lang);
 
-  if (!category) return {};
+  if (!data) return {};
+  const { category } = data;
 
   const bundle = await getSettingsBundle();
   const site = bundle.site_settings || {};
@@ -112,7 +115,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     category.seoDescription?.uz ||
     category.description?.uz ||
-    `${catName} O‘zbekistonda rasmiy kafolat bilan.`;
+    `${catName} Toshkent va butun O‘zbekiston bo‘ylab rasmiy kafolat bilan.`;
 
   const keywords = Array.isArray(category.seoKeywords?.uz)
     ? category.seoKeywords.uz
@@ -148,7 +151,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName,
       locale: 'uz_UZ',
       type: 'website',
-      images: imageUrl ? [{ url: imageUrl, alt: title }] : [],
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: title,
+            },
+          ]
+        : [],
     },
     twitter: {
       card: 'summary_large_image',
@@ -162,39 +174,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function UzCategoryPage({ params }: Props) {
   const { slug } = await params;
   const lang = 'uz';
-  const category = await getCategoryBySlug(slug, lang);
+  const data = await getCategoryData(slug, lang);
 
-  if (!category) {
-    notFound();
-  }
+  if (!data) notFound();
 
+  const { category, categories, products } = data;
   const bundle = await getSettingsBundle();
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
+
   const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
   const siteName = site.siteName?.uz || site.name || 'MAXTRON';
-
   const catName = category.name?.uz || 'Kategoriya';
+  const catDesc = category.seoDescription?.uz || category.description?.uz || '';
   const currentPath = `/uz/catalog/${category.slugParsed?.uz || slug}`;
 
-  let allCategories: any[] = [];
-  try {
-    const [rows]: any = await db.query(
-      'SELECT id, slug, name, description, image, icon FROM categories ORDER BY id ASC'
-    );
-    allCategories = (rows || []).map((c: any) => {
-      const parsedSlug = safeJsonParse(c.slug);
-      return {
-        ...c,
-        slug: parsedSlug.uz || parsedSlug.ru || c.id,
-        name: safeJsonParse(c.name),
-        description: safeJsonParse(c.description),
-      };
-    });
-  } catch (err) {
-    console.error('Kategoriyalar ro‘yxati xatosi:', err);
-  }
-
+  // Google SEO uchun to'liq Schema.org mikroformati (CollectionPage + BreadcrumbList)
   const categoryJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -204,6 +199,7 @@ export default async function UzCategoryPage({ params }: Props) {
         url: `${baseUrl}${currentPath}`,
         name: catName,
         inLanguage: 'uz-UZ',
+        description: catDesc,
         isPartOf: {
           '@type': 'WebSite',
           '@id': `${baseUrl}/#website`,
@@ -244,10 +240,11 @@ export default async function UzCategoryPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryJsonLd) }}
       />
-      <CatalogPageClient
+      <CategoryDetailView
         lang={lang}
-        initialCategories={allCategories}
-        selectedCategoryId={category.id}
+        category={category}
+        categories={categories}
+        products={products}
         siteSettings={site}
         translations={t}
       />

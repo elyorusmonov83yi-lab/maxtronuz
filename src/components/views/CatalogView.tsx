@@ -124,19 +124,28 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   const [loading, setLoading] = useState(true);
 
   // Ma'lumotlarni yuklash (serverdan bo'sh kelsa yoki API dan olish uchun)
+ // Синхронизация категорий и загрузка товаров
+  useEffect(() => {
+    if (Array.isArray(initialCategories) && initialCategories.length > 0) {
+      setCategoriesList(initialCategories);
+    }
+  }, [initialCategories]);
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
-    Promise.all([
-      ApiService.getProducts().catch(() => StorageService.getProducts()),
-      initialCategories && initialCategories.length > 0 
-        ? Promise.resolve(initialCategories)
-        : ApiService.getCategories().catch(() => StorageService.getCategories())
-    ]).then(([prods, cats]) => {
+    const prodsPromise = ApiService.getProducts().catch(() => StorageService.getProducts());
+    const catsPromise = initialCategories && initialCategories.length > 0
+      ? Promise.resolve(initialCategories)
+      : ApiService.getCategories().catch(() => StorageService.getCategories());
+
+    Promise.all([prodsPromise, catsPromise]).then(([prods, cats]) => {
       if (isMounted) {
         if (Array.isArray(prods)) setProductsList(prods);
-        if (Array.isArray(cats) && cats.length > 0) setCategoriesList(cats);
+        if ((!initialCategories || initialCategories.length === 0) && Array.isArray(cats) && cats.length > 0) {
+          setCategoriesList(cats);
+        }
         setLoading(false);
       }
     }).catch(() => {
@@ -146,8 +155,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [initialCategories]);
-
+  }, []);
   const currentCategoryObj = useMemo(() => {
     if (currentSlugParam === 'all' || currentSlugParam === '[object Object]') return null;
     return categoriesList.find((c) => {

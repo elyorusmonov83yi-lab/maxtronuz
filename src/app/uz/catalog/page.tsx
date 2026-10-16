@@ -151,10 +151,11 @@ export default async function UzCatalogPage() {
   let categories: any[] = [];
   try {
     const [catRows]: any = await db.query(
-      'SELECT id, slug, name, description, image, icon FROM categories ORDER BY id ASC'
+      'SELECT id, parentId, slug, name, description, image, icon FROM categories ORDER BY id ASC'
     );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
+      parentId: cat.parentId || null,
       name: safeJsonParse(cat.name),
       description: safeJsonParse(cat.description),
     }));
