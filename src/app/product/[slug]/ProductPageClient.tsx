@@ -16,7 +16,6 @@ interface ProductPageClientProps {
 
 export const ProductPageClient: React.FC<ProductPageClientProps> = ({
   product,
-  category,
   lang = 'ru',
   siteSettings,
   translations,
@@ -24,7 +23,6 @@ export const ProductPageClient: React.FC<ProductPageClientProps> = ({
 }) => {
   const [comparedProducts, setComparedProducts] = useState<string[]>([]);
 
-  // localStorage bilan sinxronlash
   useEffect(() => {
     setComparedProducts(StorageService.getComparedProductIds());
 
@@ -63,10 +61,7 @@ export const ProductPageClient: React.FC<ProductPageClientProps> = ({
   return (
     <ProductDetailView
       product={product}
-      category={category}
       currentLang={lang}
-      siteSettings={siteSettings}
-      translations={translations}
       onOpenQuote={(p: Product) => {
         if (onOpenQuoteModal) {
           onOpenQuoteModal(p);
