@@ -47,7 +47,13 @@ async function getSettings(): Promise<{ home: Record<string, any>; seo: Record<s
 
 export async function generateMetadata(): Promise<Metadata> {
   const { home, seo } = await getSettings();
-  const baseUrl = 'https://maxtron.uz';
+  const domain =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+  process.env.VERCEL_URL ||
+  'maxtron.uz';
+
+const baseUrl = domain.startsWith('http') ? domain.replace(/\/+$/, '') : `https://${domain.replace(/\/+$/, '')}`;
 
   // 1. Sarlavha (SEO Title)
   const titleRu = home.seoTitle?.ru || home.ogTitle?.ru || 'MAXTRON — Контрольно-измерительные приборы';
