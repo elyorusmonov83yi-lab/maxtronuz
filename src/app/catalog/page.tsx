@@ -24,6 +24,23 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
+}
+
 async function getCatalogSettingsBundle() {
   try {
     const [rows]: any = await db.query(
@@ -57,16 +74,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const seo = bundle.catalog_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  // Admin paneldan kiritilgan Title (ru)
+  // Admin paneldan kiritilgan Title
   const rawTitle = seo.title?.[lang] || site.catalogTitle?.[lang] || siteName;
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
-  // Admin paneldan kiritilgan Description (ru)
+  // Admin paneldan kiritilgan Description
   const description = seo.description?.[lang] || site.description?.[lang] || '';
 
   // Admin paneldan kiritilgan Keywords
@@ -77,10 +94,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .map((k: string) => k.trim())
         .filter(Boolean);
 
-  // Cloudflare R2 dagi rasm
-  let imageUrl = seo.ogImageUrl || site.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  // Rasm URL manzili va zaxira rasm fallback
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = '';
+  }
+
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/catalog');
@@ -104,23 +130,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: currentPath,
       siteName,
       locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          width: Number(seo.ogImageWidth) || 1200,
+          height: Number(seo.ogImageHeight) || 630,
+          alt: title,
+        },
+      ],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -134,7 +158,7 @@ export default async function CatalogPage({ params }: Props) {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
   const title = seo.title?.[lang] || siteName;
   const description = seo.description?.[lang] || site.description?.[lang] || '';

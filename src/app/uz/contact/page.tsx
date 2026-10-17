@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { ContactClient } from '@/app/contact/ContactClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
   if (typeof data === 'object') return data as Record<string, any>;
@@ -13,6 +16,23 @@ function safeJsonParse(data: unknown): Record<string, any> {
     }
   }
   return {};
+}
+
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
 }
 
 async function getContactDataBundle() {
@@ -42,7 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = bundle.contact_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const rawTitle = seo.title?.[lang] || 'Bog‘lanish va rekvizitlar';
@@ -58,16 +78,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const currentPath = '/uz/contact';
   const canonicalUrl = `${baseUrl}${currentPath}`;
 
-  // Mutlaq va Base64'dan tozalangan rasm URL
-  let rawImg = seo.ogImageUrl || site.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
-    rawImg = 'https://maxtron.uz/og-image.jpg';
+    rawImg = '';
   }
 
-  let imageUrl = rawImg;
-  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    const cleanPath = imageUrl.replace(/^\/+/, '');
-    imageUrl = `${baseUrl}/${cleanPath}`;
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   return {
@@ -75,10 +97,10 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     alternates: {
-      canonical: canonicalUrl,
+      canonical: currentPath,
       languages: {
-        ru: `${baseUrl}/contact`,
-        uz: canonicalUrl,
+        ru: '/contact',
+        uz: currentPath,
       },
     },
     openGraph: {
@@ -88,23 +110,21 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName,
       locale: 'uz_UZ',
       type: 'website',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              secureUrl: imageUrl,
-              width: 1200,
-              height: 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          secureUrl: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -117,7 +137,7 @@ export default async function UzbekContactPage() {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const rawTitle = seo.title?.[lang] || 'Bog‘lanish va rekvizitlar';

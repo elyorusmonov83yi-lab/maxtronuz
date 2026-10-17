@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import AboutClient from '@/app/about/AboutClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
   if (typeof data === 'object') return data as Record<string, any>;
@@ -13,6 +16,23 @@ function safeJsonParse(data: unknown): Record<string, any> {
     }
   }
   return {};
+}
+
+// Domenni dinamik aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
 }
 
 async function getAboutDataBundle() {
@@ -58,7 +78,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const lang: 'uz' = 'uz';
   const { seo, siteSettings } = await getAboutDataBundle();
 
-  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const rawTitle = seo.title?.[lang] || 'Kompaniya haqida';
@@ -71,16 +91,18 @@ export async function generateMetadata(): Promise<Metadata> {
     siteSettings.description?.[lang] ||
     "MAXTRON korxonasi haqida ma'lumotlar va sanoat avtomatikasini yetkazib berish bo‘yicha faoliyat yo'nalishlari.";
 
-  // Base64 dan tozalangan toza rasm URL olish
-  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
-    rawImg = 'https://maxtron.uz/og-image.jpg';
+    rawImg = '';
   }
 
-  let imageUrl = rawImg;
-  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    const cleanPath = imageUrl.replace(/^\/+/, '');
-    imageUrl = `${baseUrl}/${cleanPath}`;
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/about');
@@ -105,23 +127,21 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName,
       locale: 'uz_UZ',
       type: 'website',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              secureUrl: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          secureUrl: imageUrl,
+          width: Number(seo.ogImageWidth) || 1200,
+          height: Number(seo.ogImageHeight) || 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -130,7 +150,7 @@ export default async function UzbekAboutPage() {
   const lang: 'uz' = 'uz';
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
-  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
   const title = seo.title?.[lang] || 'Kompaniya haqida';
   const description = seo.description?.[lang] || siteSettings.description?.[lang] || '';

@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { ContactClient } from './ContactClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type Props = {
   params: Promise<{ locale?: string }>;
 };
@@ -18,6 +21,23 @@ function safeJsonParse(data: unknown): Record<string, any> {
     }
   }
   return {};
+}
+
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
 }
 
 // Bazadan sayt sozlamalari, aloqa SEO va tarjimalarni olish
@@ -54,7 +74,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const seo = bundle.contact_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const defaultTitle = lang === 'uz' ? 'Bog‘lanish va Rekvizitlar' : 'Контакты и реквизиты';
@@ -77,16 +97,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .map((k: string) => k.trim())
         .filter(Boolean);
 
-  // Base64 bo'lmagan toza va mutlaq URL olish
-  let rawImg = seo.ogImageUrl || site.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
-    rawImg = 'https://maxtron.uz/og-image.jpg';
+    rawImg = '';
   }
 
-  let imageUrl = rawImg;
-  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    const cleanPath = imageUrl.replace(/^\/+/, '');
-    imageUrl = `${baseUrl}/${cleanPath}`;
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/contact');
@@ -112,23 +134,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName,
       locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
       type: 'website',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              secureUrl: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          secureUrl: imageUrl,
+          width: Number(seo.ogImageWidth) || 1200,
+          height: Number(seo.ogImageHeight) || 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -142,7 +162,7 @@ export default async function ContactPage({ params }: Props) {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = (site.baseUrl || site.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const defaultTitle = lang === 'uz' ? 'Bog‘lanish va Rekvizitlar' : 'Контакты и реквизиты';
@@ -184,7 +204,7 @@ export default async function ContactPage({ params }: Props) {
         name: siteName,
         url: baseUrl,
         logo: site.logoUrl ? `${baseUrl}/${site.logoUrl.replace(/^\/+/, '')}` : undefined,
-        image: site.defaultOgImage ? `${baseUrl}/${site.defaultOgImage.replace(/^\/+/, '')}` : undefined,
+        image: site.defaultOgImage ? `${baseUrl}/${site.defaultOgImage.replace(/^\/+/, '')}` : `${baseUrl}/og-image.jpg`,
         telephone: site.phone || undefined,
         email: site.email || undefined,
         address: site.address

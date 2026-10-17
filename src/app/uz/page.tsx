@@ -19,19 +19,19 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Domenni dinamik aniqlash
+// Domenni dinamik va to'g'ri aniqlash
 function getBaseUrl(canonicalFromDb?: string): string {
-  if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
-    return canonicalFromDb.trim().replace(/\/$/, '');
-  }
   if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
   }
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
+  }
+  if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
+    return canonicalFromDb.trim().replace(/\/+$/, '');
   }
   return 'https://maxtron.uz';
 }
@@ -71,7 +71,6 @@ export async function generateMetadata(): Promise<Metadata> {
     home.heroTitle?.uz ||
     'MAXTRON';
 
-  // O'zbek tili uchun dinamik SEO
   const title =
     home.seoTitle?.uz ||
     home.ogTitle?.uz ||
@@ -82,7 +81,7 @@ export async function generateMetadata(): Promise<Metadata> {
     home.seoDescription?.uz ||
     home.ogDescription?.uz ||
     home.heroSubtitle?.uz ||
-    '';
+    "Toshkentda sanoat va o'lchov uskunalarini yetkazib berish";
 
   let rawImage =
     home.ogImage?.uz ||
@@ -91,7 +90,6 @@ export async function generateMetadata(): Promise<Metadata> {
     site.defaultOgImage ||
     '';
 
-  // Base64 rasmlarni bloklash
   if (typeof rawImage === 'string' && rawImage.startsWith('data:')) {
     rawImage = '';
   }
@@ -100,7 +98,9 @@ export async function generateMetadata(): Promise<Metadata> {
   if (rawImage) {
     imageUrl = rawImage.startsWith('http')
       ? rawImage
-      : `${baseUrl}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+      : `${baseUrl}/${rawImage.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const currentPath = '/uz';
@@ -126,23 +126,21 @@ export async function generateMetadata(): Promise<Metadata> {
       url: currentPath,
       siteName,
       locale: 'uz_UZ',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: 1200,
-              height: 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -191,7 +189,6 @@ export default async function UzbekHomePage() {
     console.error('Home data error:', err);
   }
 
-  // Schema.org: O'zbek sahifasi uchun
   const homeJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [

@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { FinderClient } from './FinderClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
   if (typeof data === 'object') return data as Record<string, any>;
@@ -13,6 +16,23 @@ function safeJsonParse(data: unknown): Record<string, any> {
     }
   }
   return {};
+}
+
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
 }
 
 async function getPageData() {
@@ -35,7 +55,7 @@ async function getPageData() {
   }
 }
 
-function normalizePath(path: string): string {
+function normalizePath(path?: string): string {
   if (!path) return '/equipment-finder';
   return path.startsWith('/') ? path : `/${path}`;
 }
@@ -47,7 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = pageData.finder_seo || {};
   const site = pageData.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const rawTitle = seo.title?.[lang] || 'Подбор оборудования — Интерактивный конфигуратор';
@@ -55,8 +75,25 @@ export async function generateMetadata(): Promise<Metadata> {
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
-  const description = seo.description?.[lang] || 'Онлайн конфигуратор для точного подбора контрольно-измерительных приборов и датчиков.';
+  const description =
+    seo.description?.[lang] ||
+    'Онлайн конфигуратор для точного подбора контрольно-измерительных приборов и датчиков.';
   const rawPath = normalizePath(seo.canonicalPath);
+  const canonicalUrl = `${baseUrl}${rawPath}`;
+
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = '';
+  }
+
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
+  }
 
   return {
     metadataBase: new URL(baseUrl),
@@ -72,10 +109,24 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: rawPath,
+      url: canonicalUrl,
       siteName,
       locale: 'ru_RU',
       type: 'website',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
     },
   };
 }
@@ -88,7 +139,7 @@ export default async function FinderPage() {
   const site = pageData.site_settings || {};
   const t = pageData.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
   const title = seo.title?.[lang] || 'Подбор оборудования';
   const description = seo.description?.[lang] || '';

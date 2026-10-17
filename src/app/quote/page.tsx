@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { QuoteClient } from './QuoteClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function safeParse(val: any): Record<string, any> {
   if (!val) return {};
   if (typeof val === 'object') return val;
@@ -14,6 +17,23 @@ function safeParse(val: any): Record<string, any> {
     }
   }
   return {};
+}
+
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
 }
 
 async function getQuoteSettingsBundle() {
@@ -42,7 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = bundle.quote_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const title =
@@ -56,10 +76,25 @@ export async function generateMetadata(): Promise<Metadata> {
     'Оформить официальный запрос коммерческого предложения на поставку контрольно-измерительных приборов.';
 
   const canonicalPath = seo.canonicalPath || '/quote';
+  const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  let imageUrl = seo.ogImage?.[lang] || seo.ogImageUrl || site.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  let rawImg =
+    seo.ogImage?.[lang] ||
+    seo.ogImageUrl ||
+    site.defaultOgImage ||
+    '';
+
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = '';
+  }
+
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const keywords = Array.isArray(seo.keywords?.[lang] || seo.keywords)
@@ -84,26 +119,24 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: seo.ogTitle?.[lang] || title,
       description: seo.ogDescription?.[lang] || description,
-      url: canonicalPath,
+      url: canonicalUrl,
       siteName,
       locale: 'ru_RU',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          width: Number(seo.ogImageWidth) || 1200,
+          height: Number(seo.ogImageHeight) || 630,
+          alt: title,
+        },
+      ],
       type: 'website',
     },
     twitter: {
       card: (seo.twitterCard as 'summary' | 'summary_large_image') || 'summary_large_image',
       title: seo.twitterTitle?.[lang] || title,
       description: seo.twitterDescription?.[lang] || description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -115,7 +148,7 @@ export default async function QuotePage() {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
   const title = seo.title?.[lang] || seo.seoTitle?.[lang] || 'Запрос КП';

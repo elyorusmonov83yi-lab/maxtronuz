@@ -21,6 +21,23 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
+}
+
 // Bazadan barcha kerakli sozlamalarni olish (catalog_seo, site_settings, translations)
 async function getCatalogSettingsBundle() {
   try {
@@ -54,7 +71,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = bundle.catalog_seo || {};
   const site = bundle.site_settings || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.uz || site.siteName?.ru || site.name || 'MAXTRON';
 
   // 1. Dinamik O'zbekcha Title
@@ -77,10 +94,19 @@ export async function generateMetadata(): Promise<Metadata> {
         .map((k: string) => k.trim())
         .filter(Boolean);
 
-  // 4. Cloudflare R2 dagi OpenGraph rasmi
-  let imageUrl = seo.ogImageUrl || site.defaultOgImage || '';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  // 4. Rasm URL va zaxira fallback
+  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = '';
+  }
+
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/catalog');
@@ -92,10 +118,10 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
-      canonical: `${baseUrl}${currentPath}`,
+      canonical: currentPath,
       languages: {
-        ru: `${baseUrl}${rawPath}`,
-        uz: `${baseUrl}${currentPath}`,
+        ru: rawPath,
+        uz: currentPath,
       },
     },
     openGraph: {
@@ -105,22 +131,20 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName,
       locale: 'uz_UZ',
       type: 'website',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: Number(seo.ogImageWidth) || 1200,
-              height: Number(seo.ogImageHeight) || 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          width: Number(seo.ogImageWidth) || 1200,
+          height: Number(seo.ogImageHeight) || 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -133,7 +157,7 @@ export default async function UzCatalogPage() {
   const site = bundle.site_settings || {};
   const t = bundle.translations || {};
 
-  const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
+  const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.uz || site.siteName?.ru || site.name || 'MAXTRON';
   const rawTitle = seo.title?.uz || site.catalogTitle?.uz || 'MAXTRON uskunalar katalogi';
   const title = siteName && !rawTitle.includes(siteName) ? `${rawTitle} — ${siteName}` : rawTitle;
@@ -147,7 +171,7 @@ export default async function UzCatalogPage() {
   const catalogLabel = t.breadcrumbCatalog?.uz || title;
   const loadingText = t.loading?.uz || 'Yuklanmoqda...';
 
-  // 1. Kategoriyalarni serverda (SSR) to'liq yuklash — SEO va tezlik uchun muhim!
+  // 1. Kategoriyalarni serverda (SSR) to'liq yuklash
   let categories: any[] = [];
   try {
     const [catRows]: any = await db.query(
@@ -163,7 +187,7 @@ export default async function UzCatalogPage() {
     console.error('O‘zbekcha katalog toifalarini yuklashda xatolik:', err);
   }
 
-  // 2. Schema.org: CollectionPage + BreadcrumbList mikroformati (Google qidiruv tizimi uchun)
+  // 2. Schema.org: CollectionPage + BreadcrumbList
   const catalogJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [

@@ -9,7 +9,6 @@ type Props = {
   params?: Promise<{ locale?: string }>;
 };
 
-// Xavfsiz JSON parser
 function safeParse(val: any): Record<string, any> {
   if (!val) return {};
   if (typeof val === 'object') return val;
@@ -23,29 +22,27 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Domenni avtomatik va dinamik aniqlash
+// Domenni dinamik va to'g'ri aniqlash
 function getBaseUrl(canonicalFromDb?: string): string {
-  // 1. Agar admin panelda kiritilgan bo'lsa
-  if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
-    return canonicalFromDb.trim().replace(/\/$/, '');
-  }
-  // 2. Environment o'zgaruvchisi
+  // Agar ataylab .env o'rnatilgan bo'lsa
   if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
   }
-  // 3. Vercel production domen
+  // Vercel Production domeni
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
-  // 4. Vercel joriy deployment domen
+  // Vercel joriy domeni (masalan maxtronuz.vercel.app)
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  // 5. Zaxira domen
+  // Agar bazada bor bo'lsa va yuqoridagilar bo'lmasa
+  if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
+    return canonicalFromDb.trim().replace(/\/+$/, '');
+  }
   return 'https://maxtron.uz';
 }
 
-// Baza orqali umumiy sayt va bosh sahifa sozlamalarini olish
 async function getSettingsBundle() {
   try {
     const [rows]: any = await db.query(
@@ -75,7 +72,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = bundle.site_settings || {};
   const seoSettings = bundle.seo || {};
 
-  // Dinamik baseUrl
   const baseUrl = getBaseUrl(home.canonicalUrl);
   const siteName =
     site.siteName?.[lang] ||
@@ -94,7 +90,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     home.heroSubtitle?.[lang] ||
     'Поставки промышленного и измерительного оборудования в Ташкенте';
 
-  // OG rasmni saralash
+  // OG rasmni aniqlash
   let rawImage =
     home.ogImage?.[lang] ||
     home.ogImage?.[lang === 'ru' ? 'uz' : 'ru'] ||
@@ -102,7 +98,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     site.defaultOgImage ||
     '';
 
-  // Base64 rasmlarni bloklash
   if (typeof rawImage === 'string' && rawImage.startsWith('data:')) {
     rawImage = '';
   }
@@ -111,7 +106,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (rawImage) {
     imageUrl = rawImage.startsWith('http')
       ? rawImage
-      : `${baseUrl}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+      : `${baseUrl}/${rawImage.replace(/^\/+/, '')}`;
+  } else {
+    // Agar bazada rasm belgilanmagan bo'lsa, zaxiradagi default rasm
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   const currentPath = lang === 'uz' ? '/uz' : '/';
@@ -137,23 +135,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: currentPath,
       siteName,
       locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: 1200,
-              height: 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -166,7 +162,6 @@ export default async function HomePage({ params }: Props) {
   const home = bundle.home || {};
   const site = bundle.site_settings || {};
 
-  // Dinamik baseUrl
   const baseUrl = getBaseUrl(home.canonicalUrl);
   const siteName =
     site.siteName?.[lang] ||
@@ -204,7 +199,6 @@ export default async function HomePage({ params }: Props) {
     console.error('Home data error:', err);
   }
 
-  // Schema.org mikroma'lumotlari
   const homeJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [

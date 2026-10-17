@@ -3,6 +3,7 @@ import { db } from '@/server/db';
 import { CertificatesClient } from '@/app/certificates/CertificatesClient';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function safeParse(val: any): any {
   if (!val) return null;
@@ -15,6 +16,23 @@ function safeParse(val: any): any {
     }
   }
   return null;
+}
+
+// Domenni dinamik va to'g'ri aniqlash
+function getBaseUrl(dbUrl?: string): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (dbUrl && dbUrl.trim().startsWith('http')) {
+    return dbUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://maxtron.uz';
 }
 
 async function getCertificatesDataBundle() {
@@ -54,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const lang: 'uz' = 'uz';
   const { seo, siteSettings } = await getCertificatesDataBundle();
 
-  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const title =
@@ -70,9 +88,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalPath = '/uz/certificates';
   const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  let imageUrl = seo.ogImageUrl || siteSettings.defaultOgImage || 'https://maxtron.uz/og-image.jpg';
-  if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-    imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || '';
+  if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
+    rawImg = '';
+  }
+
+  let imageUrl = '';
+  if (rawImg) {
+    imageUrl = rawImg.startsWith('http')
+      ? rawImg
+      : `${baseUrl}/${rawImg.replace(/^\/+/, '')}`;
+  } else {
+    imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
   return {
@@ -93,23 +120,21 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName,
       locale: 'uz_UZ',
       type: 'website',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              secureUrl: imageUrl,
-              width: 1200,
-              height: 630,
-              alt: title,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: imageUrl,
+          secureUrl: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }
@@ -118,7 +143,7 @@ export default async function UzbekCertificatesPage() {
   const lang: 'uz' = 'uz';
   const { certificates, siteSettings, translations } = await getCertificatesDataBundle();
 
-  const baseUrl = (siteSettings.baseUrl || siteSettings.url || 'https://maxtron.uz').replace(/\/+$/, '');
+  const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const currentPath = '/uz/certificates';
