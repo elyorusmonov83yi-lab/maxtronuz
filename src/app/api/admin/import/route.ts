@@ -6,70 +6,96 @@ export async function POST(request: Request) {
     const { products } = await request.json();
 
     if (!Array.isArray(products) || products.length === 0) {
-      return NextResponse.json({ error: "Yuklash uchun tovarlar topilmadi" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Import qilish uchun tovarlar topilmadi." },
+        { status: 400 }
+      );
     }
 
-    let count = 0;
+    let inserted = 0;
+    let updated = 0;
 
     for (const item of products) {
-      const slugVal = item.slug || item.model || '';
-      const slugJson = JSON.stringify({
-        ru: slugVal,
-        uz: slugVal,
-      });
+      const modelVal = String(item.model || item.code || '').trim();
+      const slugVal = String(item.slug?.ru || item.slug || item.id || modelVal)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '') || `prod-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      const nameJson = JSON.stringify({
-        ru: item.name_ru || item.name || '',
-        uz: item.name_uz || item.name || '',
-      });
+      const idVal = String(item.id || slugVal || `p-${Date.now()}-${inserted + updated}`).trim();
 
-      const descJson = JSON.stringify({
-        ru: item.description_ru || '',
-        uz: item.description_uz || '',
-      });
+      const nameObj = typeof item.name === 'object' && item.name !== null
+        ? item.name
+        : { ru: String(item.name || item.title || modelVal), uz: String(item.name_uz || item.name || item.title || modelVal) };
 
-      const seoTitleJson = JSON.stringify({
-        ru: item.seo_title_ru || '',
-        uz: item.seo_title_uz || '',
-      });
+      const descObj = typeof item.description === 'object' && item.description !== null
+        ? item.description
+        : { ru: String(item.description || ''), uz: String(item.description_uz || item.description || '') };
 
-      const seoDescJson = JSON.stringify({
-        ru: item.seo_desc_ru || '',
-        uz: item.seo_desc_uz || '',
-      });
+      const slugObj = typeof item.slug === 'object' && item.slug !== null
+        ? item.slug
+        : { ru: slugVal, uz: slugVal };
 
-      await db.query(
+      const brandIdVal = String(item.brand_id || item.brand || 'b-maxtron').trim().toLowerCase().replace(/\s+/g, '-');
+      const categoryIdVal = String(item.categoryId || item.category || 'all').trim();
+      const imageVal = String(item.image || item.imageUrl || item.image_url || '').trim();
+      const priceVal = Number(item.price) || 0;
+      const inStockVal = item.inStock !== undefined ? (item.inStock ? 1 : 0) : (item.in_stock ? 1 : 0);
+
+      const [result]: any = await db.query(
         `INSERT INTO products (
-          model, brand, price, in_stock, image,
-          slug, name, description, seo_title, seo_description
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, model, brand_id, categoryId, category,
+          slug, title, name, description,
+          image, imageUrl, price, inStock, isActive
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         ON DUPLICATE KEY UPDATE
+          model = VALUES(model),
+          brand_id = VALUES(brand_id),
+          categoryId = VALUES(categoryId),
+          category = VALUES(category),
+          slug = VALUES(slug),
+          title = VALUES(title),
           name = VALUES(name),
           description = VALUES(description),
-          seo_title = VALUES(seo_title),
-          seo_description = VALUES(seo_description),
           image = VALUES(image),
+          imageUrl = VALUES(imageUrl),
           price = VALUES(price),
-          in_stock = VALUES(in_stock)`,
+          inStock = VALUES(inStock),
+          isActive = 1`,
         [
-          item.model || slugVal,
-          item.brand || 'MAXTRON',
-          Number(item.price) || 0,
-          item.in_stock ? 1 : 0,
-          item.image_url || item.image || '',
-          slugJson,
-          nameJson,
-          descJson,
-          seoTitleJson,
-          seoDescJson,
+          idVal,
+          modelVal || idVal,
+          brandIdVal,
+          categoryIdVal,
+          categoryIdVal,
+          JSON.stringify(slugObj),
+          JSON.stringify(nameObj),
+          JSON.stringify(nameObj),
+          JSON.stringify(descObj),
+          imageVal,
+          imageVal,
+          priceVal,
+          inStockVal,
         ]
       );
-      count++;
+
+      if (result.affectedRows === 1) {
+        inserted++;
+      } else if (result.affectedRows === 2) {
+        updated++;
+      }
     }
 
-    return NextResponse.json({ success: true, count });
+    return NextResponse.json({
+      success: true,
+      message: `Import muvaffaqiyatli yakunlandi: ${inserted} ta yangi qo'shildi, ${updated} ta yangilandi.`,
+      stats: { inserted, updated, total: products.length },
+    });
   } catch (error: any) {
-    console.error('Import jarayonida xatolik:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Import API xatosi:", error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Bazada saqlashda xatolik yuz berdi." },
+      { status: 500 }
+    );
   }
 }
