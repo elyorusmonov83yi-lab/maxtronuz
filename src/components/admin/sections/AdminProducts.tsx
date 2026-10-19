@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import ProductImportBtn from '../ProductImportBtn';
 import { 
   Search, 
   Plus, 
@@ -50,7 +51,6 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
     return getLocalizedText(cat.name, 'ru', '') || getLocalizedText(cat.name, 'uz', catId);
   };
 
-  // Mavjud barcha brendlar
   const availableBrands = useMemo(() => {
     const brands = new Set<string>();
     products.forEach((p) => {
@@ -127,7 +127,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
               <option value="all">Barcha kategoriyalar ({products.length})</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {getLocalizedText(c.name, 'ru', '') || getLocalizedText(c.name, 'uz', c.id)}
+                  {getLocalizedText(c.name, 'ru', '') || getLocalizedText(cat.name, 'uz', c.id)}
                 </option>
               ))}
             </select>
@@ -148,7 +148,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
             </select>
           </div>
         </div>
-
+        <ProductImportBtn />
         <button
           type="button"
           onClick={handleCreateNew}

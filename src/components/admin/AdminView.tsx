@@ -54,6 +54,7 @@ import { AdminAboutSettings } from './sections/AdminAboutSettings';
 import { AdminContactSettings } from './sections/AdminContactSettings';
 import { AdminSeoSettings } from './sections/AdminSeoSettings';
 import { AdminTelegramSettings } from './sections/AdminTelegramSettings';
+import ProductImportBtn from './ProductImportBtn';
 interface AdminViewProps {
   currentLang: Language;
 }
