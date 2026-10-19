@@ -127,7 +127,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
               <option value="all">Barcha kategoriyalar ({products.length})</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {getLocalizedText(c.name, 'ru', '') || getLocalizedText(cat.name, 'uz', c.id)}
+                  {getLocalizedText(c.name, 'ru', '') || getLocalizedText(c.name, 'uz', c.id)}
                 </option>
               ))}
             </select>
