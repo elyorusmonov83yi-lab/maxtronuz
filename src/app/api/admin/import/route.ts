@@ -17,27 +17,53 @@ export async function POST(request: Request) {
 
     for (const item of products) {
       const modelVal = String(item.model || item.code || '').trim();
-      const slugVal = String(item.slug?.ru || item.slug || item.id || modelVal)
+
+      // Nomlarni aniqlash: name_ru, name_uz, title_ru yoki obyekt shaklida kelganda
+      let nameRu = '';
+      let nameUz = '';
+
+      if (typeof item.name === 'object' && item.name !== null) {
+        nameRu = String(item.name.ru || item.name_ru || item.title || '').trim();
+        nameUz = String(item.name.uz || item.name_uz || nameRu).trim();
+      } else {
+        nameRu = String(item.name_ru || item.title_ru || item.name || item.title || modelVal).trim();
+        nameUz = String(item.name_uz || item.title_uz || item.name || nameRu).trim();
+      }
+
+      // Agar nom baribir bo'sh bo'lsa, oxirgi chora sifatida model olinadi
+      if (!nameRu) nameRu = modelVal;
+      if (!nameUz) nameUz = nameRu;
+
+      const nameObj = { ru: nameRu, uz: nameUz };
+
+      // Tavsifni aniqlash
+      let descRu = '';
+      let descUz = '';
+
+      if (typeof item.description === 'object' && item.description !== null) {
+        descRu = String(item.description.ru || item.description_ru || '').trim();
+        descUz = String(item.description.uz || item.description_uz || '').trim();
+      } else {
+        descRu = String(item.description_ru || item.description || '').trim();
+        descUz = String(item.description_uz || '').trim();
+      }
+
+      const descObj = { ru: descRu, uz: descUz };
+
+      // Slug va ID shakllantirish
+      const rawSlug = String(item.slug?.ru || item.slug || item.id || modelVal);
+      const slugVal = rawSlug
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '') || `prod-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-      const idVal = String(item.id || slugVal || `p-${Date.now()}-${inserted + updated}`).trim();
-
-      const nameObj = typeof item.name === 'object' && item.name !== null
-        ? item.name
-        : { ru: String(item.name || item.title || modelVal), uz: String(item.name_uz || item.name || item.title || modelVal) };
-
-      const descObj = typeof item.description === 'object' && item.description !== null
-        ? item.description
-        : { ru: String(item.description || ''), uz: String(item.description_uz || item.description || '') };
 
       const slugObj = typeof item.slug === 'object' && item.slug !== null
         ? item.slug
         : { ru: slugVal, uz: slugVal };
 
-      const brandIdVal = String(item.brand_id || item.brand || 'b-maxtron').trim().toLowerCase().replace(/\s+/g, '-');
-      const categoryIdVal = String(item.categoryId || item.category || 'all').trim();
+      const idVal = String(item.id || slugVal || `p-${Date.now()}-${inserted + updated}`).trim();
+      const brandIdVal = String(item.brand_id || item.brand || 'maxtron').trim().toLowerCase().replace(/\s+/g, '-');
+      const categoryIdVal = String(item.categoryId || item.category_id || item.category || 'all').trim();
       const imageVal = String(item.image || item.imageUrl || item.image_url || '').trim();
       const priceVal = Number(item.price) || 0;
       const inStockVal = item.inStock !== undefined ? (item.inStock ? 1 : 0) : (item.in_stock ? 1 : 0);
