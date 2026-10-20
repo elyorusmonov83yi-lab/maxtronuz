@@ -78,6 +78,19 @@ const cleanCategoryTitle = (title: string): string => {
   return title.replace(/\s+(uz|ru)$/i, '').trim();
 };
 
+const getPaginationRange = (currentPage: number, totalPages: number): (number | string)[] => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, '...', totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+};
+
 export const CatalogView: React.FC<CatalogViewProps> = ({
   currentLang,
   initialCategory = 'all',
@@ -114,17 +127,14 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(9);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   const [productsList, setProductsList] = useState<Product[]>([]);
-  // Serverdan (MariaDB) kelgan initialCategories bo'lsa darhol oladi
   const [categoriesList, setCategoriesList] = useState<CategoryInfo[]>(() => 
     Array.isArray(initialCategories) && initialCategories.length > 0 ? initialCategories : []
   );
   const [loading, setLoading] = useState(true);
 
-  // Ma'lumotlarni yuklash (serverdan bo'sh kelsa yoki API dan olish uchun)
- // Синхронизация категорий и загрузка товаров
   useEffect(() => {
     if (Array.isArray(initialCategories) && initialCategories.length > 0) {
       setCategoriesList(initialCategories);
@@ -156,6 +166,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
       isMounted = false;
     };
   }, []);
+
   const currentCategoryObj = useMemo(() => {
     if (currentSlugParam === 'all' || currentSlugParam === '[object Object]') return null;
     return categoriesList.find((c) => {
@@ -215,7 +226,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     }));
   };
 
-  // SEO (MariaDB catalogSeo bo'lsa undan foydalanadi)
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
@@ -289,7 +299,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     return Array.from(brands).sort();
   }, [productsList, currentLang]);
 
-  // Mahsulotlar filtri
   const filteredProducts = useMemo(() => {
     return productsList.filter((product) => {
       if (!product) return false;
@@ -717,13 +726,16 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
                 <select
                   value={itemsPerPage}
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
                   className="px-3 py-2.5 rounded-2xl bg-gray-950 border border-gray-800 text-xs font-semibold text-gray-300 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
-                  <option value={6}>6</option>
-                  <option value={9}>9</option>
                   <option value={12}>12</option>
-                  <option value={18}>18</option>
+                  <option value={24}>24</option>
+                  <option value={36}>36</option>
+                  <option value={48}>48</option>
                 </select>
 
                 <div className="hidden sm:flex items-center bg-gray-950 p-1 rounded-2xl border border-gray-800">
@@ -819,7 +831,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 <span className="font-bold text-white font-mono">{totalPages}</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
@@ -830,19 +842,30 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                   <ChevronLeft className="w-4 h-4" />
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`min-w-[36px] h-9 px-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
-                      pageNum === currentPage
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 scale-105'
-                        : 'bg-gray-950 text-gray-300 hover:bg-gray-800 border border-gray-800'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                ))}
+                {getPaginationRange(currentPage, totalPages).map((item, index) => {
+                  if (item === '...') {
+                    return (
+                      <span key={`dots-${index}`} className="min-w-[32px] text-center text-gray-500 font-bold select-none">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  const pageNum = Number(item);
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`min-w-[36px] h-9 px-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+                        pageNum === currentPage
+                          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/25 scale-105'
+                          : 'bg-gray-950 text-gray-300 hover:bg-gray-800 border border-gray-800'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
 
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
