@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
     topbarWarehouse: { uz: 'Toshkent ombori: 200+ model mavjud', ru: 'Склад в Ташкенте: 200+ моделей в наличии' },
     topbarDelivery: { uz: 'O‘zbekiston bo‘ylab ekspress yetkazish', ru: 'Экспресс-доставка по всему Узбекистану' },
     topbarSchedule: { uz: 'Dush-Shan: 09:00 - 18:00', ru: 'Пн-Сб: 09:00 - 18:00' },
-    phone: '+998 71 200-88-44',
+    phone: '+998 70 049 99 00',
     email: 'info@maxtron.uz',
     telegramUser: '@maxtron_uz',
     telegramUrl: 'https://t.me/maxtron_uz'
