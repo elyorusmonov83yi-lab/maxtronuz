@@ -53,17 +53,6 @@ export interface CatalogViewProps {
   onShowToast?: (msg: string) => void;
 }
 
-const setMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
-  if (typeof document === 'undefined' || !content) return;
-  let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
-  if (!element) {
-    element = document.createElement('meta');
-    element.setAttribute(attrName, attrValue);
-    document.head.appendChild(element);
-  }
-  element.setAttribute('content', content);
-};
-
 const stripHtml = (html: string): string => {
   if (!html) return '';
   return html
@@ -225,52 +214,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
       [catId]: !prev[catId]
     }));
   };
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    let pageTitle = '';
-    let pageDesc = '';
-    let pageKeywords = '';
-
-    if (currentSlugParam === 'all' || !currentCategoryObj) {
-      pageTitle = getLocalizedText(catalogSeo?.title, currentLang) || (currentLang === 'ru' 
-        ? 'Каталог контрольно-измерительных приборов — MAXTRON Узбекистан' 
-        : 'Nazorat va o‘lchov uskunalari katalogi — MAXTRON O‘zbekiston');
-
-      pageDesc = getLocalizedText(catalogSeo?.description, currentLang) || (currentLang === 'ru'
-        ? 'Широкий ассортимент промышленных и измерительных приборов со склада в Ташкенте. Официальная гарантия и поверка.'
-        : 'Toshkent omborida mavjud sanoat va o‘lchash uskunalarining keng assortimenti. Rasmiy kafolat va metrologik qiyoslash.');
-
-      pageKeywords = getLocalizedText(catalogSeo?.keywords, currentLang) || (currentLang === 'ru'
-        ? 'каталог приборов, купить измерительное оборудование, ташкент склад'
-        : 'uskunalar katalogi, o‘lchov asboblari narxi, toshkent ombor');
-    } else {
-      const catName = cleanCategoryTitle(getLocalizedText(currentCategoryObj.name, currentLang, currentCategoryObj.id));
-      pageTitle = `${catName} — MAXTRON Industrial Supply`;
-      pageDesc = stripHtml(getLocalizedText(currentCategoryObj.description, currentLang)) || `${catName} ${currentLang === 'ru' ? 'по дистрибьюторским ценам со склада в Ташкенте.' : 'Toshkent omboridan rasmiy kafolat bilan.'}`;
-      pageKeywords = `${catName.toLowerCase()}, купить ${catName.toLowerCase()}, maxtron`;
-    }
-
-    document.title = pageTitle;
-    setMetaTag('name', 'description', pageDesc);
-    setMetaTag('name', 'keywords', pageKeywords);
-
-    const ogTitle = pageTitle;
-    const ogDesc = pageDesc;
-    let ogImage = catalogSeo?.ogImageUrl || siteSettings?.defaultOgImage || '/logo.png';
-    if (ogImage && !ogImage.startsWith('http') && typeof window !== 'undefined') {
-      ogImage = window.location.origin + (ogImage.startsWith('/') ? '' : '/') + ogImage;
-    }
-
-    setMetaTag('property', 'og:title', ogTitle);
-    setMetaTag('property', 'og:description', ogDesc);
-    setMetaTag('property', 'og:image', ogImage);
-    setMetaTag('property', 'og:type', 'website');
-    if (typeof window !== 'undefined') {
-      setMetaTag('property', 'og:url', window.location.href);
-    }
-  }, [currentSlugParam, currentCategoryObj, currentLang, catalogSeo, siteSettings]);
 
   useEffect(() => {
     setCurrentPage(1);
