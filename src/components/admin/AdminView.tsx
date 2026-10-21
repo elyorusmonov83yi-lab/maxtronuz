@@ -500,16 +500,30 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
     }
   };
 
-  const handleSaveContact = async (e: React.FormEvent) => {
+const handleSaveContact = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
+      // 1. Kontakt ma'lumotlarini saqlash
       await ApiService.saveSetting('contact', contactSettings);
-      showNotification('Aloqa ma‘lumotlari bazaga saqlandi!', 'success');
+
+      // 2. SEO sozlamalariga contact SEO'sini ham qo'shib saqlash
+      const updatedSeo = {
+        ...seoSettings,
+        pageSeo: {
+          ...seoSettings?.pageSeo,
+          ...pageSeoSettings,
+          contact: pageSeoSettings?.contact,
+        },
+      };
+
+      await ApiService.saveSetting('seo', updatedSeo);
+      setSeoSettings(updatedSeo);
+
+      showNotification('Aloqa va SEO ma‘lumotlari bazaga saqlandi!', 'success');
     } catch {
       showNotification('Xatolik: saqlanmadi', 'error');
     }
   };
-
   const handleSaveAbout = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
@@ -851,6 +865,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
             <AdminContactSettings
               contactSettings={contactSettings}
               setContactSettings={setContactSettings}
+              pageSeoSettings={pageSeoSettings}
+              setPageSeoSettings={setPageSeoSettings}
               handleSaveContact={handleSaveContact}
             />
           )}

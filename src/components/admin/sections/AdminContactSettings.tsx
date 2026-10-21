@@ -48,7 +48,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
   const contactSeo = (pageSeoSettings?.contact || {}) as any;
   const currentOgImage = contactSeo.ogImage || contactSeo.ogImageUrl || '';
 
-  // OG Rasm yuklash (Serverga yuklab toza URL oladi)
+  // OG Rasm yuklash
   const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -61,14 +61,17 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
     try {
       setIsUploadingOg(true);
       const url = await ApiService.uploadFile(file);
-      setPageSeoSettings?.((prev) => ({
-        ...prev,
-        contact: {
-          ...prev.contact,
-          ogImage: url,
-          ogImageUrl: url
-        }
-      }));
+      setPageSeoSettings?.((prev: any) => {
+        const safePrev = prev || {};
+        return {
+          ...safePrev,
+          contact: {
+            ...(safePrev.contact || {}),
+            ogImage: url,
+            ogImageUrl: url
+          }
+        };
+      });
     } catch (err: any) {
       alert('OG rasm yuklashda xatolik: ' + (err?.message || 'Server xatosi'));
     } finally {
@@ -92,18 +95,48 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
     setContactSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-  // SEO maydonlarini yangilash
+  // SEO maydonlarini xavfsiz va aniq yangilash funksiyasi
   const handleSeoChange = (field: string, value: string) => {
-    setPageSeoSettings?.((prev) => ({
-      ...prev,
-      contact: {
-        ...prev.contact,
-        [field]: {
-          ...(prev.contact as any)?.[field],
-          [contactLang]: value
-        }
+    if (!setPageSeoSettings) return;
+
+    setPageSeoSettings((prev: any) => {
+      const safePrev = prev || {};
+      const prevContact = safePrev.contact || {};
+      const currentVal = prevContact[field];
+
+      // Agar oldingi qiymat string bo'lsa yoki bo'sh bo'lsa, uni to'g'ri { uz, ru } obyektiga aylantiramiz
+      let fieldObj: { uz: string; ru: string } = { uz: '', ru: '' };
+      if (typeof currentVal === 'object' && currentVal !== null) {
+        fieldObj = {
+          uz: currentVal.uz || '',
+          ru: currentVal.ru || ''
+        };
+      } else if (typeof currentVal === 'string') {
+        fieldObj = {
+          uz: currentVal,
+          ru: currentVal
+        };
       }
-    }));
+
+      fieldObj[contactLang] = value;
+
+      return {
+        ...safePrev,
+        contact: {
+          ...prevContact,
+          [field]: fieldObj
+        }
+      };
+    });
+  };
+
+  // Qiymatni input uchun xavfsiz o'qib beruvchi yordamchi funksiya
+  const getSeoFieldValue = (field: string): string => {
+    const val = contactSeo[field];
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') return val[contactLang] || '';
+    return String(val);
   };
 
   return (
@@ -438,7 +471,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
             <input
               type="text"
               placeholder={contactLang === 'ru' ? "Контакты — MAXTRON" : "Aloqa — MAXTRON"}
-              value={contactSeo.title?.[contactLang] || contactSeo.metaTitle?.[contactLang] || ''}
+              value={getSeoFieldValue('title') || getSeoFieldValue('metaTitle')}
               onChange={(e) => handleSeoChange('title', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
@@ -451,7 +484,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
             <textarea
               rows={2}
               placeholder={contactLang === 'ru' ? "Свяжитесь с MAXTRON..." : "MAXTRON bilan bog‘laning..."}
-              value={contactSeo.description?.[contactLang] || contactSeo.metaDescription?.[contactLang] || ''}
+              value={getSeoFieldValue('description') || getSeoFieldValue('metaDescription')}
               onChange={(e) => handleSeoChange('description', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
@@ -464,7 +497,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
             <input
               type="text"
               placeholder="maxtron aloqa, telefon, ofis"
-              value={contactSeo.keywords?.[contactLang] || ''}
+              value={getSeoFieldValue('keywords')}
               onChange={(e) => handleSeoChange('keywords', e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500"
             />
@@ -520,14 +553,17 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
                   {currentOgImage && (
                     <button
                       type="button"
-                      onClick={() => setPageSeoSettings?.((prev) => ({
-                        ...prev,
-                        contact: {
-                          ...prev.contact,
-                          ogImage: '',
-                          ogImageUrl: ''
-                        }
-                      }))}
+                      onClick={() => setPageSeoSettings?.((prev: any) => {
+                        const safePrev = prev || {};
+                        return {
+                          ...safePrev,
+                          contact: {
+                            ...(safePrev.contact || {}),
+                            ogImage: '',
+                            ogImageUrl: ''
+                          }
+                        };
+                      })}
                       className="p-2 rounded-xl bg-gray-800 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 transition cursor-pointer"
                       title="Tozalash"
                     >
@@ -542,14 +578,17 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
                   value={currentOgImage}
                   onChange={(e) => {
                     const val = e.target.value.trim();
-                    setPageSeoSettings?.((prev) => ({
-                      ...prev,
-                      contact: {
-                        ...prev.contact,
-                        ogImage: val,
-                        ogImageUrl: val
-                      }
-                    }));
+                    setPageSeoSettings?.((prev: any) => {
+                      const safePrev = prev || {};
+                      return {
+                        ...safePrev,
+                        contact: {
+                          ...(safePrev.contact || {}),
+                          ogImage: val,
+                          ogImageUrl: val
+                        }
+                      };
+                    });
                   }}
                   className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
                 />
@@ -585,7 +624,7 @@ export const AdminContactSettings: React.FC<AdminContactSettingsProps> = ({
           <span>«Aloqa» sozlamalarini saqlash</span>
         </button>
       </div>
-cl  s
+
     </form>
   );
 };
