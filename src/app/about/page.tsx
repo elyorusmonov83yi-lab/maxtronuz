@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { db } from '@/server/db';
-import AboutClient from '@/app/about/AboutClient';
+import AboutClient from './AboutClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,7 +18,6 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-// Domenni dinamik va to'g'ri aniqlash
 function getBaseUrl(dbUrl?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
@@ -49,10 +48,7 @@ async function getAboutDataBundle() {
       }
     }
 
-    // 1. Asosiy kontent
     const content = bundle.about || bundle.about_content || {};
-
-    // 2. SEO sozlamalari (Admin panel: pageSeo.about)
     const rawSeo = bundle.seo || bundle.seo_settings || bundle.page_seo || {};
     const aboutSeo =
       rawSeo?.pageSeo?.about ||
@@ -67,7 +63,7 @@ async function getAboutDataBundle() {
       translations: bundle.translations || {},
     };
   } catch (err) {
-    console.error('UZ About ma’lumotlarini yuklashda xatolik:', err);
+    console.error('RU About ma’lumotlarini yuklashda xatolik:', err);
     return {
       content: {},
       seo: {},
@@ -78,50 +74,45 @@ async function getAboutDataBundle() {
 }
 
 function normalizePath(path: string): string {
-  if (!path) return '/uz/about';
+  if (!path) return '/about';
   return path.startsWith('/') ? path : `/${path}`;
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = 'uz';
+  const lang = 'ru'; // Qat'iy rus tili
   const { seo, siteSettings } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
-  // Admin panel: pageSeo.about.title.uz
+  // Faqat RU qiymatni oladi
   const rawTitle =
-    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    'Biz haqimizda — MAXTRON';
+    (typeof seo.title === 'object' ? seo.title?.ru : seo.title) ||
+    'О компании — MAXTRON';
 
   const title =
     siteName && !rawTitle.includes(siteName)
       ? `${rawTitle} — ${siteName}`
       : rawTitle;
 
-  // Admin panel: pageSeo.about.description.uz
   const description =
-    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
+    (typeof seo.description === 'object' ? seo.description?.ru : seo.description) ||
     siteSettings.description?.[lang] ||
-    'Toshkentda nazorat-o‘lchov asboblari va sanoat avtomatikasini yetkazib berish.';
+    'Поставки промышленного контрольно-измерительного оборудования в Ташкенте.';
 
-  // Admin panel: pageSeo.about.keywords.uz
   const rawKeywords =
-    typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
+    typeof seo.keywords === 'object' ? seo.keywords?.ru : seo.keywords || '';
   const keywords =
     typeof rawKeywords === 'string' && rawKeywords.trim()
       ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
       : [];
 
-  // Admin panel: pageSeo.about.ogTitle.uz
   const ogTitle =
-    (typeof seo.ogTitle === 'object' ? seo.ogTitle?.[lang] : seo.ogTitle) || title;
+    (typeof seo.ogTitle === 'object' ? seo.ogTitle?.ru : seo.ogTitle) || title;
 
-  // Admin panel: pageSeo.about.ogDescription.uz
   const ogDescription =
-    (typeof seo.ogDescription === 'object' ? seo.ogDescription?.[lang] : seo.ogDescription) || description;
+    (typeof seo.ogDescription === 'object' ? seo.ogDescription?.ru : seo.ogDescription) || description;
 
-  // Admin panel: pageSeo.about.ogImage
   let rawImg =
     seo.ogImage ||
     seo.ogImageUrl ||
@@ -141,7 +132,7 @@ export async function generateMetadata(): Promise<Metadata> {
     imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
-  const rawPath = normalizePath(seo.canonicalPath || '/uz/about');
+  const rawPath = normalizePath(seo.canonicalPath || '/about');
   const canonicalUrl = `${baseUrl}${rawPath}`;
 
   return {
@@ -161,7 +152,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: ogDescription,
       url: canonicalUrl,
       siteName,
-      locale: 'uz_UZ',
+      locale: 'ru_RU',
       type: 'website',
       images: [
         {
@@ -182,16 +173,16 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function AboutPageUz() {
-  const lang = 'uz';
+export default async function AboutPage() {
+  const lang = 'ru'; // Qat'iy rus tili
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
   const rawTitle =
-    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    'Biz haqimizda — MAXTRON';
+    (typeof seo.title === 'object' ? seo.title?.ru : seo.title) ||
+    'О компании — MAXTRON';
 
   const title =
     siteName && !rawTitle.includes(siteName)
@@ -199,16 +190,15 @@ export default async function AboutPageUz() {
       : rawTitle;
 
   const description =
-    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
+    (typeof seo.description === 'object' ? seo.description?.ru : seo.description) ||
     '';
 
-  const rawPath = normalizePath(seo.canonicalPath || '/uz/about');
-  const homePath = `${baseUrl}/uz`;
+  const rawPath = normalizePath(seo.canonicalPath || '/about');
+  const homePath = `${baseUrl}/`;
 
-  const homeLabel = translations.breadcrumbHome?.[lang] || 'Bosh sahifa';
+  const homeLabel = translations.breadcrumbHome?.[lang] || 'Главная';
   const aboutLabel = translations.breadcrumbAbout?.[lang] || title;
 
-  // Schema.org Structured Data
   const aboutJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -217,7 +207,7 @@ export default async function AboutPageUz() {
         '@id': `${baseUrl}${rawPath}#webpage`,
         url: `${baseUrl}${rawPath}`,
         name: title,
-        inLanguage: 'uz-UZ',
+        inLanguage: 'ru-RU',
         description,
         mainEntity: {
           '@type': 'Organization',

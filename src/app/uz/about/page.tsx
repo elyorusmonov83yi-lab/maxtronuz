@@ -51,7 +51,7 @@ async function getAboutDataBundle() {
 
     const content = bundle.about || bundle.about_content || {};
 
-    // Admin panel SEO joylashuvi: bundle.seo.pageSeo.about
+    // Admin panel SEO: bundle.seo.pageSeo.about
     const rawSeo = bundle.seo || bundle.seo_settings || {};
     const seo = rawSeo?.pageSeo?.about || rawSeo?.about || bundle.about_seo || {};
 
@@ -78,28 +78,28 @@ function normalizePath(path: string): string {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang: 'uz' = 'uz';
+  const lang: 'ru' = 'ru';
   const { seo, siteSettings } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
-  // Admin panel: title (uz)
+  // Admin panel: title (ru)
   const rawTitle =
     (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    'Biz haqimizda — MAXTRON';
+    'О компании — MAXTRON';
 
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
-  // Admin panel: description (uz)
+  // Admin panel: description (ru)
   const description =
     (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     siteSettings.description?.[lang] ||
-    "MAXTRON korxonasi haqida ma'lumotlar va sanoat avtomatikasini yetkazib berish bo‘yicha faoliyat yo'nalishlari.";
+    'Поставки промышленного контрольно-измерительного оборудования в Ташкенте.';
 
-  // Admin panel: keywords (uz)
+  // Admin panel: keywords (ru)
   const rawKeywords =
     typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
   const keywords =
@@ -128,8 +128,7 @@ export async function generateMetadata(): Promise<Metadata> {
     imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
-  const rawPath = normalizePath(seo.canonicalPath || '/about');
-  const currentPath = `/uz${rawPath}`;
+  const currentPath = normalizePath(seo.canonicalPath || '/about');
   const canonicalUrl = `${baseUrl}${currentPath}`;
 
   return {
@@ -140,8 +139,8 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: currentPath,
       languages: {
-        ru: rawPath,
-        uz: currentPath,
+        ru: currentPath,
+        uz: `/uz${currentPath}`,
       },
     },
     openGraph: {
@@ -149,7 +148,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: ogDescription,
       url: canonicalUrl,
       siteName,
-      locale: 'uz_UZ',
+      locale: 'ru_RU',
       type: 'website',
       images: [
         {
@@ -170,8 +169,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function UzbekAboutPage() {
-  const lang: 'uz' = 'uz';
+export default async function RussianAboutPage() {
+  const lang: 'ru' = 'ru';
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
@@ -179,7 +178,7 @@ export default async function UzbekAboutPage() {
 
   const rawTitle =
     (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    'Biz haqimizda — MAXTRON';
+    'О компании — MAXTRON';
 
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
@@ -190,11 +189,10 @@ export default async function UzbekAboutPage() {
     siteSettings.description?.[lang] ||
     '';
 
-  const rawPath = normalizePath(seo.canonicalPath || '/about');
-  const currentPath = `/uz${rawPath}`;
-  const homePath = `${baseUrl}/uz`;
+  const currentPath = normalizePath(seo.canonicalPath || '/about');
+  const homePath = `${baseUrl}/`;
 
-  const homeLabel = translations.breadcrumbHome?.[lang] || 'Bosh sahifa';
+  const homeLabel = translations.breadcrumbHome?.[lang] || 'Главная';
   const aboutLabel = translations.breadcrumbAbout?.[lang] || title;
 
   const aboutJsonLd = {
@@ -205,7 +203,7 @@ export default async function UzbekAboutPage() {
         '@id': `${baseUrl}${currentPath}#webpage`,
         url: `${baseUrl}${currentPath}`,
         name: title,
-        inLanguage: 'uz-UZ',
+        inLanguage: 'ru-RU',
         description,
         mainEntity: {
           '@type': 'Organization',
