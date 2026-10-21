@@ -20,7 +20,7 @@ import { StorageService } from '../../services/storage';
 import { getLocalizedText, getSafeProductSlug, getSafeCategorySlug } from '../../utils/formatters';
 import { ClientsSlider } from '../ClientsSlider';
 import { DynamicIcon } from '../DynamicIcon';
-import { SeoManager } from '../SeoManager';
+
 
 export interface HomeViewProps {
   currentLang: Language;
@@ -143,7 +143,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div>
-      <SeoManager currentLang={currentLang} homeContent={homeCms} />
 
       {/* 1. Hero Section */}
       <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden border-b border-gray-800/50 pt-12 pb-20">

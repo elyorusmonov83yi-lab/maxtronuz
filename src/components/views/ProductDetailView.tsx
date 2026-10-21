@@ -39,7 +39,7 @@ import {
 } from '../../utils/formatters';
 import { ApiService } from '../../services/api';
 import { StorageService } from '../../services/storage';
-import { SeoManager } from '../SeoManager';
+
 
 export interface ProductDetailViewProps {
   product?: Product;
@@ -249,7 +249,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
   ];
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-      <SeoManager currentLang={currentLang} product={product} />
+     
       <Breadcrumbs currentLang={currentLang} items={breadcrumbs} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
