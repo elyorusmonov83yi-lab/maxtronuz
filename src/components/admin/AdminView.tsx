@@ -224,11 +224,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
       setBrands(StorageService.getBrands?.() || []);
     });
 
-    ApiService.getSetting('home').then((data) => data && setHomeContent(data));
+  ApiService.getSetting('home').then((data) => data && setHomeContent(data));
     ApiService.getSetting('about').then((data) => data && setAboutContent(data));
     ApiService.getSetting('contact').then((data) => data && setContactSettings(data));
-    ApiService.getSetting('seo').then((data) => data && setSeoSettings(data));
-  }, []);
+    ApiService.getSetting('seo').then((data) => {
+      if (data) {
+        setSeoSettings(data);
+        if (data.pageSeo) {
+          setPageSeoSettings(data.pageSeo);
+        }
+      }
+    });
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -499,13 +505,39 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
     }
   };
 
-  const handleSaveAbout = async (e: React.FormEvent) => {
+     const handleSaveAbout = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
+      // 1. «Biz haqimizda» matnlarini saqlash
       await ApiService.saveSetting('about', aboutContent);
-      showNotification('«Biz haqimizda» ma‘lumotlari bazaga saqlandi!', 'success');
+
+      // 2. SEO sozlamalari ichiga pageSeoSettings.about ni birlashtirish
+      const updatedSeo = {
+        ...seoSettings,
+        pageSeo: {
+          ...seoSettings?.pageSeo,
+          ...pageSeoSettings,
+          about: pageSeoSettings?.about,
+        },
+      };
+
+      // 3. Bazaga va statelarga saqlash
+      await ApiService.saveSetting('seo', updatedSeo);
+      setSeoSettings(updatedSeo);
+      setPageSeoSettings(updatedSeo.pageSeo);
+
+      showNotification('«Biz haqimizda» va SEO sozlamalari bazaga saqlandi!', 'success');
     } catch {
-      showNotification('Xatolik: saqlanmadi', 'error');
+      showNotification('Xatolik: ma‘lumotlar saqlanmadi', 'error');
+    }
+  };
+
+      await ApiService.saveSetting('seo', updatedSeo);
+      setSeoSettings(updatedSeo);
+
+      showNotification('«Biz haqimizda» va SEO sozlamalari bazaga saqlandi!', 'success');
+    } catch {
+      showNotification('Xatolik: ma‘lumotlar saqlanmadi', 'error');
     }
   };
 
