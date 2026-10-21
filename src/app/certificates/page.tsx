@@ -39,7 +39,7 @@ async function getCertificatesDataBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('certificates', 'site_certificates', 'certificates_seo', 'site_settings', 'translations')`
+       WHERE \`key\` IN ('certificates', 'site_certificates', 'seo', 'seo_settings', 'site_settings', 'translations')`
     );
 
     const bundle: Record<string, any> = {};
@@ -49,11 +49,15 @@ async function getCertificatesDataBundle() {
       }
     }
 
+    // Admin paneldan keluvchi to'g'ri SEO yo'li: seo.pageSeo.certificates
+    const rawSeo = bundle.seo || bundle.seo_settings || {};
+    const certSeo = rawSeo?.pageSeo?.certificates || {};
+
     const certificatesList = bundle.certificates || bundle.site_certificates || [];
 
     return {
       certificates: Array.isArray(certificatesList) ? certificatesList : [],
-      seo: bundle.certificates_seo || {},
+      seo: certSeo,
       siteSettings: bundle.site_settings || {},
       translations: bundle.translations || {},
     };
@@ -75,20 +79,28 @@ export async function generateMetadata(): Promise<Metadata> {
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
+  // Admin panel kiritgan qiymatlar yoki zaxira matnlar
   const title =
     seo.title?.[lang] ||
-    seo.seoTitle?.[lang] ||
-    'Сертификаты и лицензии — MAXTRON';
+    'Сертификаты и Разрешительная документация — MAXTRON';
 
   const description =
     seo.description?.[lang] ||
-    seo.seoDescription?.[lang] ||
     'Свидетельства Госреестра Узстандарт, сертификаты ISO 9001 и разрешительная документация на поставляемое контрольно-измерительное оборудование.';
+
+  const rawKeywords = seo.keywords?.[lang] || '';
+  const keywords =
+    typeof rawKeywords === 'string' && rawKeywords.trim()
+      ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
+      : [];
+
+  const ogTitle = seo.ogTitle?.[lang] || title;
+  const ogDescription = seo.ogDescription?.[lang] || description;
 
   const canonicalPath = '/certificates';
   const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || '';
+  let rawImg = seo.ogImage || seo.ogImageUrl || siteSettings.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
     rawImg = '';
   }
@@ -106,6 +118,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(baseUrl),
     title,
     description,
+    ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
       canonical: canonicalPath,
       languages: {
@@ -114,8 +127,8 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     openGraph: {
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       url: canonicalUrl,
       siteName,
       locale: 'ru_RU',
@@ -126,14 +139,14 @@ export async function generateMetadata(): Promise<Metadata> {
           secureUrl: imageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: ogTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       images: [imageUrl],
     },
   };

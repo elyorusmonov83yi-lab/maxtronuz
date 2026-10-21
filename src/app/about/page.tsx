@@ -5,6 +5,10 @@ import AboutClient from './AboutClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+type Props = {
+  params?: Promise<{ locale?: string }>;
+};
+
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
   if (typeof data === 'object') return data as Record<string, any>;
@@ -18,7 +22,7 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-// Domenni dinamik va to'g'ri aniqlash
+// Domenni aniqlash
 function getBaseUrl(dbUrl?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
@@ -39,7 +43,7 @@ async function getAboutDataBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('about', 'about_content', 'about_seo', 'site_settings', 'translations', 'seo_settings')`
+       WHERE \`key\` IN ('about', 'about_content', 'seo', 'seo_settings', 'page_seo', 'site_settings', 'translations')`
     );
 
     const bundle: Record<string, any> = {};
@@ -49,50 +53,80 @@ async function getAboutDataBundle() {
       }
     }
 
+    // 1. Asosiy kontent (aboutContent)
     const content = bundle.about || bundle.about_content || {};
-    const seo = bundle.about_seo || bundle.seo_settings?.pageSeo?.about || {};
+
+    // 2. SEO sozlamalari (Admin panel: pageSeoSettings.about yoki seo.pageSeo.about)
+    const rawSeo = bundle.seo || bundle.seo_settings || bundle.page_seo || {};
+    const aboutSeo =
+      rawSeo?.about ||
+      rawSeo?.pageSeo?.about ||
+      bundle.about_seo ||
+      {};
 
     return {
       content,
-      seo,
+      seo: aboutSeo,
       siteSettings: bundle.site_settings || {},
-      translations: bundle.translations || {}
+      translations: bundle.translations || {},
     };
   } catch (err) {
-    console.error('Kompaniya ma’lumotlarini yuklashda xatolik:', err);
+    console.error('About ma’lumotlarini yuklashda xatolik:', err);
     return {
       content: {},
       seo: {},
       siteSettings: {},
-      translations: {}
+      translations: {},
     };
   }
 }
 
-function normalizePath(path: string): string {
-  if (!path) return '/about';
-  return path.startsWith('/') ? path : `/${path}`;
-}
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const resolvedParams = params ? await params : undefined;
+  const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const lang: 'ru' = 'ru';
   const { seo, siteSettings } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || seo.title || 'О компании';
-  const title = siteName && !rawTitle.includes(siteName)
-    ? `${rawTitle} — ${siteName}`
-    : rawTitle;
+  // Admin panel: title (uz/ru)
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    (lang === 'uz' ? 'Kompaniya haqida' : 'О компании');
 
+  const title =
+    siteName && !rawTitle.includes(siteName)
+      ? `${rawTitle} — ${siteName}`
+      : rawTitle;
+
+  // Admin panel: description (uz/ru)
   const description =
-    seo.description?.[lang] ||
-    seo.description ||
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     siteSettings.description?.[lang] ||
-    'Поставки промышленного контрольно-измерительного оборудования, автоматики и метрологических приборов в Ташкенте и по всему Узбекистану.';
+    (lang === 'uz'
+      ? 'Toshkentda nazorat-o‘lchov asboblari va sanoat uskunalarini yetkazib berish.'
+      : 'Поставки промышленного контрольно-измерительного оборудования в Ташкенте.');
 
-  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || '';
+  // Admin panel: keywords (uz/ru)
+  const rawKeywords =
+    typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
+  const keywords =
+    typeof rawKeywords === 'string' && rawKeywords.trim()
+      ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
+      : [];
+
+  // Admin panel: ogTitle (uz/ru)
+  const ogTitle =
+    (typeof seo.ogTitle === 'object' ? seo.ogTitle?.[lang] : seo.ogTitle) || title;
+
+  // Admin panel: ogImage
+  let rawImg =
+    seo.ogImage ||
+    seo.ogImageUrl ||
+    siteSettings.defaultOgImage ||
+    '';
+
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
     rawImg = '';
   }
@@ -106,59 +140,73 @@ export async function generateMetadata(): Promise<Metadata> {
     imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
-  const rawPath = normalizePath(seo.canonicalPath || '/about');
-  const canonicalUrl = `${baseUrl}${rawPath}`;
+  const currentPath = lang === 'uz' ? '/uz/about' : '/about';
+  const canonicalUrl = `${baseUrl}${currentPath}`;
 
   return {
     metadataBase: new URL(baseUrl),
     title,
     description,
+    ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
-      canonical: rawPath,
+      canonical: currentPath,
       languages: {
-        ru: rawPath,
-        uz: `/uz${rawPath}`,
+        ru: '/about',
+        uz: '/uz/about',
       },
     },
     openGraph: {
-      title,
+      title: ogTitle,
       description,
       url: canonicalUrl,
       siteName,
-      locale: 'ru_RU',
+      locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
       type: 'website',
       images: [
         {
           url: imageUrl,
           secureUrl: imageUrl,
-          width: Number(seo.ogImageWidth) || 1200,
-          height: Number(seo.ogImageHeight) || 630,
-          alt: title,
+          width: 1200,
+          height: 630,
+          alt: ogTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: ogTitle,
       description,
       images: [imageUrl],
     },
   };
 }
 
-export default async function AboutPage() {
-  const lang: 'ru' = 'ru';
+export default async function AboutPage({ params }: Props) {
+  const resolvedParams = params ? await params : undefined;
+  const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
+
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
-  const title = seo.title?.[lang] || seo.title || 'О компании';
-  const description = seo.description?.[lang] || seo.description || siteSettings.description?.[lang] || '';
 
-  const rawPath = normalizePath(seo.canonicalPath || '/about');
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    (lang === 'uz' ? 'Kompaniya haqida' : 'О компании');
+
+  const title =
+    siteName && !rawTitle.includes(siteName)
+      ? `${rawTitle} — ${siteName}`
+      : rawTitle;
+
+  const description =
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
+    '';
+
+  const currentPath = lang === 'uz' ? '/uz/about' : '/about';
   const homePath = baseUrl;
 
-  const homeLabel = translations.breadcrumbHome?.[lang] || 'Главная';
+  const homeLabel = translations.breadcrumbHome?.[lang] || (lang === 'uz' ? 'Bosh sahifa' : 'Главная');
   const aboutLabel = translations.breadcrumbAbout?.[lang] || title;
 
   const aboutJsonLd = {
@@ -166,23 +214,25 @@ export default async function AboutPage() {
     '@graph': [
       {
         '@type': 'AboutPage',
-        '@id': `${baseUrl}${rawPath}#webpage`,
-        url: `${baseUrl}${rawPath}`,
+        '@id': `${baseUrl}${currentPath}#webpage`,
+        url: `${baseUrl}${currentPath}`,
         name: title,
-        inLanguage: 'ru-RU',
+        inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
         description,
         mainEntity: {
           '@type': 'Organization',
           '@id': `${baseUrl}/#organization`,
           name: siteName,
           url: baseUrl,
-          logo: siteSettings.logoUrl ? `${baseUrl}/${siteSettings.logoUrl.replace(/^\/+/, '')}` : undefined,
+          logo: siteSettings.logoUrl
+            ? `${baseUrl}/${siteSettings.logoUrl.replace(/^\/+/, '')}`
+            : undefined,
           description,
         },
       },
       {
         '@type': 'BreadcrumbList',
-        '@id': `${baseUrl}${rawPath}#breadcrumb`,
+        '@id': `${baseUrl}${currentPath}#breadcrumb`,
         itemListElement: [
           {
             '@type': 'ListItem',
@@ -194,7 +244,7 @@ export default async function AboutPage() {
             '@type': 'ListItem',
             position: 2,
             name: aboutLabel,
-            item: `${baseUrl}${rawPath}`,
+            item: `${baseUrl}${currentPath}`,
           },
         ],
       },
