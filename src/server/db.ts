@@ -1,9 +1,9 @@
 import mysql from 'mysql2/promise';
 
-const globalForDb = global as unknown as { dbPool?: mysql.Pool };
+const globalForDb = globalThis as unknown as { dbPool?: mysql.Pool };
 
 export const db =
-  globalForDb.dbPool ||
+  globalForDb.dbPool ??
   mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 3306,
@@ -14,12 +14,11 @@ export const db =
       rejectUnauthorized: false,
     },
     waitForConnections: true,
-    connectionLimit: 1, // Har bir Next.js worker faqat 1 ta ulanish ishlatadi
-    queueLimit: 0,      // Ulanish bo'shashini navbatda kutadi, xatolik tashlamaydi
+    connectionLimit: 10, // Parallel so'rovlar (generateMetadata + Page) navbatda qotib qolmasligi uchun
+    queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
   });
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb.dbPool = db;
-}
+// Serverless (Vercel) konteynerida qayta-qayta yangi pool ochilmasligi uchun:
+globalForDb.dbPool = db;
