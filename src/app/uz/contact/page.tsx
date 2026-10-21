@@ -18,7 +18,6 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-// Domenni dinamik va to'g'ri aniqlash
 function getBaseUrl(dbUrl?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
@@ -39,7 +38,7 @@ async function getContactDataBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('contact_seo', 'site_settings', 'translations')`
+       WHERE \`key\` IN ('contact', 'contact_settings', 'seo', 'seo_settings', 'contact_seo', 'site_settings', 'translations')`
     );
 
     const bundle: Record<string, any> = {};
@@ -48,37 +47,68 @@ async function getContactDataBundle() {
         bundle[row.key] = safeJsonParse(row.value);
       }
     }
-    return bundle;
+
+    const rawSeo = bundle.seo || bundle.seo_settings || {};
+    const contactSeo =
+      rawSeo?.pageSeo?.contact ||
+      rawSeo?.contact ||
+      bundle.contact_seo ||
+      {};
+
+    return {
+      contactSettings: bundle.contact || bundle.contact_settings || {},
+      contactSeo,
+      siteSettings: bundle.site_settings || {},
+      translations: bundle.translations || {},
+    };
   } catch (err) {
     console.error('Kontakt ma’lumotlarini yuklashda xatolik:', err);
-    return {};
+    return {
+      contactSettings: {},
+      contactSeo: {},
+      siteSettings: {},
+      translations: {},
+    };
   }
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = 'uz';
-  const bundle = await getContactDataBundle();
-
-  const seo = bundle.contact_seo || {};
-  const site = bundle.site_settings || {};
+  const lang: 'uz' = 'uz';
+  const { contactSeo: seo, siteSettings: site } = await getContactDataBundle();
 
   const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || 'Bog‘lanish va rekvizitlar';
-  const title = siteName && !rawTitle.includes(siteName)
-    ? `${rawTitle} — ${siteName}`
-    : rawTitle;
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    'Bog‘lanish va rekvizitlar';
+
+  const title =
+    siteName && !rawTitle.includes(siteName)
+      ? `${rawTitle} — ${siteName}`
+      : rawTitle;
 
   const description =
-    seo.description?.[lang] ||
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     site.description?.[lang] ||
     "MAXTRON korxonasi bilan bog'lanish: Toshkentdagi manzil, telefonlar, elektron pochta va rasmiy rekvizitlar.";
+
+  const rawKeywords =
+    typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
+  const keywords =
+    typeof rawKeywords === 'string' && rawKeywords.trim()
+      ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
+      : [];
+
+  const ogTitle =
+    (typeof seo.ogTitle === 'object' ? seo.ogTitle?.[lang] : seo.ogTitle) || title;
+  const ogDescription =
+    (typeof seo.ogDescription === 'object' ? seo.ogDescription?.[lang] : seo.ogDescription) || description;
 
   const currentPath = '/uz/contact';
   const canonicalUrl = `${baseUrl}${currentPath}`;
 
-  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
+  let rawImg = seo.ogImage || seo.ogImageUrl || site.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
     rawImg = '';
   }
@@ -96,6 +126,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(baseUrl),
     title,
     description,
+    ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
       canonical: currentPath,
       languages: {
@@ -104,8 +135,8 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     openGraph: {
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       url: canonicalUrl,
       siteName,
       locale: 'uz_UZ',
@@ -116,37 +147,37 @@ export async function generateMetadata(): Promise<Metadata> {
           secureUrl: imageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: ogTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       images: [imageUrl],
     },
   };
 }
 
 export default async function UzbekContactPage() {
-  const lang = 'uz';
-  const bundle = await getContactDataBundle();
-
-  const seo = bundle.contact_seo || {};
-  const site = bundle.site_settings || {};
-  const t = bundle.translations || {};
+  const lang: 'uz' = 'uz';
+  const { contactSettings, contactSeo: seo, siteSettings: site, translations: t } = await getContactDataBundle();
 
   const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || 'Bog‘lanish va rekvizitlar';
-  const title = siteName && !rawTitle.includes(siteName)
-    ? `${rawTitle} — ${siteName}`
-    : rawTitle;
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    'Bog‘lanish va rekvizitlar';
+
+  const title =
+    siteName && !rawTitle.includes(siteName)
+      ? `${rawTitle} — ${siteName}`
+      : rawTitle;
 
   const description =
-    seo.description?.[lang] ||
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     site.description?.[lang] ||
     "MAXTRON bilan bog'lanish ma'lumotlari";
 
@@ -200,7 +231,7 @@ export default async function UzbekContactPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }}
       />
-      <ContactClient
+   <ContactClient
         lang={lang}
         siteSettings={site}
         contactSeo={seo}

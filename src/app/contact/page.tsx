@@ -5,10 +5,6 @@ import { ContactClient } from './ContactClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type Props = {
-  params: Promise<{ locale?: string }>;
-};
-
 // Xavfsiz JSON parser
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
@@ -40,12 +36,12 @@ function getBaseUrl(dbUrl?: string): string {
   return 'https://maxtron.uz';
 }
 
-// Bazadan sayt sozlamalari, aloqa SEO va tarjimalarni olish
+// Bazadan ma'lumotlarni to'g'ri kalitlar bilan olish
 async function getContactDataBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('contact_seo', 'site_settings', 'translations')`
+       WHERE \`key\` IN ('contact', 'contact_settings', 'seo', 'seo_settings', 'contact_seo', 'site_settings', 'translations')`
     );
 
     const bundle: Record<string, any> = {};
@@ -54,10 +50,28 @@ async function getContactDataBundle() {
         bundle[row.key] = safeJsonParse(row.value);
       }
     }
-    return bundle;
+
+    const rawSeo = bundle.seo || bundle.seo_settings || {};
+    const contactSeo =
+      rawSeo?.pageSeo?.contact ||
+      rawSeo?.contact ||
+      bundle.contact_seo ||
+      {};
+
+    return {
+      contactSettings: bundle.contact || bundle.contact_settings || {},
+      contactSeo,
+      siteSettings: bundle.site_settings || {},
+      translations: bundle.translations || {},
+    };
   } catch (err) {
-    console.error('Kontakt ma’lumotlarini yuklashda xatolik:', err);
-    return {};
+    console.error('Kontakt ma’lumotlarini yuklashda xatolik (RU):', err);
+    return {
+      contactSettings: {},
+      contactSeo: {},
+      siteSettings: {},
+      translations: {},
+    };
   }
 }
 
@@ -66,38 +80,40 @@ function normalizePath(path: string): string {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const resolvedParams = await params;
-  const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
-  const bundle = await getContactDataBundle();
-
-  const seo = bundle.contact_seo || {};
-  const site = bundle.site_settings || {};
+export async function generateMetadata(): Promise<Metadata> {
+  const lang: 'ru' = 'ru';
+  const { contactSeo: seo, siteSettings: site } = await getContactDataBundle();
 
   const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const defaultTitle = lang === 'uz' ? 'Bog‘lanish va Rekvizitlar' : 'Контакты и реквизиты';
-  const rawTitle = seo.title?.[lang] || defaultTitle;
+  const defaultTitle = 'Контакты и реквизиты';
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    defaultTitle;
+
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
   const description =
-    seo.description?.[lang] ||
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     site.description?.[lang] ||
-    (lang === 'uz'
-      ? 'MAXTRON kompaniyasi bilan bog‘lanish: Toshkent shahridagi manzil, telefon raqamlari, elektron pochta va rekvizitlar.'
-      : 'Свяжитесь с компанией MAXTRON: контакты офиса в Ташкенте, телефоны отдела продаж, email и официальные реквизиты.');
+    'Свяжитесь с компанией MAXTRON: контакты офиса в Ташкенте, телефоны отдела продаж, email и официальные реквизиты.';
 
-  const keywords = Array.isArray(seo.keywords?.[lang] || seo.keywords)
-    ? seo.keywords?.[lang] || seo.keywords
-    : (seo.keywords?.[lang] || seo.keywords || '')
-        .split(',')
-        .map((k: string) => k.trim())
-        .filter(Boolean);
+  const rawKeywords =
+    typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
+  const keywords =
+    typeof rawKeywords === 'string' && rawKeywords.trim()
+      ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
+      : [];
 
-  let rawImg = seo.ogImageUrl || site.defaultOgImage || '';
+  const ogTitle =
+    (typeof seo.ogTitle === 'object' ? seo.ogTitle?.[lang] : seo.ogTitle) || title;
+  const ogDescription =
+    (typeof seo.ogDescription === 'object' ? seo.ogDescription?.[lang] : seo.ogDescription) || description;
+
+  let rawImg = seo.ogImage || seo.ogImageUrl || site.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
     rawImg = '';
   }
@@ -112,7 +128,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const rawPath = normalizePath(seo.canonicalPath || '/contact');
-  const currentPath = lang === 'uz' ? `/uz${rawPath}` : rawPath;
+  const currentPath = rawPath;
   const canonicalUrl = `${baseUrl}${currentPath}`;
 
   return {
@@ -128,11 +144,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     },
     openGraph: {
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       url: canonicalUrl,
       siteName,
-      locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
+      locale: 'ru_RU',
       type: 'website',
       images: [
         {
@@ -140,46 +156,46 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           secureUrl: imageUrl,
           width: Number(seo.ogImageWidth) || 1200,
           height: Number(seo.ogImageHeight) || 630,
-          alt: title,
+          alt: ogTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       images: [imageUrl],
     },
   };
 }
 
-export default async function ContactPage({ params }: Props) {
-  const resolvedParams = await params;
-  const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
-  const bundle = await getContactDataBundle();
-
-  const seo = bundle.contact_seo || {};
-  const site = bundle.site_settings || {};
-  const t = bundle.translations || {};
+export default async function ContactPage() {
+  const lang: 'ru' = 'ru';
+  const { contactSettings, contactSeo: seo, siteSettings: site, translations: t } = await getContactDataBundle();
 
   const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const defaultTitle = lang === 'uz' ? 'Bog‘lanish va Rekvizitlar' : 'Контакты и реквизиты';
-  const title = seo.title?.[lang] || defaultTitle;
+  const defaultTitle = 'Контакты и реквизиты';
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    defaultTitle;
+
+  const title = siteName && !rawTitle.includes(siteName)
+    ? `${rawTitle} — ${siteName}`
+    : rawTitle;
+
   const description =
-    seo.description?.[lang] ||
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     site.description?.[lang] ||
-    (lang === 'uz'
-      ? 'MAXTRON kompaniyasi bilan bog‘lanish: Toshkent shahridagi manzil, telefon raqamlari, elektron pochta va rekvizitlar.'
-      : 'Свяжитесь с компанией MAXTRON: контакты офиса в Ташкенте, телефоны отдела продаж, email и официальные реквизиты.');
+    'Свяжитесь с компанией MAXTRON: контакты офиса в Ташкенте, телефоны отдела продаж, email и официальные реквизиты.';
 
   const rawPath = normalizePath(seo.canonicalPath || '/contact');
-  const currentPath = lang === 'uz' ? `/uz${rawPath}` : rawPath;
-  const homePath = lang === 'uz' ? `${baseUrl}/uz` : baseUrl;
+  const currentPath = rawPath;
+  const homePath = baseUrl;
 
-  const homeLabel = t.breadcrumbHome?.[lang] || (lang === 'uz' ? 'Bosh sahifa' : 'Главная');
-  const contactLabel = t.breadcrumbContact?.[lang] || (lang === 'uz' ? 'Kontaktlar' : 'Контакты');
+  const homeLabel = t.breadcrumbHome?.[lang] || 'Главная';
+  const contactLabel = t.breadcrumbContact?.[lang] || 'Контакты';
 
   const contactJsonLd = {
     '@context': 'https://schema.org',
@@ -189,7 +205,7 @@ export default async function ContactPage({ params }: Props) {
         '@id': `${baseUrl}${currentPath}#webpage`,
         url: `${baseUrl}${currentPath}`,
         name: title,
-        inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
+        inLanguage: 'ru-RU',
         description,
         isPartOf: {
           '@type': 'WebSite',
@@ -205,33 +221,19 @@ export default async function ContactPage({ params }: Props) {
         url: baseUrl,
         logo: site.logoUrl ? `${baseUrl}/${site.logoUrl.replace(/^\/+/, '')}` : undefined,
         image: site.defaultOgImage ? `${baseUrl}/${site.defaultOgImage.replace(/^\/+/, '')}` : `${baseUrl}/og-image.jpg`,
-        telephone: site.phone || undefined,
-        email: site.email || undefined,
-        address: site.address
+        telephone: contactSettings.phone || site.phone || undefined,
+        email: contactSettings.email || site.email || undefined,
+        address: contactSettings.address || site.address
           ? {
               '@type': 'PostalAddress',
-              streetAddress: site.address.street?.[lang] || site.address.street || '',
-              addressLocality: site.address.city?.[lang] || site.address.city || '',
-              postalCode: site.address.postalCode || undefined,
-              addressCountry: site.address.country || 'UZ',
+              streetAddress:
+                (typeof contactSettings.address === 'object'
+                  ? contactSettings.address?.[lang]
+                  : contactSettings.address) ||
+                site.address?.street?.[lang] ||
+                '',
+              addressCountry: 'UZ',
             }
-          : undefined,
-        geo: site.geo
-          ? {
-              '@type': 'GeoCoordinates',
-              latitude: site.geo.lat,
-              longitude: site.geo.lng,
-            }
-          : undefined,
-        openingHoursSpecification: site.openingHours
-          ? [
-              {
-                '@type': 'OpeningHoursSpecification',
-                dayOfWeek: site.openingHours.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                opens: site.openingHours.opens || '09:00',
-                closes: site.openingHours.closes || '18:00',
-              },
-            ]
           : undefined,
       },
       {
@@ -261,6 +263,7 @@ export default async function ContactPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }}
       />
+     
       <ContactClient
         lang={lang}
         siteSettings={site}
