@@ -396,7 +396,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               : (currentLang === 'ru' ? 'Каталог промышленного оборудования' : 'Sanoat uskunalari katalogi')}
           </h1>
 
-          <p className="text-sm text-gray-400 mt-1 max-w-3xl leading-relaxed">
+          <p className="text-sm text-gray-400 mt-1 leading-relaxed">
             {currentCategoryObj 
               ? stripHtml(getLocalizedText(currentCategoryObj.description, currentLang))
               : (currentLang === 'ru' 

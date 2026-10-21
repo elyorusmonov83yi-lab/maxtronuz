@@ -689,14 +689,22 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
           )}
 
           {activeTab === 'products' && (
-            <AdminProducts
-              products={products}
-              categories={categories}
-              setProductToEdit={setProductToEdit}
-              setIsProductModalOpen={setIsProductModalOpen}
-              triggerDeleteProduct={triggerDeleteProduct}
-              formatPrice={(price) => formatPrice(price, currentLang)}
-            />
+            <div className="space-y-4">
+              {/* Excel Import tugmasi bloki */}
+              <div className="flex justify-end">
+                <ProductImportBtn />
+              </div>
+
+              {/* Asosiy Mahsulotlar jadvali */}
+              <AdminProducts
+                products={products}
+                categories={categories}
+                setProductToEdit={setProductToEdit}
+                setIsProductModalOpen={setIsProductModalOpen}
+                triggerDeleteProduct={triggerDeleteProduct}
+                formatPrice={(price) => formatPrice(price, currentLang)}
+              />
+            </div>
           )}
 
           {activeTab === 'categories' && (
