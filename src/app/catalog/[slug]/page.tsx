@@ -32,22 +32,36 @@ async function getCategoryData(slug: string, lang: 'ru' | 'uz') {
 
     const parsedCategories = (allCats || []).map((cat: any) => {
       const pSlug = safeJsonParse(cat.slug);
+      
+      // Slug oddiy qator bo'lishi ham, JSON bo'lishi ham mumkin:
+      const rawSlugStr = typeof cat.slug === 'string' ? cat.slug.toLowerCase().trim() : '';
+      const slugRu = (pSlug?.ru || rawSlugStr || String(cat.id)).toLowerCase();
+      const slugUz = (pSlug?.uz || rawSlugStr || String(cat.id)).toLowerCase();
+
+      // CamelCase va snake_case ustunlarini qamrab olamiz:
+      const nameParsed = safeJsonParse(cat.name);
+      const descParsed = safeJsonParse(cat.description);
+      const seoTitleParsed = safeJsonParse(cat.seoTitle || cat.seo_title);
+      const seoDescParsed = safeJsonParse(cat.seoDescription || cat.seo_description);
+      const seoKeysParsed = safeJsonParse(cat.seoKeywords || cat.seo_keywords);
+
       const parsedCat = {
         ...cat,
         slugParsed: pSlug,
-        slug: pSlug?.[lang] || pSlug?.ru || cat.id,
-        name: safeJsonParse(cat.name),
-        description: safeJsonParse(cat.description),
-        seoTitle: safeJsonParse(cat.seoTitle),
-        seoDescription: safeJsonParse(cat.seoDescription),
-        seoKeywords: safeJsonParse(cat.seoKeywords),
+        slug: pSlug?.[lang] || pSlug?.ru || cat.slug || cat.id,
+        name: nameParsed,
+        description: descParsed,
+        seoTitle: seoTitleParsed,
+        seoDescription: seoDescParsed,
+        seoKeywords: seoKeysParsed,
       };
 
+      // Qidirilayotgan slug bilan tekshirish:
       if (
         String(cat.id).toLowerCase() === decodedSlug ||
-        String(pSlug?.ru || '').toLowerCase() === decodedSlug ||
-        String(pSlug?.uz || '').toLowerCase() === decodedSlug ||
-        String(cat.slug || '').toLowerCase() === decodedSlug
+        rawSlugStr === decodedSlug ||
+        slugRu === decodedSlug ||
+        slugUz === decodedSlug
       ) {
         targetCategory = parsedCat;
       }
@@ -84,39 +98,49 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = 'ru';
   const data = await getCategoryData(slug, lang);
 
-  if (!data) return {};
-  const { category } = data;
+  if (!data) {
+    return {
+      title: 'Каталог промышленного оборудования — MAXTRON',
+      description: 'Поставка контрольно-измерительных приборов и промышленного оборудования в Ташкенте.',
+    };
+  }
 
+  const { category } = data;
   const bundle = await getSettingsBundle();
   const site = bundle.site_settings || {};
   const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  const catName = category.name?.[lang] || category.name?.uz || 'Категория';
-  const rawTitle = category.seoTitle?.[lang] || catName;
-  const title = siteName && !rawTitle.includes(siteName)
-    ? `${rawTitle} — ${siteName}`
-    : rawTitle;
+  // Nomi va sarlavhasini olish:
+  const catName = category.name?.[lang] || (typeof category.name === 'string' ? category.name : 'Категория');
+  const rawTitle = category.seoTitle?.[lang] || (typeof category.seoTitle === 'string' ? category.seoTitle : '') || catName;
+  
+  // "MAXTRON | MAXTRON" takrorlanishining oldini olish:
+  const title = rawTitle.includes('MAXTRON')
+    ? rawTitle
+    : `${rawTitle} — ${siteName}`;
 
   const description =
     category.seoDescription?.[lang] ||
+    (typeof category.seoDescription === 'string' ? category.seoDescription : '') ||
     category.description?.[lang] ||
-    `${catName} по выгодным ценам в Ташкенте и Узбекистане.`;
+    `${catName} со склада в Ташкенте по выгодным ценам. Официальная гарантия и доставка.`;
 
-  const keywords = Array.isArray(category.seoKeywords?.[lang])
-    ? category.seoKeywords[lang]
-    : (category.seoKeywords?.[lang] || '')
+  const rawKeys = category.seoKeywords?.[lang] || (typeof category.seoKeywords === 'string' ? category.seoKeywords : '');
+  const keywords = Array.isArray(rawKeys)
+    ? rawKeys
+    : String(rawKeys)
         .split(',')
         .map((k: string) => k.trim())
         .filter(Boolean);
 
-  let imageUrl = category.ogImage || category.image || category.imageUrl || site.defaultOgImage || '';
+  let imageUrl = category.ogImage || category.image || category.imageUrl || site.defaultOgImage || '/og-image.jpg';
   if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
     imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
   }
 
-  const ruSlug = category.slugParsed?.ru || slug;
-  const uzSlug = category.slugParsed?.uz || category.slugParsed?.ru || slug;
+  const ruSlug = category.slugParsed?.ru || (typeof category.slug === 'string' ? category.slug : slug);
+  const uzSlug = category.slugParsed?.uz || ruSlug;
 
   return {
     metadataBase: new URL(baseUrl),
@@ -162,9 +186,9 @@ export default async function CategoryPage({ params }: Props) {
 
   const baseUrl = site.baseUrl || site.url || 'https://maxtron.uz';
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
-  const catName = category.name?.[lang] || 'Категория';
+  const catName = category.name?.[lang] || (typeof category.name === 'string' ? category.name : 'Категория');
   const catDesc = category.seoDescription?.[lang] || category.description?.[lang] || '';
-  const currentPath = `/catalog/${category.slugParsed?.ru || slug}`;
+  const currentPath = `/catalog/${category.slugParsed?.ru || (typeof category.slug === 'string' ? category.slug : slug)}`;
 
   const categoryJsonLd = {
     '@context': 'https://schema.org',

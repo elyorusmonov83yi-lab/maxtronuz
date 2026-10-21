@@ -77,11 +77,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const baseUrl = getBaseUrl(site.baseUrl || site.url);
   const siteName = site.siteName?.[lang] || site.name || 'MAXTRON';
 
-  // Admin paneldan kiritilgan Title
+  // Admin paneldan kiritilgan Title (Dublikat bo'lmasligi uchun xavfsiz tekshiruv)
   const rawTitle = seo.title?.[lang] || site.catalogTitle?.[lang] || siteName;
-  const title = siteName && !rawTitle.includes(siteName)
-    ? `${rawTitle} — ${siteName}`
-    : rawTitle;
+  const title = rawTitle.toLowerCase().includes(siteName.toLowerCase())
+    ? rawTitle
+    : `${rawTitle} — ${siteName}`;
 
   // Admin paneldan kiritilgan Description
   const description = seo.description?.[lang] || site.description?.[lang] || '';
@@ -118,16 +118,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
-      canonical: currentPath,
+      canonical: `${baseUrl}${currentPath}`,
       languages: {
-        ru: rawPath,
-        uz: `/uz${rawPath}`,
+        ru: `${baseUrl}${rawPath}`,
+        uz: `${baseUrl}/uz${rawPath}`,
       },
     },
     openGraph: {
       title,
       description,
-      url: currentPath,
+      url: `${baseUrl}${currentPath}`,
       siteName,
       locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
       images: [
@@ -167,8 +167,8 @@ export default async function CatalogPage({ params }: Props) {
   const currentPath = lang === 'uz' ? `/uz${rawPath}` : rawPath;
   const homePath = lang === 'uz' ? `${baseUrl}/uz` : baseUrl;
 
-  const homeLabel = t.breadcrumbHome?.[lang] || '';
-  const catalogLabel = t.breadcrumbCatalog?.[lang] || title;
+  const homeLabel = t.breadcrumbHome?.[lang] || (lang === 'uz' ? 'Bosh sahifa' : 'Главная');
+  const catalogLabel = t.breadcrumbCatalog?.[lang] || (lang === 'uz' ? 'Katalog' : 'Каталог');
   const loadingText = t.loading?.[lang] || '...';
 
   let categories: any[] = [];
@@ -179,6 +179,7 @@ export default async function CatalogPage({ params }: Props) {
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
       parentId: cat.parentId || null,
+      slug: safeJsonParse(cat.slug),
       name: safeJsonParse(cat.name),
       description: safeJsonParse(cat.description),
     }));
@@ -226,12 +227,10 @@ export default async function CatalogPage({ params }: Props) {
 
   return (
     <>
-      {catalogJsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(catalogJsonLd) }}
-        />
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(catalogJsonLd) }}
+      />
       <Suspense fallback={<div className="py-20 text-center text-xs text-gray-500">{loadingText}</div>}>
         <CatalogPageClient
           lang={lang}
