@@ -1,13 +1,9 @@
 import type { Metadata } from 'next';
 import { db } from '@/server/db';
-import AboutClient from './AboutClient';
+import AboutClient from '@/app/about/AboutClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-type Props = {
-  params?: Promise<{ locale?: string }>;
-};
 
 function safeJsonParse(data: unknown): Record<string, any> {
   if (!data) return {};
@@ -22,7 +18,7 @@ function safeJsonParse(data: unknown): Record<string, any> {
   return {};
 }
 
-// Domenni aniqlash
+// Domenni dinamik va to'g'ri aniqlash
 function getBaseUrl(dbUrl?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
@@ -53,14 +49,14 @@ async function getAboutDataBundle() {
       }
     }
 
-    // 1. Asosiy kontent (aboutContent)
+    // 1. Asosiy kontent
     const content = bundle.about || bundle.about_content || {};
 
-    // 2. SEO sozlamalari (Admin panel: pageSeoSettings.about yoki seo.pageSeo.about)
+    // 2. SEO sozlamalari (Admin panel: pageSeo.about)
     const rawSeo = bundle.seo || bundle.seo_settings || bundle.page_seo || {};
     const aboutSeo =
-      rawSeo?.about ||
       rawSeo?.pageSeo?.about ||
+      rawSeo?.about ||
       bundle.about_seo ||
       {};
 
@@ -71,7 +67,7 @@ async function getAboutDataBundle() {
       translations: bundle.translations || {},
     };
   } catch (err) {
-    console.error('About ma’lumotlarini yuklashda xatolik:', err);
+    console.error('UZ About ma’lumotlarini yuklashda xatolik:', err);
     return {
       content: {},
       seo: {},
@@ -81,34 +77,35 @@ async function getAboutDataBundle() {
   }
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const resolvedParams = params ? await params : undefined;
-  const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
+function normalizePath(path: string): string {
+  if (!path) return '/uz/about';
+  return path.startsWith('/') ? path : `/${path}`;
+}
 
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = 'uz';
   const { seo, siteSettings } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
-  // Admin panel: title (uz/ru)
+  // Admin panel: pageSeo.about.title.uz
   const rawTitle =
     (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    (lang === 'uz' ? 'Kompaniya haqida' : 'О компании');
+    'Biz haqimizda — MAXTRON';
 
   const title =
     siteName && !rawTitle.includes(siteName)
       ? `${rawTitle} — ${siteName}`
       : rawTitle;
 
-  // Admin panel: description (uz/ru)
+  // Admin panel: pageSeo.about.description.uz
   const description =
     (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     siteSettings.description?.[lang] ||
-    (lang === 'uz'
-      ? 'Toshkentda nazorat-o‘lchov asboblari va sanoat uskunalarini yetkazib berish.'
-      : 'Поставки промышленного контрольно-измерительного оборудования в Ташкенте.');
+    'Toshkentda nazorat-o‘lchov asboblari va sanoat avtomatikasini yetkazib berish.';
 
-  // Admin panel: keywords (uz/ru)
+  // Admin panel: pageSeo.about.keywords.uz
   const rawKeywords =
     typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
   const keywords =
@@ -116,11 +113,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
       : [];
 
-  // Admin panel: ogTitle (uz/ru)
+  // Admin panel: pageSeo.about.ogTitle.uz
   const ogTitle =
     (typeof seo.ogTitle === 'object' ? seo.ogTitle?.[lang] : seo.ogTitle) || title;
 
-  // Admin panel: ogImage
+  // Admin panel: pageSeo.about.ogDescription.uz
+  const ogDescription =
+    (typeof seo.ogDescription === 'object' ? seo.ogDescription?.[lang] : seo.ogDescription) || description;
+
+  // Admin panel: pageSeo.about.ogImage
   let rawImg =
     seo.ogImage ||
     seo.ogImageUrl ||
@@ -140,8 +141,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
-  const currentPath = lang === 'uz' ? '/uz/about' : '/about';
-  const canonicalUrl = `${baseUrl}${currentPath}`;
+  const rawPath = normalizePath(seo.canonicalPath || '/uz/about');
+  const canonicalUrl = `${baseUrl}${rawPath}`;
 
   return {
     metadataBase: new URL(baseUrl),
@@ -149,7 +150,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
-      canonical: currentPath,
+      canonical: rawPath,
       languages: {
         ru: '/about',
         uz: '/uz/about',
@@ -157,17 +158,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     openGraph: {
       title: ogTitle,
-      description,
+      description: ogDescription,
       url: canonicalUrl,
       siteName,
-      locale: lang === 'uz' ? 'uz_UZ' : 'ru_RU',
+      locale: 'uz_UZ',
       type: 'website',
       images: [
         {
           url: imageUrl,
           secureUrl: imageUrl,
-          width: 1200,
-          height: 630,
+          width: Number(seo.ogImageWidth) || 1200,
+          height: Number(seo.ogImageHeight) || 630,
           alt: ogTitle,
         },
       ],
@@ -175,16 +176,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       title: ogTitle,
-      description,
+      description: ogDescription,
       images: [imageUrl],
     },
   };
 }
 
-export default async function AboutPage({ params }: Props) {
-  const resolvedParams = params ? await params : undefined;
-  const lang: 'ru' | 'uz' = resolvedParams?.locale === 'uz' ? 'uz' : 'ru';
-
+export default async function AboutPageUz() {
+  const lang = 'uz';
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
@@ -192,7 +191,7 @@ export default async function AboutPage({ params }: Props) {
 
   const rawTitle =
     (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    (lang === 'uz' ? 'Kompaniya haqida' : 'О компании');
+    'Biz haqimizda — MAXTRON';
 
   const title =
     siteName && !rawTitle.includes(siteName)
@@ -203,21 +202,22 @@ export default async function AboutPage({ params }: Props) {
     (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     '';
 
-  const currentPath = lang === 'uz' ? '/uz/about' : '/about';
-  const homePath = baseUrl;
+  const rawPath = normalizePath(seo.canonicalPath || '/uz/about');
+  const homePath = `${baseUrl}/uz`;
 
-  const homeLabel = translations.breadcrumbHome?.[lang] || (lang === 'uz' ? 'Bosh sahifa' : 'Главная');
+  const homeLabel = translations.breadcrumbHome?.[lang] || 'Bosh sahifa';
   const aboutLabel = translations.breadcrumbAbout?.[lang] || title;
 
+  // Schema.org Structured Data
   const aboutJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
       {
         '@type': 'AboutPage',
-        '@id': `${baseUrl}${currentPath}#webpage`,
-        url: `${baseUrl}${currentPath}`,
+        '@id': `${baseUrl}${rawPath}#webpage`,
+        url: `${baseUrl}${rawPath}`,
         name: title,
-        inLanguage: lang === 'uz' ? 'uz-UZ' : 'ru-RU',
+        inLanguage: 'uz-UZ',
         description,
         mainEntity: {
           '@type': 'Organization',
@@ -232,7 +232,7 @@ export default async function AboutPage({ params }: Props) {
       },
       {
         '@type': 'BreadcrumbList',
-        '@id': `${baseUrl}${currentPath}#breadcrumb`,
+        '@id': `${baseUrl}${rawPath}#breadcrumb`,
         itemListElement: [
           {
             '@type': 'ListItem',
@@ -244,7 +244,7 @@ export default async function AboutPage({ params }: Props) {
             '@type': 'ListItem',
             position: 2,
             name: aboutLabel,
-            item: `${baseUrl}${currentPath}`,
+            item: `${baseUrl}${rawPath}`,
           },
         ],
       },

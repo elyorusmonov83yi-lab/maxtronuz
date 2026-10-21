@@ -39,7 +39,7 @@ async function getAboutDataBundle() {
   try {
     const [rows]: any = await db.query(
       `SELECT \`key\`, value FROM settings 
-       WHERE \`key\` IN ('about', 'about_content', 'about_seo', 'site_settings', 'translations', 'seo_settings')`
+       WHERE \`key\` IN ('about', 'about_content', 'seo', 'seo_settings', 'about_seo', 'site_settings', 'translations')`
     );
 
     const bundle: Record<string, any> = {};
@@ -50,7 +50,10 @@ async function getAboutDataBundle() {
     }
 
     const content = bundle.about || bundle.about_content || {};
-    const seo = bundle.about_seo || bundle.seo_settings?.pageSeo?.about || {};
+
+    // Admin panel SEO joylashuvi: bundle.seo.pageSeo.about
+    const rawSeo = bundle.seo || bundle.seo_settings || {};
+    const seo = rawSeo?.pageSeo?.about || rawSeo?.about || bundle.about_seo || {};
 
     return {
       content,
@@ -81,17 +84,37 @@ export async function generateMetadata(): Promise<Metadata> {
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
-  const rawTitle = seo.title?.[lang] || 'Kompaniya haqida';
+  // Admin panel: title (uz)
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    'Biz haqimizda — MAXTRON';
+
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
+  // Admin panel: description (uz)
   const description =
-    seo.description?.[lang] ||
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     siteSettings.description?.[lang] ||
     "MAXTRON korxonasi haqida ma'lumotlar va sanoat avtomatikasini yetkazib berish bo‘yicha faoliyat yo'nalishlari.";
 
-  let rawImg = seo.ogImageUrl || siteSettings.defaultOgImage || '';
+  // Admin panel: keywords (uz)
+  const rawKeywords =
+    typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
+  const keywords =
+    typeof rawKeywords === 'string' && rawKeywords.trim()
+      ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
+      : [];
+
+  // Admin panel: ogTitle & ogDescription
+  const ogTitle =
+    (typeof seo.ogTitle === 'object' ? seo.ogTitle?.[lang] : seo.ogTitle) || title;
+  const ogDescription =
+    (typeof seo.ogDescription === 'object' ? seo.ogDescription?.[lang] : seo.ogDescription) || description;
+
+  // Admin panel: ogImage
+  let rawImg = seo.ogImage || seo.ogImageUrl || siteSettings.defaultOgImage || '';
   if (typeof rawImg === 'string' && rawImg.startsWith('data:')) {
     rawImg = '';
   }
@@ -113,6 +136,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(baseUrl),
     title,
     description,
+    ...(keywords.length > 0 ? { keywords } : {}),
     alternates: {
       canonical: currentPath,
       languages: {
@@ -121,8 +145,8 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     openGraph: {
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       url: canonicalUrl,
       siteName,
       locale: 'uz_UZ',
@@ -133,14 +157,14 @@ export async function generateMetadata(): Promise<Metadata> {
           secureUrl: imageUrl,
           width: Number(seo.ogImageWidth) || 1200,
           height: Number(seo.ogImageHeight) || 630,
-          alt: title,
+          alt: ogTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       images: [imageUrl],
     },
   };
@@ -152,8 +176,19 @@ export default async function UzbekAboutPage() {
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
-  const title = seo.title?.[lang] || 'Kompaniya haqida';
-  const description = seo.description?.[lang] || siteSettings.description?.[lang] || '';
+
+  const rawTitle =
+    (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
+    'Biz haqimizda — MAXTRON';
+
+  const title = siteName && !rawTitle.includes(siteName)
+    ? `${rawTitle} — ${siteName}`
+    : rawTitle;
+
+  const description =
+    (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
+    siteSettings.description?.[lang] ||
+    '';
 
   const rawPath = normalizePath(seo.canonicalPath || '/about');
   const currentPath = `/uz${rawPath}`;
