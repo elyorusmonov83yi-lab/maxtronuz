@@ -55,6 +55,7 @@ import { AdminContactSettings } from './sections/AdminContactSettings';
 import { AdminSeoSettings } from './sections/AdminSeoSettings';
 import { AdminTelegramSettings } from './sections/AdminTelegramSettings';
 import ProductImportBtn from './ProductImportBtn';
+
 interface AdminViewProps {
   currentLang: Language;
 }
@@ -83,7 +84,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
     ApiService.getCurrentAdmin().then((user) => {
       if (!isMounted) return;
       if (user) {
-        const adminData = { email: user.username, name: (user as any).name || user.username};
+        const adminData = { email: user.username, name: (user as any).name || user.username };
         StorageService.setAdminAuthenticated(true, adminData);
         setCurrentUser(adminData);
         setIsAuthenticated(true);
@@ -224,7 +225,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
       setBrands(StorageService.getBrands?.() || []);
     });
 
-  ApiService.getSetting('home').then((data) => data && setHomeContent(data));
+    ApiService.getSetting('home').then((data) => data && setHomeContent(data));
     ApiService.getSetting('about').then((data) => data && setAboutContent(data));
     ApiService.getSetting('contact').then((data) => data && setContactSettings(data));
     ApiService.getSetting('seo').then((data) => {
@@ -235,6 +236,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
         }
       }
     });
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -455,7 +457,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
         }
       }
     });
-  };const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -475,6 +479,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
       e.target.value = '';
     }
   };
+
   const handleSaveHome = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
@@ -505,7 +510,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
     }
   };
 
-     const handleSaveAbout = async (e: React.FormEvent) => {
+  const handleSaveAbout = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
       // 1. «Biz haqimizda» matnlarini saqlash
@@ -525,15 +530,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
       await ApiService.saveSetting('seo', updatedSeo);
       setSeoSettings(updatedSeo);
       setPageSeoSettings(updatedSeo.pageSeo);
-
-      showNotification('«Biz haqimizda» va SEO sozlamalari bazaga saqlandi!', 'success');
-    } catch {
-      showNotification('Xatolik: ma‘lumotlar saqlanmadi', 'error');
-    }
-  };
-
-      await ApiService.saveSetting('seo', updatedSeo);
-      setSeoSettings(updatedSeo);
 
       showNotification('«Biz haqimizda» va SEO sozlamalari bazaga saqlandi!', 'success');
     } catch {
@@ -722,12 +718,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentLang }) => {
 
           {activeTab === 'products' && (
             <div className="space-y-4">
-              {/* Excel Import tugmasi bloki */}
               <div className="flex justify-end">
                 <ProductImportBtn />
               </div>
 
-              {/* Asosiy Mahsulotlar jadvali */}
               <AdminProducts
                 products={products}
                 categories={categories}
