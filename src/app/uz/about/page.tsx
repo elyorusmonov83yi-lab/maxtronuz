@@ -78,28 +78,28 @@ function normalizePath(path: string): string {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang: 'ru' = 'ru';
+  const lang: 'uz' = 'uz';
   const { seo, siteSettings } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
   const siteName = siteSettings.siteName?.[lang] || siteSettings.name || 'MAXTRON';
 
-  // Admin panel: title (ru)
+  // Admin panel: title (uz)
   const rawTitle =
     (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    'О компании — MAXTRON';
+    'Biz haqimizda — MAXTRON';
 
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
     : rawTitle;
 
-  // Admin panel: description (ru)
+  // Admin panel: description (uz)
   const description =
     (typeof seo.description === 'object' ? seo.description?.[lang] : seo.description) ||
     siteSettings.description?.[lang] ||
-    'Поставки промышленного контрольно-измерительного оборудования в Ташкенте.';
+    'Biz haqimizda.';
 
-  // Admin panel: keywords (ru)
+  // Admin panel: keywords (uz)
   const rawKeywords =
     typeof seo.keywords === 'object' ? seo.keywords?.[lang] : seo.keywords || '';
   const keywords =
@@ -128,7 +128,8 @@ export async function generateMetadata(): Promise<Metadata> {
     imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
-  const currentPath = normalizePath(seo.canonicalPath || '/about');
+  const rawPath = normalizePath(seo.canonicalPath || '/about');
+  const currentPath = `/uz${rawPath}`;
   const canonicalUrl = `${baseUrl}${currentPath}`;
 
   return {
@@ -139,8 +140,8 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: currentPath,
       languages: {
-        ru: currentPath,
-        uz: `/uz${currentPath}`,
+        ru: rawPath,
+        uz: currentPath,
       },
     },
     openGraph: {
@@ -148,7 +149,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: ogDescription,
       url: canonicalUrl,
       siteName,
-      locale: 'ru_RU',
+      locale: 'uz_UZ',
       type: 'website',
       images: [
         {
@@ -169,8 +170,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RussianAboutPage() {
-  const lang: 'ru' = 'ru';
+export default async function UzbekAboutPage() {
+  const lang: 'uz' = 'uz';
   const { content, seo, siteSettings, translations } = await getAboutDataBundle();
 
   const baseUrl = getBaseUrl(siteSettings.baseUrl || siteSettings.url);
@@ -178,7 +179,7 @@ export default async function RussianAboutPage() {
 
   const rawTitle =
     (typeof seo.title === 'object' ? seo.title?.[lang] : seo.title) ||
-    'О компании — MAXTRON';
+    'Biz haqimizda — MAXTRON';
 
   const title = siteName && !rawTitle.includes(siteName)
     ? `${rawTitle} — ${siteName}`
@@ -189,10 +190,11 @@ export default async function RussianAboutPage() {
     siteSettings.description?.[lang] ||
     '';
 
-  const currentPath = normalizePath(seo.canonicalPath || '/about');
-  const homePath = `${baseUrl}/`;
+  const rawPath = normalizePath(seo.canonicalPath || '/about');
+  const currentPath = `/uz${rawPath}`;
+  const homePath = `${baseUrl}/uz`;
 
-  const homeLabel = translations.breadcrumbHome?.[lang] || 'Главная';
+  const homeLabel = translations.breadcrumbHome?.[lang] || 'Bosh sahifa';
   const aboutLabel = translations.breadcrumbAbout?.[lang] || title;
 
   const aboutJsonLd = {
@@ -203,7 +205,7 @@ export default async function RussianAboutPage() {
         '@id': `${baseUrl}${currentPath}#webpage`,
         url: `${baseUrl}${currentPath}`,
         name: title,
-        inLanguage: 'ru-RU',
+        inLanguage: 'uz-UZ',
         description,
         mainEntity: {
           '@type': 'Organization',
