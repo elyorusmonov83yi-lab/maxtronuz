@@ -52,6 +52,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     currentLang === 'ru' ? 'ГОСТ' : 'GOST'
   );
 
+  // specs string yoki undefined bo'lsa xavfsiz massivga aylantirish
+  const safeSpecs = (() => {
+    let s = product.specs;
+    if (typeof s === 'string') {
+      try {
+        s = JSON.parse(s);
+      } catch {
+        s = [];
+      }
+    }
+    return Array.isArray(s) ? s : [];
+  })();
+
   return (
     <div 
       className="group relative bg-gray-900/90 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col justify-between overflow-hidden"
@@ -155,9 +168,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
 
-          {/* Qisqa xarakteristikalar */}
+          {/* Qisqa xarakteristikalar - Xavfsiz parse qilingan safeSpecs ishlatiladi */}
           <div className="space-y-1.5 py-2.5 border-y border-gray-800/80 text-xs">
-            {(product.specs || []).slice(0, 2).map((spec, i) => (
+            {safeSpecs.slice(0, 2).map((spec: any, i: number) => (
               <div key={i} className="flex items-center justify-between text-gray-400 gap-2">
                 <span className="truncate text-gray-500">{(getSpecName(spec, currentLang) || '').split('/')[0]}</span>
                 <span className="font-semibold text-gray-200 text-right truncate font-mono text-[11px]">
@@ -181,7 +194,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* 3. Tugmalar (Actions) */}
         <div className="mt-4 grid grid-cols-2 gap-2 pt-2 border-t border-gray-800/50">
-          {/* Batafsil: button emas, Link */}
           <Link
             href={productHref}
             className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-gray-800/80 hover:bg-gray-800 text-gray-200 border border-gray-700/60 hover:border-gray-600 transition"
@@ -190,7 +202,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span>{t.btn_details || (currentLang === 'ru' ? 'Подробнее' : 'Batafsil')}</span>
           </Link>
 
-          {/* Taklif olish */}
           <button
             type="button"
             onClick={() => onOpenQuote(product)}
