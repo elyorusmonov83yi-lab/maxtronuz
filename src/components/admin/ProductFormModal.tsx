@@ -8,6 +8,7 @@ import {
   Upload, 
   Image as ImageIcon, 
   Plus, 
+  Check,
   Trash2, 
   Globe, 
   Layers, 
@@ -145,6 +146,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const [industriesList, setIndustriesList] = useState<IndustryInfo[]>([]);
   const [brandsList, setBrandsList] = useState<BrandInfo[]>([]);
+
+  // --- TEZKOR KATEGORIYA QO'SHISH STATELARI ---
+  const [isQuickCatOpen, setIsQuickCatOpen] = useState(false);
+  const [quickCatNameRu, setQuickCatNameRu] = useState('');
+  const [quickCatNameUz, setQuickCatNameUz] = useState('');
+  const [isSavingQuickCat, setIsSavingQuickCat] = useState(false);
+
+  // --- TEZKOR BREND QO'SHISH STATELARI ---
+  const [isQuickBrandOpen, setIsQuickBrandOpen] = useState(false);
+  const [quickBrandName, setQuickBrandName] = useState('');
+  const [quickBrandCountry, setQuickBrandCountry] = useState('');
+  const [isSavingQuickBrand, setIsSavingQuickBrand] = useState(false);
 
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const additionalImagesInputRef = useRef<HTMLInputElement>(null);
@@ -306,6 +319,72 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setFeatureInput({ uz: '', ru: '' });
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
+
+  // Tezkor Kategoriya saqlash
+  const handleQuickAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCatNameRu.trim() && !quickCatNameUz.trim()) return;
+
+    try {
+      setIsSavingQuickCat(true);
+      const catId = `cat-${Date.now()}`;
+      const newCat: CategoryInfo = {
+        id: catId,
+        name: {
+          ru: quickCatNameRu.trim() || quickCatNameUz.trim(),
+          uz: quickCatNameUz.trim() || quickCatNameRu.trim()
+        },
+        slug: {
+          ru: (quickCatNameRu.trim() || catId).toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-'),
+          uz: (quickCatNameUz.trim() || catId).toLowerCase().replace(/[^a-z0-9]/gi, '-')
+        },
+        icon: 'Layers',
+        description: { ru: '', uz: '' }
+      };
+
+      await ApiService.saveCategory(newCat);
+      categories.push(newCat);
+      setFormData(prev => ({ ...prev, category: catId }));
+      setQuickCatNameRu('');
+      setQuickCatNameUz('');
+      setIsQuickCatOpen(false);
+    } catch (err: any) {
+      alert(`Kategoriya qo'shishda xatolik: ${err.message || 'Server xatosi'}`);
+    } finally {
+      setIsSavingQuickCat(false);
+    }
+  };
+
+  // Tezkor Brend saqlash
+  const handleQuickAddBrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickBrandName.trim()) return;
+
+    try {
+      setIsSavingQuickBrand(true);
+      const brandId = `brand-${Date.now()}`;
+      const newBrand: BrandInfo = {
+        id: brandId,
+        name: quickBrandName.trim(),
+        slug: quickBrandName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        country: quickBrandCountry.trim(),
+        website: '',
+        logo: '',
+        isActive: true
+      };
+
+      await ApiService.saveBrand(newBrand);
+      setBrandsList(prev => [...prev, newBrand]);
+      setFormData(prev => ({ ...prev, brandId }));
+      setQuickBrandName('');
+      setQuickBrandCountry('');
+      setIsQuickBrandOpen(false);
+    } catch (err: any) {
+      alert(`Brend qo'shishda xatolik: ${err.message || 'Server xatosi'}`);
+    } finally {
+      setIsSavingQuickBrand(false);
+    }
+  };
 
   const handleNameChange = (lang: 'uz' | 'ru', value: string) => {
     const updatedName = { ...(formData.name as LocalizedString), [lang]: value };
@@ -663,9 +742,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           </div>
 
-          <button
+          <button 
             type="button"
-            onClick={onClose}
+            onClick={onClose} 
             className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -738,10 +817,24 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
                 
                 {/* 1. Category */}
-                <div className="sm:col-span-4 space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-300">
-                    {activeLang === 'ru' ? 'Категория оборудования *' : 'Uskuna toifasi *'}
-                  </label>
+                <div className="sm:col-span-4 space-y-1.5 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-300">
+                      {activeLang === 'ru' ? 'Категория оборудования *' : 'Uskuna toifasi *'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsQuickCatOpen(!isQuickCatOpen);
+                        setIsQuickBrandOpen(false);
+                      }}
+                      className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{activeLang === 'ru' ? 'Новая' : 'Yangi'}</span>
+                    </button>
+                  </div>
+
                   <select
                     required
                     value={formData.category}
@@ -754,14 +847,74 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                       </option>
                     ))}
                   </select>
+
+                  {/* Kategoriya tezkor qo'shish popover */}
+                  {isQuickCatOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 p-3.5 rounded-2xl bg-gray-900 border border-emerald-500/50 shadow-2xl z-30 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between border-b border-gray-800 pb-1.5">
+                        <span className="text-[11px] font-bold text-emerald-400">
+                          {activeLang === 'ru' ? 'Быстрое добавление категории' : 'Tezkor kategoriya qo‘shish'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickCatOpen(false)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Nomi (RU) — masalan: Manometrlar"
+                        value={quickCatNameRu}
+                        onChange={(e) => setQuickCatNameRu(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500"
+                      />
+
+                      <input
+                        type="text"
+                        placeholder="Nomi (UZ) — masalan: Manometrlar"
+                        value={quickCatNameUz}
+                        onChange={(e) => setQuickCatNameUz(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500"
+                      />
+
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleQuickAddCategory}
+                          disabled={isSavingQuickCat || (!quickCatNameRu.trim() && !quickCatNameUz.trim())}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {isSavingQuickCat ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                          <span>{activeLang === 'ru' ? 'Создать' : 'Qo‘shish'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Brand */}
-                <div className="sm:col-span-4 space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-blue-400" />
-                    <span>{activeLang === 'ru' ? 'Бренд / Производитель *' : 'Brend / Ishlab chiqaruvchi *'}</span>
-                  </label>
+                <div className="sm:col-span-4 space-y-1.5 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{activeLang === 'ru' ? 'Бренд / Производитель *' : 'Brend / Ishlab chiqaruvchi *'}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsQuickBrandOpen(!isQuickBrandOpen);
+                        setIsQuickCatOpen(false);
+                      }}
+                      className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{activeLang === 'ru' ? 'Новый' : 'Yangi'}</span>
+                    </button>
+                  </div>
+
                   <select
                     required
                     value={formData.brandId || 'b-maxtron'}
@@ -774,6 +927,52 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                       </option>
                     ))}
                   </select>
+
+                  {/* Brend tezkor qo'shish popover */}
+                  {isQuickBrandOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 p-3.5 rounded-2xl bg-gray-900 border border-blue-500/50 shadow-2xl z-30 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between border-b border-gray-800 pb-1.5">
+                        <span className="text-[11px] font-bold text-blue-400">
+                          {activeLang === 'ru' ? 'Быстрое добавление бренда' : 'Tezkor brend qo‘shish'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickBrandOpen(false)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Brend nomi (masalan: WIKA)"
+                        value={quickBrandName}
+                        onChange={(e) => setQuickBrandName(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-blue-500 font-bold"
+                      />
+
+                      <input
+                        type="text"
+                        placeholder="Davlat (masalan: Germaniya)"
+                        value={quickBrandCountry}
+                        onChange={(e) => setQuickBrandCountry(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-blue-500"
+                      />
+
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleQuickAddBrand}
+                          disabled={isSavingQuickBrand || !quickBrandName.trim()}
+                          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {isSavingQuickBrand ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                          <span>{activeLang === 'ru' ? 'Создать' : 'Qo‘shish'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 3. Model */}
@@ -1446,8 +1645,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500 font-mono transition"
                   />
                 </div>
-
-             
               </div>
 
             </div>
