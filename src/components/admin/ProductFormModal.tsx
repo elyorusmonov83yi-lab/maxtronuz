@@ -159,8 +159,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [quickBrandCountry, setQuickBrandCountry] = useState('');
   const [isSavingQuickBrand, setIsSavingQuickBrand] = useState(false);
 
+  const [quickCatParentId, setQuickCatParentId] = useState<string>(''); // <-- YANGI QATOR
+
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const additionalImagesInputRef = useRef<HTMLInputElement>(null);
+  
 
   const [formData, setFormData] = useState<Product & { brandId?: string }>({
     id: '',
@@ -320,7 +323,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
 
-  // Tezkor Kategoriya saqlash
+ // Tezkor Kategoriya saqlash
   const handleQuickAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCatNameRu.trim() && !quickCatNameUz.trim()) return;
@@ -328,8 +331,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     try {
       setIsSavingQuickCat(true);
       const catId = `cat-${Date.now()}`;
-      const newCat: CategoryInfo = {
+      const newCat: any = {
         id: catId,
+        parentId: quickCatParentId || null, // <-- Ota kategoriya ID-si (agar tanlanmasa null / bosh kategoriya)
         name: {
           ru: quickCatNameRu.trim() || quickCatNameUz.trim(),
           uz: quickCatNameUz.trim() || quickCatNameRu.trim()
@@ -347,6 +351,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setFormData(prev => ({ ...prev, category: catId }));
       setQuickCatNameRu('');
       setQuickCatNameUz('');
+      setQuickCatParentId(''); // tozalash
       setIsQuickCatOpen(false);
     } catch (err: any) {
       alert(`Kategoriya qo'shishda xatolik: ${err.message || 'Server xatosi'}`);
