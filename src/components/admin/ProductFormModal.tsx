@@ -854,6 +854,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </select>
 
                   {/* Kategoriya tezkor qo'shish popover */}
+                  {/* Kategoriya tezkor qo'shish popover */}
                   {isQuickCatOpen && (
                     <div className="absolute left-0 right-0 top-full mt-1.5 p-3.5 rounded-2xl bg-gray-900 border border-emerald-500/50 shadow-2xl z-30 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                       <div className="flex items-center justify-between border-b border-gray-800 pb-1.5">
@@ -869,9 +870,30 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                         </button>
                       </div>
 
+                      {/* Ota kategoriya tanlash */}
+                      <div>
+                        <label className="block text-[10px] text-gray-400 mb-1">
+                          {activeLang === 'ru' ? 'Родительская категория (необязательно)' : 'Ota kategoriya (ixtiyoriy)'}
+                        </label>
+                        <select
+                          value={quickCatParentId}
+                          onChange={(e) => setQuickCatParentId(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        >
+                          <option value="">
+                            {activeLang === 'ru' ? '— Без родителя (Главная категория) —' : '— Ota kategoriyasiz (Asosiy toifa) —'}
+                          </option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <input
                         type="text"
-                        placeholder="Nomi (RU) — masalan: Manometrlar"
+                        placeholder="Nomi (RU) — masalan: Bosim datchiklari"
                         value={quickCatNameRu}
                         onChange={(e) => setQuickCatNameRu(e.target.value)}
                         className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500"
@@ -879,7 +901,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
                       <input
                         type="text"
-                        placeholder="Nomi (UZ) — masalan: Manometrlar"
+                        placeholder="Nomi (UZ) — masalan: Bosim datchiklari"
                         value={quickCatNameUz}
                         onChange={(e) => setQuickCatNameUz(e.target.value)}
                         className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500"
