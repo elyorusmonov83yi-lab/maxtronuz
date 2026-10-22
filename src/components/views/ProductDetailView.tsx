@@ -530,19 +530,30 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <tbody>
-                  {(product.specs || []).map((s, idx) => (
-                    <tr 
-                      key={idx} 
-                      className={`border-b border-gray-800/80 ${idx % 2 === 0 ? 'bg-gray-900/40' : 'bg-transparent'}`}
-                    >
-                      <td className="py-3 px-4 font-medium text-gray-400 w-1/2 sm:w-2/5">
-                        {getSpecName(s, currentLang)}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-gray-100 font-mono">
-                        {typeof s.value === 'object' ? getLocalizedText(s.value, currentLang) : s.value}
-                      </td>
-                    </tr>
-                  ))}
+                 {(() => {
+                    let specsList = product.specs;
+                    if (typeof specsList === 'string') {
+                      try {
+                        specsList = JSON.parse(specsList);
+                      } catch {
+                        specsList = [];
+                      }
+                    }
+                    const safeSpecs = Array.isArray(specsList) ? specsList : [];
+                    return safeSpecs.map((s: any, idx: number) => (
+                      <tr 
+                        key={idx} 
+                        className={`border-b border-gray-800/80 ${idx % 2 === 0 ? 'bg-gray-900/40' : 'bg-transparent'}`}
+                      >
+                        <td className="py-3 px-4 font-medium text-gray-400 w-1/2 sm:w-2/5">
+                          {getSpecName(s, currentLang)}
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-gray-100 font-mono">
+                          {typeof s.value === 'object' ? getLocalizedText(s.value, currentLang) : s.value}
+                        </td>
+                      </tr>
+                    ));
+                  })()}
                   <tr className="border-b border-gray-800/80">
                     <td className="py-3 px-4 font-medium text-gray-400">
                       {currentLang === 'ru' ? 'Межповерочный интервал' : 'Qiyoslash davriyligi'}
