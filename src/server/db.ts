@@ -14,10 +14,14 @@ export const db =
       rejectUnauthorized: false,
     },
     waitForConnections: true,
-    connectionLimit: 10, // Parallel so'rovlar (generateMetadata + Page) navbatda qotib qolmasligi uchun
+    // Serverless (Vercel) lambda konteyneri uchun 2 ta yetarli (Aiven limitini to'ldirmaydi)
+    connectionLimit: 2,
+    maxIdle: 2,
+    // 15 soniya ishlatilmagan ulanishlarni Aiven'dan avtomatik uzish
+    idleTimeout: 15000,
     queueLimit: 0,
     enableKeepAlive: true,
-    keepAliveInitialDelay: 10000,
+    keepAliveInitialDelay: 0,
   });
 
 // Serverless (Vercel) konteynerida qayta-qayta yangi pool ochilmasligi uchun:
