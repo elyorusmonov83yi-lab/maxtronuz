@@ -40,7 +40,6 @@ import {
 import { ApiService } from '../../services/api';
 import { StorageService } from '../../services/storage';
 
-
 export interface ProductDetailViewProps {
   product?: Product;
   currentLang: Language;
@@ -114,7 +113,6 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     };
   }, [initialProduct]);
 
-  // Agar serverdan initialProduct kelsa — undan foydalanadi, aks holda identifier bo'yicha topadi
   const product = useMemo(() => {
     if (initialProduct) return initialProduct;
     if (!currentIdentifier || currentIdentifier === '[object object]') return undefined;
@@ -232,9 +230,8 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     }
   };
 
-const modelText = typeof product.model === 'object' ? getLocalizedText(product.model, currentLang) : (product.model || '');
+  const modelText = typeof product.model === 'object' ? getLocalizedText(product.model, currentLang) : (product.model || '');
   
-  // Mahsulot nomini h1 bilan bir xil usulda ishonchli olamiz:
   const rawTitle = (product as any).title || product.name;
   const productName = getLocalizedText(rawTitle, currentLang, '').trim();
 
@@ -247,6 +244,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
     { label: categoryName, to: getLocalizedUrl(`/catalog/${categorySlug}`) },
     { label: breadcrumbProductLabel }
   ];
+
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
      
@@ -498,8 +496,9 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
           </button>
         </div>
 
+        {/* 1. Tavsif (Description) - Matn chetga chiqmaydi */}
         {activeTab === 'description' && (
-          <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4">
+          <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4 overflow-hidden">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-blue-400" />
               <span>{modelText} — {currentLang === 'ru' ? 'Подробное описание и назначение прибора' : 'Uskunaning to‘liq tavsifi va vazifasi'}</span>
@@ -507,8 +506,10 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
 
             {fullDescription ? (
               <div 
-                className="text-sm text-gray-300 leading-relaxed space-y-3 prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: fullDescription }}
+                className="text-sm text-gray-300 leading-relaxed space-y-4 max-w-none break-words whitespace-pre-line overflow-hidden"
+                dangerouslySetInnerHTML={{ 
+                  __html: fullDescription.replace(/\r\n/g, '\n') 
+                }}
               />
             ) : (
               <p className="text-xs text-gray-400 leading-relaxed">
@@ -520,6 +521,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
           </div>
         )}
 
+        {/* 2. Xarakteristikalar (Specs) - Xavfsiz parse bilan */}
         {activeTab === 'specs' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-6">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -530,7 +532,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <tbody>
-                 {(() => {
+                  {(() => {
                     let specsList = product.specs;
                     if (typeof specsList === 'string') {
                       try {
@@ -549,7 +551,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
                           {getSpecName(s, currentLang)}
                         </td>
                         <td className="py-3 px-4 font-semibold text-gray-100 font-mono">
-                          {typeof s.value === 'object' ? getLocalizedText(s.value, currentLang) : s.value}
+                          {typeof s?.value === 'object' ? getLocalizedText(s.value, currentLang) : (s?.value || '—')}
                         </td>
                       </tr>
                     ));
@@ -584,6 +586,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
           </div>
         )}
 
+        {/* 3. Xususiyatlar (Features) */}
         {activeTab === 'features' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -603,6 +606,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
           </div>
         )}
 
+        {/* 4. Qo'llanilishi (Applications) */}
         {activeTab === 'applications' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -620,6 +624,7 @@ const modelText = typeof product.model === 'object' ? getLocalizedText(product.m
           </div>
         )}
 
+        {/* 5. Hujjatlar (Docs) */}
         {activeTab === 'docs' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-6">
             <div>

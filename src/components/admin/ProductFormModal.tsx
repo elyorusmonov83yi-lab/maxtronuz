@@ -17,9 +17,10 @@ import {
   RefreshCw, 
   Building2, 
   Loader2,
-  Tag
+  Tag,
+  Paperclip
 } from 'lucide-react';
-import { Product, CategoryInfo, LocalizedString, ProductSpec, IndustryInfo, BrandInfo } from '../../types';
+import { Product, CategoryInfo, LocalizedString, ProductSpec, ProductDocument, IndustryInfo, BrandInfo } from '../../types';
 import { RichTextEditor } from './sections/RichTextEditor';
 
 import { ApiService } from '../../services/api';
@@ -105,6 +106,23 @@ function normalizeSpecs(specsRaw: any): ProductSpec[] {
   }));
 }
 
+function normalizeDocuments(docsRaw: any): ProductDocument[] {
+  if (!docsRaw) return [];
+  let arr = docsRaw;
+  if (typeof docsRaw === 'string') {
+    try { arr = JSON.parse(docsRaw); } catch { arr = []; }
+  }
+  if (!Array.isArray(arr)) return [];
+
+  return arr.map((d: any, idx: number) => ({
+    id: String(d.id || `doc-${Date.now()}-${idx}`),
+    title: normalizeLocString(d.title, 'Hujjat'),
+    fileUrl: String(d.fileUrl || d.url || ''),
+    size: String(d.size || 'PDF'),
+    type: String(d.type || 'PDF')
+  }));
+}
+
 function normalizeIdArray(val: any): string[] {
   if (!val) return [];
   if (Array.isArray(val)) {
@@ -137,7 +155,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   categories = [],
   onSave
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'specs' | 'industries' | 'media' | 'seo'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'specs' | 'docs' | 'industries' | 'media' | 'seo'>('general');
   const [activeLang, setActiveLang] = useState<'ru' | 'uz'>('ru');
   const [manualSlugs, setManualSlugs] = useState<{ uz: boolean; ru: boolean }>({ uz: false, ru: false });
 
@@ -159,13 +177,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [quickBrandCountry, setQuickBrandCountry] = useState('');
   const [isSavingQuickBrand, setIsSavingQuickBrand] = useState(false);
 
-  const [quickCatParentId, setQuickCatParentId] = useState<string>(''); // <-- YANGI QATOR
+  const [quickCatParentId, setQuickCatParentId] = useState<string>('');
 
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const additionalImagesInputRef = useRef<HTMLInputElement>(null);
-  
 
-  const [formData, setFormData] = useState<Product & { brandId?: string }>({
+  const [formData, setFormData] = useState<Product & { brandId?: string; documents?: ProductDocument[] }>({
     id: '',
     slug: { uz: '', ru: '' },
     name: { uz: '', ru: '' },
@@ -183,6 +200,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     image: '',
     additionalImages: [],
     specs: [],
+    documents: [],
+    pdfCatalogUrl: '',
     features: { uz: [], ru: [] },
     applications: { uz: [], ru: [] },
     standardCert: { uz: 'GOST / O‘zstandart', ru: 'ГОСТ / Узстандарт' },
@@ -271,6 +290,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         image: productToEdit.image || (productToEdit as any).imageUrl || '',
         additionalImages: Array.isArray(rawAddImages) ? rawAddImages : [],
         specs: normalizeSpecs(productToEdit.specs),
+        documents: normalizeDocuments(productToEdit.documents),
+        pdfCatalogUrl: productToEdit.pdfCatalogUrl || '',
         features: normalizeLocArray(productToEdit.features),
         applications: normalizeLocArray(productToEdit.applications),
         standardCert: parsedStandardCert,
@@ -304,6 +325,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         image: '',
         additionalImages: [],
         specs: [],
+        documents: [],
+        pdfCatalogUrl: '',
         features: { uz: [], ru: [] },
         applications: { uz: [], ru: [] },
         standardCert: { uz: 'GOST / O‘zstandart', ru: 'ГОСТ / Узстандарт' },
@@ -323,7 +346,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
 
- // Tezkor Kategoriya saqlash
+  // Tezkor Kategoriya saqlash
   const handleQuickAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCatNameRu.trim() && !quickCatNameUz.trim()) return;
@@ -333,7 +356,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       const catId = `cat-${Date.now()}`;
       const newCat: any = {
         id: catId,
-        parentId: quickCatParentId || null, // <-- Ota kategoriya ID-si (agar tanlanmasa null / bosh kategoriya)
+        parentId: quickCatParentId || null,
         name: {
           ru: quickCatNameRu.trim() || quickCatNameUz.trim(),
           uz: quickCatNameUz.trim() || quickCatNameRu.trim()
@@ -351,7 +374,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setFormData(prev => ({ ...prev, category: catId }));
       setQuickCatNameRu('');
       setQuickCatNameUz('');
-      setQuickCatParentId(''); // tozalash
+      setQuickCatParentId('');
       setIsQuickCatOpen(false);
     } catch (err: any) {
       alert(`Kategoriya qo'shishda xatolik: ${err.message || 'Server xatosi'}`);
@@ -690,6 +713,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           uz: typeof s.value === 'object' ? (s.value.uz || s.value.ru || '') : (s.value || '')
         }
       })),
+      documents: (formData.documents || []).map(d => ({
+        id: d.id,
+        title: {
+          ru: typeof d.title === 'object' ? (d.title.ru || d.title.uz || '') : (d.title || ''),
+          uz: typeof d.title === 'object' ? (d.title.uz || d.title.ru || '') : (d.title || '')
+        },
+        fileUrl: (d.fileUrl || '').trim(),
+        size: (d.size || 'PDF').trim(),
+        type: (d.type || 'PDF').trim()
+      })),
+      pdfCatalogUrl: formData.pdfCatalogUrl || '',
       seoTitle: {
         ru: (formData.seoTitle as LocalizedString).ru?.trim() || nameObj.ru || '',
         uz: (formData.seoTitle as LocalizedString).uz?.trim() || nameObj.uz || ''
@@ -761,6 +795,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           {[
             { id: 'general', label: activeLang === 'ru' ? 'Основная информация' : 'Asosiy ma’lumotlar', icon: FileText },
             { id: 'specs', label: activeLang === 'ru' ? 'Характеристики и Функции' : 'Xarakteristika va Funksiyalar', icon: Sliders },
+            { id: 'docs', label: activeLang === 'ru' ? 'Документы и Файлы' : 'Hujjatlar va Fayllar', icon: Paperclip },
             { id: 'industries', label: activeLang === 'ru' ? 'Отрасли и Задачи' : 'Sohalar va Vazifalar', icon: Building2 },
             { id: 'media', label: activeLang === 'ru' ? 'Фото и Медиа' : 'Rasm va Media', icon: ImageIcon },
             { id: 'seo', label: activeLang === 'ru' ? 'SEO & Метатеги' : 'SEO & Metateglar', icon: Sparkles },
@@ -780,6 +815,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
+                {tab.id === 'docs' && (formData.documents || []).length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-blue-800 text-[10px] text-white">
+                    {(formData.documents || []).length}
+                  </span>
+                )}
                 {tab.id === 'industries' && (formData.industries || []).length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-blue-800 text-[10px] text-white">
                     {(formData.industries || []).length}
@@ -854,7 +894,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </select>
 
                   {/* Kategoriya tezkor qo'shish popover */}
-                  {/* Kategoriya tezkor qo'shish popover */}
                   {isQuickCatOpen && (
                     <div className="absolute left-0 right-0 top-full mt-1.5 p-3.5 rounded-2xl bg-gray-900 border border-emerald-500/50 shadow-2xl z-30 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                       <div className="flex items-center justify-between border-b border-gray-800 pb-1.5">
@@ -893,7 +932,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
                       <input
                         type="text"
-                        placeholder="Nomi (RU) — masalan: Bosim datchiklari"
+                        placeholder="Nomi (RU) — masalan: Датчики давления"
                         value={quickCatNameRu}
                         onChange={(e) => setQuickCatNameRu(e.target.value)}
                         className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500"
@@ -1364,7 +1403,200 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: INDUSTRIES & TASKS */}
+          {/* TAB 3: DOCUMENTS & PASSPORTS */}
+          {activeTab === 'docs' && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-gray-950 border border-gray-800">
+                <span className="text-xs font-semibold text-gray-300">
+                  {activeLang === 'ru' ? 'Язык редактирования названий документов:' : 'Hujjat nomlarini tahrirlash tili:'}
+                </span>
+                <div className="flex gap-2">
+                  {[
+                    { code: 'ru' as const, label: '🇷🇺 Русский' },
+                    { code: 'uz' as const, label: "🇺🇿 O'zbekcha" }
+                  ].map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => setActiveLang(lang.code)}
+                      className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        activeLang === lang.code
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-white bg-gray-900'
+                      }`}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Umumiy katalog URL (Legacy / tezkor havola) */}
+              <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-2">
+                <label className="text-xs font-semibold text-gray-300 flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-blue-400" />
+                  <span>{activeLang === 'ru' ? 'Основной PDF-каталог (опционально)' : 'Asosiy PDF-katalog havolasi (ixtiyoriy)'}</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://... yoki /documents/catalog.pdf"
+                  value={formData.pdfCatalogUrl || ''}
+                  onChange={(e) => setFormData({ ...formData, pdfCatalogUrl: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 font-mono transition"
+                />
+              </div>
+
+              {/* Dinamik hujjatlar ro'yxati */}
+              <div className="space-y-4 p-4 rounded-2xl bg-gray-950 border border-gray-800">
+                <div className="flex items-center justify-between border-b border-gray-800/80 pb-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <span>{activeLang === 'ru' ? 'Техническая документация и сертификаты' : 'Texnik hujjatlar va sertifikatlar'}</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-blue-600/20 text-blue-400 font-mono">
+                        {(formData.documents || []).length}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {activeLang === 'ru' 
+                        ? 'Паспорта приборов, руководства по эксплуатации, сертификаты поверки'
+                        : 'Uskuna pasportlari, foydalanish qo‘llanmalari, qiyoslash sertifikatlari'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newDoc: ProductDocument = {
+                        id: `doc-${Date.now()}`,
+                        title: { 
+                          uz: activeLang === 'uz' ? 'Texnik pasport' : '', 
+                          ru: activeLang === 'ru' ? 'Технический паспорт' : '' 
+                        },
+                        fileUrl: '',
+                        size: 'PDF, 2.4 MB',
+                        type: 'PDF'
+                      };
+                      setFormData(prev => ({
+                        ...prev,
+                        documents: [...(prev.documents || []), newDoc]
+                      }));
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{activeLang === 'ru' ? 'Добавить документ' : 'Hujjat qo‘shish'}</span>
+                  </button>
+                </div>
+
+                {(!formData.documents || formData.documents.length === 0) ? (
+                  <div className="text-center py-8 text-gray-500 text-xs space-y-1">
+                    <FileText className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-50" />
+                    <p>{activeLang === 'ru' ? 'Документы пока не прикреплены к этому товару.' : 'Ushbu mahsulotga hali hujjatlar biriktirilmagan.'}</p>
+                    <p className="text-[10px] text-gray-600">
+                      {activeLang === 'ru' 
+                        ? 'Нажмите «Добавить документ», чтобы указать ссылку на PDF файл или паспорт.' 
+                        : 'PDF fayl yoki pasport havolasini kiritish uchun «Hujjat qo‘shish» tugmasini bosing.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(formData.documents || []).map((doc, idx) => {
+                      const docTitle = typeof doc.title === 'object' ? (doc.title[activeLang] || '') : (doc.title || '');
+
+                      return (
+                        <div key={doc.id || idx} className="p-3.5 rounded-xl bg-gray-900 border border-gray-800 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-mono text-blue-400 font-bold">
+                              #{idx + 1} {doc.type || 'PDF'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  documents: (prev.documents || []).filter((_, i) => i !== idx)
+                                }));
+                              }}
+                              className="p-1 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                            {/* Hujjat nomi */}
+                            <div className="sm:col-span-5 space-y-1">
+                              <label className="text-[10px] font-semibold text-gray-400">
+                                {activeLang === 'ru' ? `Название (${activeLang.toUpperCase()}) *` : `Hujjat nomi (${activeLang.toUpperCase()}) *`}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder={activeLang === 'ru' ? 'Технический паспорт' : 'Texnik pasport'}
+                                value={docTitle}
+                                onChange={(e) => {
+                                  const updatedDocs = [...(formData.documents || [])];
+                                  const curTitle = typeof updatedDocs[idx].title === 'object' 
+                                    ? updatedDocs[idx].title 
+                                    : { uz: updatedDocs[idx].title || '', ru: updatedDocs[idx].title || '' };
+                                  
+                                  updatedDocs[idx] = {
+                                    ...updatedDocs[idx],
+                                    title: { ...curTitle, [activeLang]: e.target.value }
+                                  };
+                                  setFormData({ ...formData, documents: updatedDocs });
+                                }}
+                                className="w-full px-3 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                              />
+                            </div>
+
+                            {/* Fayl havolasi / URL */}
+                            <div className="sm:col-span-4 space-y-1">
+                              <label className="text-[10px] font-semibold text-gray-400">
+                                {activeLang === 'ru' ? 'Ссылка на файл (URL / /uploads/..)' : 'Fayl havolasi (URL / /uploads/..)'}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="/documents/passport.pdf"
+                                value={doc.fileUrl || ''}
+                                onChange={(e) => {
+                                  const updatedDocs = [...(formData.documents || [])];
+                                  updatedDocs[idx] = { ...updatedDocs[idx], fileUrl: e.target.value };
+                                  setFormData({ ...formData, documents: updatedDocs });
+                                }}
+                                className="w-full px-3 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500 transition"
+                              />
+                            </div>
+
+                            {/* Hajmi */}
+                            <div className="sm:col-span-3 space-y-1">
+                              <label className="text-[10px] font-semibold text-gray-400">
+                                {activeLang === 'ru' ? 'Размер (напр: 2.4 MB)' : 'Hajmi (masalan: 2.4 MB)'}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="PDF, 2.5 MB"
+                                value={doc.size || ''}
+                                onChange={(e) => {
+                                  const updatedDocs = [...(formData.documents || [])];
+                                  updatedDocs[idx] = { ...updatedDocs[idx], size: e.target.value };
+                                  setFormData({ ...formData, documents: updatedDocs });
+                                }}
+                                className="w-full px-3 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 4: INDUSTRIES & TASKS */}
           {activeTab === 'industries' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-1">
@@ -1493,7 +1725,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: MEDIA */}
+          {/* TAB 5: MEDIA */}
           {activeTab === 'media' && (
             <div className="space-y-6 animate-in fade-in duration-150">
               <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-3">
@@ -1597,7 +1829,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           )}
 
-          {/* TAB 5: SEO */}
+          {/* TAB 6: SEO */}
           {activeTab === 'seo' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               

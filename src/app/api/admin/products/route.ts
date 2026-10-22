@@ -61,6 +61,26 @@ function parseSpecs(rawSpecs: any) {
   });
 }
 
+function parseDocuments(rawDocs: any) {
+  const parsed = parseArray(rawDocs);
+
+  return parsed.map((doc: any, idx: number) => {
+    let title = doc?.title;
+    if (typeof title === 'string') {
+      try { title = JSON.parse(title); } catch {}
+    }
+    return {
+      id: String(doc?.id || `doc-${idx + 1}`),
+      title: typeof title === 'object' && title !== null
+        ? { uz: title.uz || '', ru: title.ru || '' }
+        : { uz: title || '', ru: title || '' },
+      fileUrl: String(doc?.fileUrl || doc?.url || '').trim(),
+      size: String(doc?.size || 'PDF').trim(),
+      type: String(doc?.type || 'PDF').trim()
+    };
+  });
+}
+
 function transformProductRow(p: any) {
   const slug = parseIfJson(p.slug, { uz: p.id, ru: p.id });
   const name = parseIfJson(p.name || p.title, { uz: p.id, ru: p.id });
@@ -100,6 +120,7 @@ function transformProductRow(p: any) {
     additionalImages: images,
     pdfCatalogUrl: p.pdfCatalogUrl || '',
     specs: parseSpecs(p.specs),
+    documents: parseDocuments(p.documents),
     features: typeof features === 'object' ? features : { uz: [], ru: [] },
     applications: typeof applications === 'object' ? applications : { uz: [], ru: [] },
     standardCert: typeof standardCert === 'object' ? standardCert : { uz: standardCert, ru: standardCert },
@@ -178,6 +199,7 @@ export async function POST(req: NextRequest) {
     const pdfCatalogUrl = prod.pdfCatalogUrl || prod.pdfFile || '';
 
     const specs = JSON.stringify(parseArray(prod.specs));
+    const documents = JSON.stringify(parseArray(prod.documents || []));
     const features = typeof prod.features === 'object' ? JSON.stringify(prod.features) : JSON.stringify({ uz: [], ru: [] });
     const applications = typeof prod.applications === 'object' ? JSON.stringify(prod.applications) : JSON.stringify({ uz: [], ru: [] });
     const standardCert = typeof prod.standardCert === 'object' ? JSON.stringify(prod.standardCert) : JSON.stringify({ uz: prod.standardCert || '', ru: prod.standardCert || '' });
@@ -192,8 +214,8 @@ export async function POST(req: NextRequest) {
 
     await db.query(
       `INSERT INTO products 
-        (id, brand_id, slug, title, description, categoryId, imageUrl, images, pdfCatalogUrl, specs, features, isActive, model, category, name, tagline, price, oldPrice, priceFormatted, inStock, isPopular, image, applications, isNew, standardCert, warrantyMonths, seoTitle, seoDescription, seoKeywords, ogImage, industryIds, industryTaskIds)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, brand_id, slug, title, description, categoryId, imageUrl, images, pdfCatalogUrl, specs, documents, features, isActive, model, category, name, tagline, price, oldPrice, priceFormatted, inStock, isPopular, image, applications, isNew, standardCert, warrantyMonths, seoTitle, seoDescription, seoKeywords, ogImage, industryIds, industryTaskIds)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE 
         brand_id = VALUES(brand_id),
         slug = VALUES(slug),
@@ -204,6 +226,7 @@ export async function POST(req: NextRequest) {
         images = VALUES(images),
         pdfCatalogUrl = VALUES(pdfCatalogUrl),
         specs = VALUES(specs),
+        documents = VALUES(documents),
         features = VALUES(features),
         isActive = VALUES(isActive),
         model = VALUES(model),
@@ -228,7 +251,7 @@ export async function POST(req: NextRequest) {
         industryTaskIds = VALUES(industryTaskIds)`,
       [
         prodId, brandId, slug, name, description, categoryId, imageUrl, images, pdfCatalogUrl,
-        specs, features, inStock, model, categoryId, name, tagline, price, oldPrice,
+        specs, documents, features, inStock, model, categoryId, name, tagline, price, oldPrice,
         priceFormatted, inStock, isPopular, imageUrl, applications, isNew, standardCert,
         warrantyMonths, seoTitle, seoDescription, seoKeywords, ogImage,
         industryIds, industryTaskIds

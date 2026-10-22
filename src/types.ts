@@ -23,6 +23,15 @@ export interface ProductSpec {
   value: LocalizedString | string;  // { uz: '0...600 bar', ru: '0...600 бар' }
 }
 
+// 🌟 Hujjatlar (Pasport, Sertifikat, Qo'llanma) interfeysi
+export interface ProductDocument {
+  id?: string;
+  title: LocalizedString | string;  // { uz: 'Texnik pasport', ru: 'Технический паспорт' }
+  fileUrl: string;                  // PDF yoki fayl havolasi
+  size?: string;                     // Masalan: '3.8 MB'
+  type?: string;                     // Masalan: 'PDF'
+}
+
 // 🌟 Yangi Soha va Vazifalar interfeysi
 export interface IndustryTask {
   id: string;
@@ -38,6 +47,7 @@ export interface IndustryInfo {
   icon?: string; // masalan: Flame, Building2, Zap, Wrench
   tasks?: IndustryTask[];
 }
+
 export interface Product {
   id: string;
   slug?: LocalizedString;
@@ -56,6 +66,8 @@ export interface Product {
   imageUrl?: string;
   brand?: string;
   additionalImages?: string[];
+  pdfCatalogUrl?: string;                       // Yakka katalog havolasi
+  documents?: ProductDocument[] | string;       // Dinamik hujjatlar to'plami
   specs: ProductSpec[];
   features: LocalizedStringArray;
   applications: LocalizedStringArray;
@@ -272,7 +284,7 @@ export interface HeaderSettings {
   logoSubtitle: LocalizedString;
   logoImageUrl?: string;
   logoUrl?: string;
-  faviconUrl?: string; // 🌟 Shu qatorni qo'shing
+  faviconUrl?: string;
   topbarWarehouse: LocalizedString;
   topbarDelivery: LocalizedString;
   topbarSchedule: LocalizedString;
