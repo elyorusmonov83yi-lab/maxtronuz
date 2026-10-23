@@ -1404,12 +1404,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           )}
 
           {/* TAB 3: DOCUMENTS & PASSPORTS */}
+          {/* TAB: DOCUMENTS & PASSPORTS (Cloudflare R2 ga to'g'ridan-to'g'ri yuklash bilan) */}
           {activeTab === 'docs' && (
             <div className="space-y-6 animate-in fade-in duration-150">
               
+              {/* Til tanlovi */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-gray-950 border border-gray-800">
                 <span className="text-xs font-semibold text-gray-300">
-                  {activeLang === 'ru' ? 'Язык редактирования названий документов:' : 'Hujjat nomlarini tahrirlash tili:'}
+                  {activeLang === 'ru' ? 'Язык названий документов:' : 'Hujjat nomlari tili:'}
                 </span>
                 <div className="flex gap-2">
                   {[
@@ -1432,35 +1434,21 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 </div>
               </div>
 
-              {/* Umumiy katalog URL (Legacy / tezkor havola) */}
-              <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-2">
-                <label className="text-xs font-semibold text-gray-300 flex items-center gap-2">
-                  <Paperclip className="w-4 h-4 text-blue-400" />
-                  <span>{activeLang === 'ru' ? 'Основной PDF-каталог (опционально)' : 'Asosiy PDF-katalog havolasi (ixtiyoriy)'}</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://... yoki /documents/catalog.pdf"
-                  value={formData.pdfCatalogUrl || ''}
-                  onChange={(e) => setFormData({ ...formData, pdfCatalogUrl: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 font-mono transition"
-                />
-              </div>
-
-              {/* Dinamik hujjatlar ro'yxati */}
+              {/* Hujjatlar ro'yxati */}
               <div className="space-y-4 p-4 rounded-2xl bg-gray-950 border border-gray-800">
                 <div className="flex items-center justify-between border-b border-gray-800/80 pb-3">
                   <div>
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <span>{activeLang === 'ru' ? 'Техническая документация и сертификаты' : 'Texnik hujjatlar va sertifikatlar'}</span>
+                      <Paperclip className="w-4 h-4 text-blue-400" />
+                      <span>{activeLang === 'ru' ? 'Техническая документация (PDF)' : 'Texnik hujjatlar (PDF)'}</span>
                       <span className="px-2 py-0.5 rounded text-[10px] bg-blue-600/20 text-blue-400 font-mono">
                         {(formData.documents || []).length}
                       </span>
                     </h3>
                     <p className="text-[11px] text-gray-400 mt-0.5">
                       {activeLang === 'ru' 
-                        ? 'Паспорта приборов, руководства по эксплуатации, сертификаты поверки'
-                        : 'Uskuna pasportlari, foydalanish qo‘llanmalari, qiyoslash sertifikatlari'}
+                        ? 'Паспорта, руководства и сертификаты загружаются напрямую в Cloudflare R2' 
+                        : 'Pasport, qo‘llanma va sertifikatlar to‘g‘ridan-to‘g‘ri Cloudflare R2 ga yuklanadi'}
                     </p>
                   </div>
 
@@ -1474,7 +1462,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                           ru: activeLang === 'ru' ? 'Технический паспорт' : '' 
                         },
                         fileUrl: '',
-                        size: 'PDF, 2.4 MB',
+                        size: 'PDF',
                         type: 'PDF'
                       };
                       setFormData(prev => ({
@@ -1492,11 +1480,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 {(!formData.documents || formData.documents.length === 0) ? (
                   <div className="text-center py-8 text-gray-500 text-xs space-y-1">
                     <FileText className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-50" />
-                    <p>{activeLang === 'ru' ? 'Документы пока не прикреплены к этому товару.' : 'Ushbu mahsulotga hali hujjatlar biriktirilmagan.'}</p>
+                    <p>{activeLang === 'ru' ? 'Документы пока не прикреплены.' : 'Hujjatlar hali biriktirilmagan.'}</p>
                     <p className="text-[10px] text-gray-600">
                       {activeLang === 'ru' 
-                        ? 'Нажмите «Добавить документ», чтобы указать ссылку на PDF файл или паспорт.' 
-                        : 'PDF fayl yoki pasport havolasini kiritish uchun «Hujjat qo‘shish» tugmasini bosing.'}
+                        ? 'Нажмите «Добавить документ» и загрузите PDF-файл прямо с компьютера.' 
+                        : '«Hujjat qo‘shish» tugmasini bosib, PDF faylni kompyuterdan to‘g‘ridan-to‘g‘ri yuklang.'}
                     </p>
                   </div>
                 ) : (
@@ -1508,7 +1496,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                         <div key={doc.id || idx} className="p-3.5 rounded-xl bg-gray-900 border border-gray-800 space-y-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[11px] font-mono text-blue-400 font-bold">
-                              #{idx + 1} {doc.type || 'PDF'}
+                              #{idx + 1} {doc.title ? (typeof doc.title === 'object' ? (doc.title.ru || doc.title.uz) : doc.title) : 'Hujjat'}
                             </span>
                             <button
                               type="button"
@@ -1524,9 +1512,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             {/* Hujjat nomi */}
-                            <div className="sm:col-span-5 space-y-1">
+                            <div className="sm:col-span-4 space-y-1">
                               <label className="text-[10px] font-semibold text-gray-400">
                                 {activeLang === 'ru' ? `Название (${activeLang.toUpperCase()}) *` : `Hujjat nomi (${activeLang.toUpperCase()}) *`}
                               </label>
@@ -1546,43 +1534,86 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                                   };
                                   setFormData({ ...formData, documents: updatedDocs });
                                 }}
-                                className="w-full px-3 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                                className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 transition"
                               />
                             </div>
 
-                            {/* Fayl havolasi / URL */}
-                            <div className="sm:col-span-4 space-y-1">
-                              <label className="text-[10px] font-semibold text-gray-400">
-                                {activeLang === 'ru' ? 'Ссылка на файл (URL / /uploads/..)' : 'Fayl havolasi (URL / /uploads/..)'}
+                            {/* Fayl yuklash (Cloudflare R2 ga) */}
+                            <div className="sm:col-span-5 space-y-1">
+                              <label className="text-[10px] font-semibold text-gray-400 flex items-center justify-between">
+                                <span>{activeLang === 'ru' ? 'Файл (Cloudflare R2)' : 'Fayl (Cloudflare R2)'}</span>
+                                {doc.fileUrl && (
+                                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline text-[10px] font-mono truncate max-w-[150px]">
+                                    {doc.fileUrl.split('/').pop()}
+                                  </a>
+                                )}
                               </label>
-                              <input
-                                type="text"
-                                placeholder="/documents/passport.pdf"
-                                value={doc.fileUrl || ''}
-                                onChange={(e) => {
-                                  const updatedDocs = [...(formData.documents || [])];
-                                  updatedDocs[idx] = { ...updatedDocs[idx], fileUrl: e.target.value };
-                                  setFormData({ ...formData, documents: updatedDocs });
-                                }}
-                                className="w-full px-3 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500 transition"
-                              />
+
+                              <div className="flex gap-2">
+                                <label className="flex-1 cursor-pointer">
+                                  <div className="px-3 py-2 rounded-lg bg-gray-950 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-xs text-gray-300 flex items-center justify-center gap-1.5 transition">
+                                    <Upload className="w-3.5 h-3.5 text-blue-400" />
+                                    <span>{doc.fileUrl ? (activeLang === 'ru' ? 'Заменить PDF' : 'Faylni almashtirish') : (activeLang === 'ru' ? 'Выбрать PDF' : 'PDF tanlash')}</span>
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.docx,.xlsx"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+
+                                      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '';
+                                      const bodyData = new FormData();
+                                      bodyData.append('file', file);
+
+                                      try {
+                                        const res = await fetch('/api/admin/upload', {
+                                          method: 'POST',
+                                          headers: {
+                                            ...(token ? { Authorization: `Bearer ${token}` } : {})
+                                          },
+                                          body: bodyData,
+                                        });
+
+                                        const data = await res.json();
+                                        if (data.success && data.url) {
+                                          const updatedDocs = [...(formData.documents || [])];
+                                          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                                          updatedDocs[idx] = {
+                                            ...updatedDocs[idx],
+                                            fileUrl: data.url,
+                                            size: `${fileSizeMB} MB`,
+                                            type: file.name.split('.').pop()?.toUpperCase() || 'PDF'
+                                          };
+                                          setFormData({ ...formData, documents: updatedDocs });
+                                        } else {
+                                          alert(data.message || 'Fayl yuklashda xatolik yuz berdi');
+                                        }
+                                      } catch (err: any) {
+                                        alert('R2 ga yuklashda xatolik: ' + err.message);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
                             </div>
 
                             {/* Hajmi */}
                             <div className="sm:col-span-3 space-y-1">
                               <label className="text-[10px] font-semibold text-gray-400">
-                                {activeLang === 'ru' ? 'Размер (напр: 2.4 MB)' : 'Hajmi (masalan: 2.4 MB)'}
+                                {activeLang === 'ru' ? 'Размер' : 'Hajmi'}
                               </label>
                               <input
                                 type="text"
-                                placeholder="PDF, 2.5 MB"
+                                placeholder="3.8 MB"
                                 value={doc.size || ''}
                                 onChange={(e) => {
                                   const updatedDocs = [...(formData.documents || [])];
                                   updatedDocs[idx] = { ...updatedDocs[idx], size: e.target.value };
                                   setFormData({ ...formData, documents: updatedDocs });
                                 }}
-                                className="w-full px-3 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                                className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 font-mono transition"
                               />
                             </div>
                           </div>
@@ -1595,8 +1626,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
             </div>
           )}
-
-          {/* TAB 4: INDUSTRIES & TASKS */}
+                 {/* TAB 4: INDUSTRIES & TASKS */}
           {activeTab === 'industries' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-1">

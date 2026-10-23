@@ -77,6 +77,24 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
     }
   }, []);
 
+  const handleOpenQuote = (product?: Product) => {
+    setQuoteProduct(product || null);
+    setIsQuoteModalOpen(true);
+  };
+
+  // Global hodisani eshitish (sahifadagi barcha "Запросить КП" tugmalari uchun)
+  useEffect(() => {
+    const handleGlobalQuote = (e: any) => {
+      const prod = e?.detail?.product || null;
+      handleOpenQuote(prod);
+    };
+
+    window.addEventListener('open-quote-modal', handleGlobalQuote);
+    return () => {
+      window.removeEventListener('open-quote-modal', handleGlobalQuote);
+    };
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);
@@ -90,11 +108,6 @@ export const MainLayoutClient: React.FC<MainLayoutClientProps> = ({ children }) 
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
     }, 3500);
-  };
-
-  const handleOpenQuote = (product?: Product) => {
-    setQuoteProduct(product || null);
-    setIsQuoteModalOpen(true);
   };
 
   return (

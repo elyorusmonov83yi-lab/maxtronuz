@@ -78,6 +78,25 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'features' | 'applications' | 'docs'>('description');
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
 
+  const handleOpenQuoteClick = (prod?: Product) => {
+    const targetProduct = prod || product;
+    if (typeof onOpenQuote === 'function' && targetProduct) {
+      try {
+        onOpenQuote(targetProduct);
+      } catch (err) {
+        console.warn('onOpenQuote prop error:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('open-quote-modal', {
+          detail: { product: targetProduct }
+        })
+      );
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     if (!initialProduct) setLoading(true);
@@ -391,7 +410,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
-                onClick={() => onOpenQuote(product)}
+                onClick={() => handleOpenQuoteClick(product)}
                 id="product-detail-quote-btn"
                 className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition transform hover:-translate-y-0.5 cursor-pointer"
               >
@@ -496,7 +515,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </button>
         </div>
 
-        {/* 1. Tavsif (Description) - Matn chetga chiqmaydi */}
+        {/* 1. Tavsif (Description) */}
         {activeTab === 'description' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4 overflow-hidden">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -521,7 +540,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </div>
         )}
 
-        {/* 2. Xarakteristikalar (Specs) - Xavfsiz parse bilan */}
+        {/* 2. Xarakteristikalar (Specs) */}
         {activeTab === 'specs' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-6">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -624,7 +643,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </div>
         )}
 
-        {/* 5. Hujjatlar (Docs) */}
+        {/* 5. Hujjatlar (Docs) - Dinamik Baza Integratsiyasi */}
         {activeTab === 'docs' && (
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-6">
             <div>
@@ -634,66 +653,117 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </h3>
               <p className="text-xs text-gray-400 mt-1">
                 {currentLang === 'ru' 
-                  ? 'Вы можете скачать техническую документацию к прибору в формате PDF.' 
-                  : 'Quyidagi texnik hujjatlarni PDF formatida yuklab olishingiz mumkin.'}
+                  ? 'Вы можете ознакомиться и скачать техническую документацию к прибору.' 
+                  : 'Quyidagi texnik hujjatlarni ko‘rib chiqishingiz va yuklab olishingiz mumkin.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-5 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center mb-3">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <h4 className="text-sm font-bold text-white">{currentLang === 'ru' ? 'Технический паспорт' : 'Texnik pasport'}</h4>
-                  <p className="text-xs text-gray-400 mt-1">PDF • 3.8 MB • {modelText}</p>
-                </div>
-                <button
-                  onClick={() => handleDownloadDoc(`Паспорт_${modelText}.pdf`)}
-                  disabled={downloadingDoc === `Паспорт_${modelText}.pdf`}
-                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-white rounded-xl transition cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{downloadingDoc === `Паспорт_${modelText}.pdf` ? (currentLang === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (currentLang === 'ru' ? 'Скачать' : 'Yuklab olish')}</span>
-                </button>
-              </div>
+            {(() => {
+              let rawDocs = product.documents;
+              if (typeof rawDocs === 'string') {
+                try {
+                  rawDocs = JSON.parse(rawDocs);
+                } catch {
+                  rawDocs = [];
+                }
+              }
+              const safeDocs: any[] = Array.isArray(rawDocs) ? [...rawDocs] : [];
 
-              <div className="p-5 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-3">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <h4 className="text-sm font-bold text-white">{currentLang === 'ru' ? 'Сертификат поверки Узстандарт' : 'O‘zstandart qiyoslash sertifikati'}</h4>
-                  <p className="text-xs text-gray-400 mt-1">PDF • 1.4 MB • O'z DSt</p>
-                </div>
-                <button
-                  onClick={() => handleDownloadDoc(`Сертификат_${modelText}.pdf`)}
-                  disabled={downloadingDoc === `Сертификат_${modelText}.pdf`}
-                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-white rounded-xl transition cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{downloadingDoc === `Сертификат_${modelText}.pdf` ? (currentLang === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (currentLang === 'ru' ? 'Скачать' : 'Yuklab olish')}</span>
-                </button>
-              </div>
+              if (product.pdfCatalogUrl && !safeDocs.some(d => d.fileUrl === product.pdfCatalogUrl)) {
+                safeDocs.unshift({
+                  id: 'catalog-pdf',
+                  title: {
+                    uz: 'Texnik katalog (PDF)',
+                    ru: 'Технический каталог (PDF)'
+                  },
+                  fileUrl: product.pdfCatalogUrl,
+                  size: 'PDF',
+                  type: 'PDF'
+                });
+              }
 
-              <div className="p-5 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
-                    <Wrench className="w-5 h-5" />
+              if (safeDocs.length === 0) {
+                return (
+                  <div className="p-8 rounded-2xl bg-gray-950/70 border border-gray-800 text-center space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <div className="max-w-md mx-auto space-y-1">
+                      <h4 className="text-sm font-bold text-white">
+                        {currentLang === 'ru' ? 'Электронная документация готовится' : 'Elektron hujjatlar tayyorlanmoqda'}
+                      </h4>
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        {currentLang === 'ru'
+                          ? `Паспорт, сертификат поверки и руководство для модели ${modelText} предоставляются по официальному запросу.`
+                          : `${modelText} modeli uchun pasport, qiyoslash sertifikati va yo‘riqnoma rasmiy so‘rov asosida taqdim etiladi.`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQuoteClick(product)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-lg shadow-blue-500/20"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5" />
+                      <span>{currentLang === 'ru' ? 'Запросить документацию у инженера' : 'Muhandisdan hujjatlarni so‘rash'}</span>
+                    </button>
                   </div>
-                  <h4 className="text-sm font-bold text-white">{currentLang === 'ru' ? 'Руководство по эксплуатации' : 'Foydalanish qo‘llanmasi'}</h4>
-                  <p className="text-xs text-gray-400 mt-1">PDF • 5.2 MB</p>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {safeDocs.map((doc, idx) => {
+                    const docTitle = typeof doc.title === 'object'
+                      ? getLocalizedText(doc.title, currentLang, 'Документ')
+                      : (doc.title || (currentLang === 'ru' ? 'Документ' : 'Hujjat'));
+
+                    const fileUrl = doc.fileUrl || doc.url || '';
+                    const docType = doc.type || 'PDF';
+                    const docSize = doc.size || 'PDF';
+
+                    return (
+                      <div 
+                        key={doc.id || idx} 
+                        className="p-5 rounded-2xl bg-gray-900 border border-gray-800 hover:border-blue-500/40 transition flex flex-col justify-between space-y-4 group"
+                      >
+                        <div>
+                          <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center mb-3">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <h4 className="text-sm font-bold text-white group-hover:text-blue-400 transition">
+                            {docTitle}
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1 font-mono">
+                            {docType} • {docSize} • {modelText}
+                          </p>
+                        </div>
+
+                        {fileUrl ? (
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-800 hover:bg-blue-600 text-xs font-semibold text-white rounded-xl transition cursor-pointer shadow-md"
+                          >
+                            <Download className="w-3.5 h-3.5 text-blue-400 group-hover:text-white" />
+                            <span>{currentLang === 'ru' ? 'Скачать / Открыть' : 'Yuklab olish / Ochish'}</span>
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenQuoteClick(product)}
+                            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-800/80 hover:bg-gray-700 text-xs font-semibold text-gray-300 hover:text-white rounded-xl transition cursor-pointer"
+                          >
+                            <PhoneCall className="w-3.5 h-3.5 text-blue-400" />
+                            <span>{currentLang === 'ru' ? 'Запросить файл' : 'Faylni so‘rash'}</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <button
-                  onClick={() => handleDownloadDoc(`Manual_${modelText}.pdf`)}
-                  disabled={downloadingDoc === `Manual_${modelText}.pdf`}
-                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-white rounded-xl transition cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{downloadingDoc === `Manual_${modelText}.pdf` ? (currentLang === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (currentLang === 'ru' ? 'Скачать' : 'Yuklab olish')}</span>
-                </button>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -749,7 +819,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </p>
         </div>
         <button
-          onClick={() => onOpenQuote(product)}
+          onClick={() => handleOpenQuoteClick(product)}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/20 text-sm whitespace-nowrap transition transform hover:-translate-y-0.5 cursor-pointer"
         >
           {t.btn_request_quote || (currentLang === 'ru' ? 'Запросить КП' : 'Taklif olish')}
