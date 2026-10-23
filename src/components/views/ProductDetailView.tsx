@@ -450,11 +450,14 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         </div>
       </div>
 
-      {/* Tablar */}
+      {/* Tablar (SEO uchun to'liq HTML render + CSS orqali ko'rsatish) */}
       <div className="mt-16 space-y-6">
-        <div className="flex border-b border-gray-800 space-x-2 sm:space-x-4 overflow-x-auto pb-px">
+        <div className="flex border-b border-gray-800 space-x-2 sm:space-x-4 overflow-x-auto pb-px" role="tablist">
           
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'description'}
             onClick={() => setActiveTab('description')}
             className={`pb-4 px-4 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'description'
@@ -467,6 +470,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'specs'}
             onClick={() => setActiveTab('specs')}
             className={`pb-4 px-4 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'specs'
@@ -479,6 +485,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'features'}
             onClick={() => setActiveTab('features')}
             className={`pb-4 px-4 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'features'
@@ -491,6 +500,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'applications'}
             onClick={() => setActiveTab('applications')}
             className={`pb-4 px-4 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'applications'
@@ -503,6 +515,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'docs'}
             onClick={() => setActiveTab('docs')}
             className={`pb-4 px-4 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'docs'
@@ -516,7 +531,10 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         </div>
 
         {/* 1. Tavsif (Description) */}
-        {activeTab === 'description' && (
+        <section 
+          className={activeTab === 'description' ? 'block' : 'hidden'}
+          aria-hidden={activeTab !== 'description'}
+        >
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4 overflow-hidden">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-blue-400" />
@@ -538,10 +556,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </p>
             )}
           </div>
-        )}
+        </section>
 
-        {/* 2. Xarakteristikalar (Specs) */}
-        {activeTab === 'specs' && (
+        {/* 2. Xarakteristikalar (Specs) — Google va Yandex botlari to'liq o'qiydi */}
+        <section 
+          className={activeTab === 'specs' ? 'block' : 'hidden'}
+          aria-hidden={activeTab !== 'specs'}
+        >
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-6">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <Layers className="w-5 h-5 text-blue-400" />
@@ -603,10 +624,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </table>
             </div>
           </div>
-        )}
+        </section>
 
         {/* 3. Xususiyatlar (Features) */}
-        {activeTab === 'features' && (
+        <section 
+          className={activeTab === 'features' ? 'block' : 'hidden'}
+          aria-hidden={activeTab !== 'features'}
+        >
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <Cpu className="w-5 h-5 text-blue-400" />
@@ -623,10 +647,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               ))}
             </div>
           </div>
-        )}
+        </section>
 
         {/* 4. Qo'llanilishi (Applications) */}
-        {activeTab === 'applications' && (
+        <section 
+          className={activeTab === 'applications' ? 'block' : 'hidden'}
+          aria-hidden={activeTab !== 'applications'}
+        >
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <Wrench className="w-5 h-5 text-blue-400" />
@@ -641,10 +668,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               ))}
             </div>
           </div>
-        )}
+        </section>
 
-        {/* 5. Hujjatlar (Docs) - Dinamik Baza Integratsiyasi */}
-        {activeTab === 'docs' && (
+        {/* 5. Hujjatlar (Docs) - Dinamik R2 / Baza */}
+        <section 
+          className={activeTab === 'docs' ? 'block' : 'hidden'}
+          aria-hidden={activeTab !== 'docs'}
+        >
           <div className="bg-gray-900/60 rounded-3xl border border-gray-800 p-6 sm:p-8 space-y-6">
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -765,7 +795,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               );
             })()}
           </div>
-        )}
+        </section>
       </div>
 
       {relatedProducts.length > 0 && (
