@@ -201,7 +201,8 @@ export async function POST(
     const rawDesc = current ? current.description : body?.description;
     const currentDesc = parseIfJson(rawDesc, { ru: '', uz: '' });
 
-    const prompt = `
+  // route.ts ichidagi prompt qismida:
+const prompt = `
 Siz sanoat uskunalari, KIPiA va avtomatika bo'yicha yetakchi muhandissiz.
 Foydalanuvchi quyidagi uskunani kiritdi:
 - Model / Artikul: "${currentModel}"
@@ -212,13 +213,20 @@ ${currentCategoryId ? `- Ko'rsatilgan toifa: ${currentCategoryId}` : "- Toifa: N
 - Mavjud tavsif: ${currentDesc.ru || ''}
 
 VAZIFANGIZ:
-Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin imlosida) qilib to'ldiring:
-1. "detectedBrand": Ishlab chiqaruvchi brendning aniq nomi (masalan: WIKA, BD|Sensors, Endress+Hauser, Danfoss, Yokogawa, Rosemount, Siemens va h.k.).
-2. "detectedCategory": Uskuna toifasi (masalan: "Датчики давления", "Манометры", "Расходомеры", "Термометры", "Клапаны", "Преобразователи уровня").
+Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin imlosida) qilib to'liq to'ldiring:
+1. "detectedBrand": Ishlab chiqaruvchi brendning aniq nomi.
+2. "detectedCategory": Uskuna toifasi.
 3. "name": Uskunaning to'liq professional nomi (RU va UZ).
-4. "description": HTML formatidagi batafsil tavsif (<p>, <strong>, <ul>, <li>).
-5. "specs": 6-10 tagacha aniq texnik parametr (diapazon, chiqish signali, korpus materiali, xatolik klassi va h.k.).
-6. "features" va "applications": Kamida 3-5 tadan band.
+
+4. "description" — JUDA BATAFSIL VA KENGAYTIRILGAN BO'LSIN (kamida 300-400 so'z, 3-4 ta to'liq abzas). HTML formatida (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin va quyidagi tarkibiy qismlarni o'z ichiga olsin:
+   - 1-abzas: Uskunaning vazifasi, qaysi sanoat jarayonlarida qo'llanilishi va uning asosiy maqsadi.
+   - 2-abzas: Ishlash prinsipi, qanday datchik/mexanizm ishlatilgani, o'lchash aniqligi va barqarorligi.
+   - 3-abzas: Korpusning himoyalanganligi (IP klassi), og'ir muhitlarga (vibratsiya, harorat, agressiv muhitlar) chidamliligi va ulanish qulayligi.
+   - 4-blok: Asosiy texnik afzalliklari bo'yicha qisqa xulosa.
+   Qisqa 1-2 ta gap bilan cheklanib qolish qat'iyan taqiqlanadi!
+
+5. "specs": 8-12 tagacha aniq texnik parametr (diapazon, chiqish signali, ta'minot kuchlanishi, xatolik klassi, korpus materiali, ishchi harorat va h.k.).
+6. "features" va "applications": Kamida 4-6 tadan aniq band.
 7. Hech bir 'uz' maydoni bo'sh qolmasin.
 `;
 
