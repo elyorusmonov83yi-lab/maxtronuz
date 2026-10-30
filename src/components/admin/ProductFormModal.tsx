@@ -64,20 +64,19 @@ function normalizeLocString(val: any, fallbackStr: string = ''): LocalizedString
       const parsed = JSON.parse(val);
       if (typeof parsed === 'object' && parsed !== null) {
         return {
-          uz: parsed.uz || parsed.ru || fallbackStr,
-          ru: parsed.ru || parsed.uz || fallbackStr
+          uz: String(parsed.uz || parsed.ru || fallbackStr),
+          ru: String(parsed.ru || parsed.uz || fallbackStr)
         };
       }
     } catch {}
     return { uz: val, ru: val };
   }
   if (typeof val === 'object') {
-    return {
-      uz: val.uz || val.ru || fallbackStr,
-      ru: val.ru || val.uz || fallbackStr
-    };
+    const uzVal = val.uz !== undefined && val.uz !== null ? String(val.uz) : (val.ru !== undefined && val.ru !== null ? String(val.ru) : fallbackStr);
+    const ruVal = val.ru !== undefined && val.ru !== null ? String(val.ru) : (val.uz !== undefined && val.uz !== null ? String(val.uz) : fallbackStr);
+    return { uz: uzVal, ru: ruVal };
   }
-  return { uz: fallbackStr, ru: fallbackStr };
+  return { uz: String(val), ru: String(val) };
 }
 
 function normalizeLocArray(val: any) {
@@ -87,8 +86,8 @@ function normalizeLocArray(val: any) {
     try { obj = JSON.parse(val); } catch { obj = { uz: [], ru: [] }; }
   }
   return {
-    uz: Array.isArray(obj?.uz) ? obj.uz : [],
-    ru: Array.isArray(obj?.ru) ? obj.ru : []
+    uz: Array.isArray(obj?.uz) ? obj.uz : (Array.isArray(obj?.ru) ? obj.ru : []),
+    ru: Array.isArray(obj?.ru) ? obj.ru : (Array.isArray(obj?.uz) ? obj.uz : [])
   };
 }
 
@@ -100,10 +99,27 @@ function normalizeSpecs(specsRaw: any): ProductSpec[] {
   }
   if (!Array.isArray(arr)) return [];
 
-  return arr.map((s: any) => ({
-    name: normalizeLocString(s.name),
-    value: normalizeLocString(s.value)
-  }));
+  return arr
+    .map((s: any) => {
+      let nameVal = s?.name;
+      let valVal = s?.value;
+
+      if (typeof nameVal === 'string' && (nameVal.trim().startsWith('{') || nameVal.trim().startsWith('['))) {
+        try { nameVal = JSON.parse(nameVal); } catch {}
+      }
+      if (typeof valVal === 'string' && (valVal.trim().startsWith('{') || valVal.trim().startsWith('['))) {
+        try { valVal = JSON.parse(valVal); } catch {}
+      }
+
+      const normalizedName = normalizeLocString(nameVal);
+      const normalizedValue = normalizeLocString(valVal);
+
+      return {
+        name: normalizedName,
+        value: normalizedValue
+      };
+    })
+    .filter(s => s.name.ru.trim() || s.name.uz.trim() || s.value.ru.trim() || s.value.uz.trim());
 }
 
 function normalizeDocuments(docsRaw: any): ProductDocument[] {
@@ -161,6 +177,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const [isUploadingMain, setIsUploadingMain] = useState(false);
   const [isUploadingAdditional, setIsUploadingAdditional] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [industriesList, setIndustriesList] = useState<IndustryInfo[]>([]);
   const [brandsList, setBrandsList] = useState<BrandInfo[]>([]);
@@ -186,7 +203,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     id: '',
     slug: { uz: '', ru: '' },
     name: { uz: '', ru: '' },
-    brandId: 'b-maxtron',
+    brandId: '',
     model: '',
     category: '',
     tagline: { uz: '', ru: '' },
@@ -269,7 +286,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
       const finalRuSlug = parsedSlug.ru || generateSlug(parsedName.ru || productToEdit.model || productToEdit.id);
       const finalUzSlug = parsedSlug.uz || generateSlug(parsedName.uz || parsedName.ru || productToEdit.id);
-      const existingBrandId = (productToEdit as any).brandId || (productToEdit as any).brand || 'b-maxtron';
+      const existingBrandId = (productToEdit as any).brandId || (productToEdit as any).brand || (productToEdit as any).brand_id || '';
 
       setFormData({
         ...productToEdit,
@@ -311,7 +328,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         id: newAutoId,
         slug: { uz: '', ru: '' },
         name: { uz: '', ru: '' },
-        brandId: 'b-maxtron',
+        brandId: '',
         model: '',
         category: categories[0]?.id || 'sensors',
         tagline: { uz: '', ru: '' },
@@ -345,6 +362,119 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setFeatureInput({ uz: '', ru: '' });
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
+
+  // AI BILAN TO'LDIRISH HANDLERI (YANGI VA MAVJUD TOVARLAR UCHUN 2 TILLI)
+  const handleAiAutoFill = async () => {
+    if (!formData.model?.trim()) {
+      alert(activeLang === 'ru' ? 'Сначала введите артикул или модель оборудования!' : 'Avval uskuna modeli yoki artikulini kiriting!');
+      return;
+    }
+
+    const targetId = formData.id || `mx-${Date.now().toString().slice(-6)}`;
+
+    setIsAiLoading(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '';
+      
+      const res = await fetch(`/api/admin/products/${targetId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          model: formData.model.trim(),
+          brandId: formData.brandId || '',
+          category: formData.category,
+          name: formData.name,
+          description: formData.description
+        })
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("API xatosi:", res.status, errorText);
+        throw new Error(`Server xatolik qaytardi (${res.status})`);
+      }
+
+      const result = await res.json();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || result.message || 'AI maʼlumot qaytarmadi');
+      }
+
+      const updated = result.data;
+
+      // Xarakteristikalarni to'g'ri ajratib olish (specs yoki specifications bo'lishi mumkin)
+      const incomingSpecs = updated.specs || updated.specifications || [];
+      const parsedSpecs = normalizeSpecs(incomingSpecs);
+
+      setFormData(prev => {
+        const newNameRu = updated.name?.ru || (prev.name as LocalizedString)?.ru || formData.model;
+        const newNameUz = updated.name?.uz || (prev.name as LocalizedString)?.uz || formData.model;
+
+        return {
+          ...prev,
+          id: prev.id || targetId,
+          name: {
+            ru: newNameRu,
+            uz: newNameUz
+          },
+          slug: {
+            ru: prev.slug?.ru || `${generateSlug(newNameRu)}-${generateSlug(formData.model)}`,
+            uz: prev.slug?.uz || `${generateSlug(newNameUz)}-${generateSlug(formData.model)}`
+          },
+          tagline: {
+            ru: updated.tagline?.ru || (prev.tagline as LocalizedString)?.ru || '',
+            uz: updated.tagline?.uz || (prev.tagline as LocalizedString)?.uz || ''
+          },
+          description: {
+            ru: updated.description?.ru || (prev.description as LocalizedString)?.ru || '',
+            uz: updated.description?.uz || (prev.description as LocalizedString)?.uz || ''
+          },
+          standardCert: {
+            ru: updated.standardCert?.ru || 'ГОСТ',
+            uz: updated.standardCert?.uz || 'GOST'
+          },
+          // Agar AI yangi xarakteristikalar qaytargan bo'lsa yangilanadi, aks holda oldingisi qoladi:
+          specs: parsedSpecs.length > 0 ? parsedSpecs : prev.specs,
+          features: {
+            ru: Array.isArray(updated.features?.ru) ? updated.features.ru : (prev.features?.ru || []),
+            uz: Array.isArray(updated.features?.uz) ? updated.features.uz : (prev.features?.uz || [])
+          },
+          applications: {
+            ru: Array.isArray(updated.applications?.ru) ? updated.applications.ru : (prev.applications?.ru || []),
+            uz: Array.isArray(updated.applications?.uz) ? updated.applications.uz : (prev.applications?.uz || [])
+          },
+          seoTitle: {
+            ru: updated.seoTitle?.ru || '',
+            uz: updated.seoTitle?.uz || ''
+          },
+          seoDescription: {
+            ru: updated.seoDescription?.ru || '',
+            uz: updated.seoDescription?.uz || ''
+          },
+          seoKeywords: {
+            ru: updated.seoKeywords?.ru || '',
+            uz: updated.seoKeywords?.uz || ''
+          }
+        };
+      });
+
+      // Agar xarakteristikalar muvaffaqiyatli kelgan bo'lsa, foydalanuvchini to'g'ridan-to'g'ri 'specs' tabiga o'tkazish
+      if (parsedSpecs.length > 0) {
+        setActiveTab('specs');
+      }
+
+      alert(activeLang === 'ru' 
+        ? `✨ Сгенерировано: ${parsedSpecs.length} характеристик, описание и SEO на двух языках!` 
+        : `✨ 2 tilda muvaffaqiyatli yaratildi: ${parsedSpecs.length} ta xarakteristika, tavsif va SEO!`
+      );
+    } catch (err: any) {
+      alert(`AI xatolik: ${err.message || 'Server xatosi'}`);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   // Tezkor Kategoriya saqlash
   const handleQuickAddCategory = async (e: React.FormEvent) => {
@@ -685,7 +815,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         ru: nameObj.ru?.trim() || nameObj.uz?.trim() || '',
         uz: nameObj.uz?.trim() || nameObj.ru?.trim() || ''
       },
-      brandId: formData.brandId || 'b-maxtron',
+      brandId: formData.brandId ? formData.brandId : null,
+      brand_id: formData.brandId ? formData.brandId : null,
       model: (formData.model || '').trim(),
       tagline: {
         ru: (formData.tagline as LocalizedString).ru?.trim() || '',
@@ -815,6 +946,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
+                {tab.id === 'specs' && (formData.specs || []).length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-blue-800 text-[10px] text-white">
+                    {(formData.specs || []).length}
+                  </span>
+                )}
                 {tab.id === 'docs' && (formData.documents || []).length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-blue-800 text-[10px] text-white">
                     {(formData.documents || []).length}
@@ -909,7 +1045,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                         </button>
                       </div>
 
-                      {/* Ota kategoriya tanlash */}
                       <div>
                         <label className="block text-[10px] text-gray-400 mb-1">
                           {activeLang === 'ru' ? 'Родительская категория (необязательно)' : 'Ota kategoriya (ixtiyoriy)'}
@@ -966,7 +1101,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
                       <Tag className="w-3.5 h-3.5 text-blue-400" />
-                      <span>{activeLang === 'ru' ? 'Бренд / Производитель *' : 'Brend / Ishlab chiqaruvchi *'}</span>
+                      <span>{activeLang === 'ru' ? 'Бренд / Производитель' : 'Brend / Ishlab chiqaruvchi'}</span>
                     </label>
                     <button
                       type="button"
@@ -982,11 +1117,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </div>
 
                   <select
-                    required
-                    value={formData.brandId || 'b-maxtron'}
+                    value={formData.brandId || ''}
                     onChange={(e) => setFormData({ ...formData, brandId: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
                   >
+                    <option value="" className="text-gray-400">
+                      {activeLang === 'ru' ? '— Без бренда (Универсальный) —' : '— Brend ko‘rsatilmagan (Universal) —'}
+                    </option>
                     {brandsList.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name} {b.country ? `(${b.country})` : ''}
@@ -1041,19 +1178,32 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   )}
                 </div>
 
-                {/* 3. Model */}
+                {/* 3. Model va AI bilan to'ldirish tugmasi */}
                 <div className="sm:col-span-4 space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-300">
-                    {activeLang === 'ru' ? 'Модель / Артикул *' : 'Model / Artikul *'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Masalan: DMP 330L / MX-400"
-                    value={formData.model}
-                    onChange={(e) => handleModelChange(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 font-mono transition"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-300">
+                      {activeLang === 'ru' ? 'Модель / Артикул *' : 'Model / Artikul *'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAiAutoFill}
+                      disabled={isAiLoading || !formData.model?.trim()}
+                      className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition cursor-pointer disabled:opacity-40"
+                    >
+                      {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      <span>{isAiLoading ? 'AI ishlamoqda...' : '✨ AI bilan to‘ldirish'}</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Masalan: DMP 330L / MX-400"
+                      value={formData.model}
+                      onChange={(e) => handleModelChange(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 font-mono transition pr-8"
+                    />
+                  </div>
                 </div>
 
                 {/* Localized Name */}
@@ -1276,7 +1426,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <span>{activeLang === 'ru' ? 'Технические характеристики' : 'Texnik xarakteristikalar'}</span>
                       <span className="px-2 py-0.5 rounded text-[10px] bg-blue-600/20 text-blue-400 font-mono">
-                        {activeLang.toUpperCase()}
+                        {(formData.specs || []).length} ta
                       </span>
                     </h3>
                   </div>
@@ -1299,8 +1449,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 ) : (
                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                     {(formData.specs || []).map((spec, idx) => {
-                      const specName = typeof spec.name === 'object' ? (spec.name[activeLang] || '') : spec.name;
-                      const specVal = typeof spec.value === 'object' ? (spec.value[activeLang] || '') : spec.value;
+                      const specName = typeof spec.name === 'object' 
+                        ? (spec.name[activeLang] || spec.name.ru || spec.name.uz || '') 
+                        : (spec.name || '');
+                      const specVal = typeof spec.value === 'object' 
+                        ? (spec.value[activeLang] || spec.value.ru || spec.value.uz || '') 
+                        : (spec.value || '');
 
                       return (
                         <div key={idx} className="flex items-center gap-2">
@@ -1404,7 +1558,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           )}
 
           {/* TAB 3: DOCUMENTS & PASSPORTS */}
-          {/* TAB: DOCUMENTS & PASSPORTS (Cloudflare R2 ga to'g'ridan-to'g'ri yuklash bilan) */}
           {activeTab === 'docs' && (
             <div className="space-y-6 animate-in fade-in duration-150">
               
@@ -1513,7 +1666,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                            {/* Hujjat nomi */}
                             <div className="sm:col-span-4 space-y-1">
                               <label className="text-[10px] font-semibold text-gray-400">
                                 {activeLang === 'ru' ? `Название (${activeLang.toUpperCase()}) *` : `Hujjat nomi (${activeLang.toUpperCase()}) *`}
@@ -1538,7 +1690,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                               />
                             </div>
 
-                            {/* Fayl yuklash (Cloudflare R2 ga) */}
                             <div className="sm:col-span-5 space-y-1">
                               <label className="text-[10px] font-semibold text-gray-400 flex items-center justify-between">
                                 <span>{activeLang === 'ru' ? 'Файл (Cloudflare R2)' : 'Fayl (Cloudflare R2)'}</span>
@@ -1599,7 +1750,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                               </div>
                             </div>
 
-                            {/* Hajmi */}
                             <div className="sm:col-span-3 space-y-1">
                               <label className="text-[10px] font-semibold text-gray-400">
                                 {activeLang === 'ru' ? 'Размер' : 'Hajmi'}
@@ -1626,7 +1776,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
             </div>
           )}
-                 {/* TAB 4: INDUSTRIES & TASKS */}
+
+          {/* TAB 4: INDUSTRIES & TASKS */}
           {activeTab === 'industries' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               <div className="p-4 rounded-2xl bg-gray-950 border border-gray-800 space-y-1">

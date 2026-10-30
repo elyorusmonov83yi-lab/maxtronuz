@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/server/db';
 import { verifyAdminToken } from '@/server/auth';
+import { GoogleGenAI } from '@google/genai';
+
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) {
+  console.error("DIQQAT: GEMINI_API_KEY .env.local faylida topilmadi!");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey || '' });
+const AI_MODEL = 'gemini-3.8-flash';
 
 function parseIfJson(val: any, fallback: any = {}) {
   if (val === null || val === undefined) return fallback;
@@ -52,11 +61,11 @@ function parseSpecs(rawSpecs: any) {
     }
     return {
       name: typeof name === 'object' && name !== null 
-        ? { uz: name.uz || '', ru: name.ru || '' } 
-        : { uz: name || '', ru: name || '' },
+        ? { uz: String(name.uz || name.ru || ''), ru: String(name.ru || name.uz || '') } 
+        : { uz: String(name || ''), ru: String(name || '') },
       value: typeof value === 'object' && value !== null 
-        ? { uz: value.uz || '', ru: value.ru || '' } 
-        : { uz: value || '', ru: value || '' }
+        ? { uz: String(value.uz || value.ru || ''), ru: String(value.ru || value.uz || '') } 
+        : { uz: String(value || ''), ru: String(value || '') }
     };
   });
 }
@@ -81,7 +90,7 @@ function transformProductRow(p: any) {
   return {
     id: p.id,
     slug: typeof slug === 'object' ? slug : { uz: p.id, ru: p.id },
-    brandId: p.brand_id || 'b-maxtron',
+    brandId: p.brand_id || null,
     model: p.model || '',
     category: p.category || p.categoryId || 'sensors',
     categoryId: p.categoryId || p.category || 'sensors',
@@ -150,7 +159,235 @@ export async function GET(
   }
 }
 
-// 2. DELETE: Mahsulotni o'chirish (🔒 Faqat Admin)
+// 2. POST: AI yordamida tovar parametrlarini avtomatik to'ldirish (🔒 Faqat Admin)
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = req.headers.get('authorization');
+    const isAdmin = await verifyAdminToken(authHeader);
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, message: 'Ruxsat berilmagan' }, { status: 401 });
+    }
+
+    const { id: identifier } = await params;
+    const body = await req.json().catch(() => ({}));
+
+    const [rows]: any = await db.query(
+      `SELECT * FROM products 
+       WHERE id = ? 
+          OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.uz')) = ? 
+          OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.ru')) = ? 
+       LIMIT 1`,
+      [identifier, identifier, identifier]
+    );
+
+    const existsInDb = rows && rows.length > 0;
+    const current = existsInDb ? rows[0] : null;
+
+    const currentModel = (current?.model || body?.model || '').trim();
+    if (!currentModel) {
+      return NextResponse.json({ success: false, message: 'Uskuna modeli yoki artikuli kiritilmagan' }, { status: 400 });
+    }
+
+    const currentBrandId = current?.brand_id || body?.brandId || 'Universal';
+    const currentCategoryId = current?.categoryId || current?.category || body?.category || 'sensors';
+
+    const rawName = current ? (current.name || current.title) : body?.name;
+    const currentName = parseIfJson(rawName, { ru: currentModel, uz: currentModel });
+
+    const rawDesc = current ? current.description : body?.description;
+    const currentDesc = parseIfJson(rawDesc, { ru: '', uz: '' });
+
+    const prompt = `
+Siz sanoat uskunalari, KIPiA va o'lchov vositalari bo'yicha yetakchi mutaxassis va muhandissiz.
+Quyidagi uskuna haqida ma'lumotlarni AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin alifbosida) qilib to'liq to'ldiring:
+
+- Model / Artikul: ${currentModel}
+- Ishlab chiqaruvchi / Brend: ${currentBrandId}
+- Toifa (Kategoriya): ${currentCategoryId}
+- Mavjud ruscha nomi: ${currentName.ru || currentModel}
+- Mavjud o'zbekcha nomi: ${currentName.uz || ''}
+- Mavjud tavsif: ${currentDesc.ru || ''}
+
+QAT'IY TALABLAR:
+1. "name" maydonida uskunaning to'liq professional nomi berilsin (masalan: "Прецизионный датчик давления DMP 330" / "DMP 330 yuqori aniqlikdagi sanoat bosim datchigi").
+2. "description" maydoni to'liq HTML teglari bilan (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin.
+3. "specs" (xarakteristikalar) ro'yxatida har bir parametr nomi va qiymati ham 'ru', ham 'uz' (lotin imlosida) aniq sanoat standartlari bilan to'ldirilsin (kamida 5-8 ta parametr: diapazon, chiqish signali, harorat, aniqlik klassi va h.k.).
+4. "features" va "applications" kamida 3-5 tadan banddan iborat bo'lsin.
+5. Hech bir 'uz' maydoni bo'sh qolmasin.
+`;
+
+    const response = await ai.models.generateContent({
+      model: AI_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: "Har doim faqat JSON formatida javob bering. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi majburiydir. 'uz' maydoni bo'sh qolishi taqiqlanadi.",
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            name: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            },
+            tagline: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            },
+            description: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            },
+            standardCert: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            },
+            features: {
+              type: 'OBJECT',
+              properties: {
+                ru: { type: 'ARRAY', items: { type: 'STRING' } },
+                uz: { type: 'ARRAY', items: { type: 'STRING' } }
+              },
+              required: ['ru', 'uz']
+            },
+            applications: {
+              type: 'OBJECT',
+              properties: {
+                ru: { type: 'ARRAY', items: { type: 'STRING' } },
+                uz: { type: 'ARRAY', items: { type: 'STRING' } }
+              },
+              required: ['ru', 'uz']
+            },
+            specs: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  name: {
+                    type: 'OBJECT',
+                    properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+                    required: ['ru', 'uz']
+                  },
+                  value: {
+                    type: 'OBJECT',
+                    properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+                    required: ['ru', 'uz']
+                  }
+                },
+                required: ['name', 'value']
+              }
+            },
+            seoTitle: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            },
+            seoDescription: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            },
+            seoKeywords: {
+              type: 'OBJECT',
+              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+              required: ['ru', 'uz']
+            }
+          },
+          required: [
+            'name',
+            'tagline',
+            'description',
+            'standardCert',
+            'features',
+            'applications',
+            'specs',
+            'seoTitle',
+            'seoDescription',
+            'seoKeywords'
+          ]
+        },
+        temperature: 0.2
+      }
+    });
+
+    const enriched = JSON.parse(response.text || '{}');
+    const normalizedSpecs = parseSpecs(enriched.specs);
+
+    if (existsInDb) {
+      await db.query(
+        `UPDATE products 
+         SET name = ?,
+             specs = ?,
+             features = ?,
+             applications = ?,
+             tagline = ?,
+             standardCert = ?,
+             description = ?,
+             seoTitle = ?,
+             seoDescription = ?,
+             seoKeywords = ?
+         WHERE id = ?`,
+        [
+          JSON.stringify(enriched.name || currentName),
+          JSON.stringify(normalizedSpecs),
+          JSON.stringify(enriched.features || { ru: [], uz: [] }),
+          JSON.stringify(enriched.applications || { ru: [], uz: [] }),
+          JSON.stringify(enriched.tagline || { ru: '', uz: '' }),
+          JSON.stringify(enriched.standardCert || { ru: 'ГОСТ', uz: 'GOST' }),
+          JSON.stringify(enriched.description || currentDesc),
+          JSON.stringify(enriched.seoTitle || { ru: '', uz: '' }),
+          JSON.stringify(enriched.seoDescription || { ru: '', uz: '' }),
+          JSON.stringify(enriched.seoKeywords || { ru: '', uz: '' }),
+          current.id
+        ]
+      );
+
+      const [updatedRows]: any = await db.query('SELECT * FROM products WHERE id = ? LIMIT 1', [current.id]);
+      const updatedProduct = transformProductRow(updatedRows[0]);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Mahsulot AI orqali 2 tilda muvaffaqiyatli to‘ldirildi',
+        data: updatedProduct
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'AI maʼlumotlari 2 tilda muvaffaqiyatli tayyorlandi',
+      data: {
+        id: identifier,
+        model: currentModel,
+        brandId: currentBrandId,
+        category: currentCategoryId,
+        name: enriched.name,
+        tagline: enriched.tagline,
+        description: enriched.description,
+        standardCert: enriched.standardCert,
+        specs: normalizedSpecs,
+        features: enriched.features,
+        applications: enriched.applications,
+        seoTitle: enriched.seoTitle,
+        seoDescription: enriched.seoDescription,
+        seoKeywords: enriched.seoKeywords
+      }
+    });
+  } catch (error: any) {
+    console.error('Product AI enrichment error:', error?.message);
+    return NextResponse.json(
+      { success: false, error: error?.message || 'AI to‘ldirishda xatolik' },
+      { status: 500 }
+    );
+  }
+}
+
+// 3. DELETE: Mahsulotni o'chirish (🔒 Faqat Admin)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
