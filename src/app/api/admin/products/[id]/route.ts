@@ -191,8 +191,9 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Uskuna modeli yoki artikuli kiritilmagan' }, { status: 400 });
     }
 
-    const currentBrandId = current?.brand_id || body?.brandId || 'Universal';
-    const currentCategoryId = current?.categoryId || current?.category || body?.category || 'sensors';
+    // Mavjud yoki berilgan brend/kategoriya bo'lmasa, AI o'zi aniqlashi uchun ko'rsatma beramiz
+    const currentBrandId = current?.brand_id || body?.brandId || '';
+    const currentCategoryId = current?.categoryId || current?.category || body?.category || '';
 
     const rawName = current ? (current.name || current.title) : body?.name;
     const currentName = parseIfJson(rawName, { ru: currentModel, uz: currentModel });
@@ -201,33 +202,43 @@ export async function POST(
     const currentDesc = parseIfJson(rawDesc, { ru: '', uz: '' });
 
     const prompt = `
-Siz sanoat uskunalari, KIPiA va o'lchov vositalari bo'yicha yetakchi mutaxassis va muhandissiz.
-Quyidagi uskuna haqida ma'lumotlarni AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin alifbosida) qilib to'liq to'ldiring:
-
-- Model / Artikul: ${currentModel}
-- Ishlab chiqaruvchi / Brend: ${currentBrandId}
-- Toifa (Kategoriya): ${currentCategoryId}
+Siz sanoat uskunalari, KIPiA va avtomatika bo'yicha yetakchi muhandissiz.
+Foydalanuvchi quyidagi uskunani kiritdi:
+- Model / Artikul: "${currentModel}"
+${currentBrandId ? `- Ko'rsatilgan brend: ${currentBrandId}` : "- Brend: Noma'lum (Model nomidan o'zingiz aniqlang)"}
+${currentCategoryId ? `- Ko'rsatilgan toifa: ${currentCategoryId}` : "- Toifa: Noma'lum (Uskuna turiga qarab o'zingiz aniqlang)"}
 - Mavjud ruscha nomi: ${currentName.ru || currentModel}
 - Mavjud o'zbekcha nomi: ${currentName.uz || ''}
 - Mavjud tavsif: ${currentDesc.ru || ''}
 
-QAT'IY TALABLAR:
-1. "name" maydonida uskunaning to'liq professional nomi berilsin (masalan: "Прецизионный датчик давления DMP 330" / "DMP 330 yuqori aniqlikdagi sanoat bosim datchigi").
-2. "description" maydoni to'liq HTML teglari bilan (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin.
-3. "specs" (xarakteristikalar) ro'yxatida har bir parametr nomi va qiymati ham 'ru', ham 'uz' (lotin imlosida) aniq sanoat standartlari bilan to'ldirilsin (kamida 5-8 ta parametr: diapazon, chiqish signali, harorat, aniqlik klassi va h.k.).
-4. "features" va "applications" kamida 3-5 tadan banddan iborat bo'lsin.
-5. Hech bir 'uz' maydoni bo'sh qolmasin.
+VAZIFANGIZ:
+Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin imlosida) qilib to'ldiring:
+1. "detectedBrand": Ishlab chiqaruvchi brendning aniq nomi (masalan: WIKA, BD|Sensors, Endress+Hauser, Danfoss, Yokogawa, Rosemount, Siemens va h.k.).
+2. "detectedCategory": Uskuna toifasi (masalan: "Датчики давления", "Манометры", "Расходомеры", "Термометры", "Клапаны", "Преобразователи уровня").
+3. "name": Uskunaning to'liq professional nomi (RU va UZ).
+4. "description": HTML formatidagi batafsil tavsif (<p>, <strong>, <ul>, <li>).
+5. "specs": 6-10 tagacha aniq texnik parametr (diapazon, chiqish signali, korpus materiali, xatolik klassi va h.k.).
+6. "features" va "applications": Kamida 3-5 tadan band.
+7. Hech bir 'uz' maydoni bo'sh qolmasin.
 `;
 
     const response = await ai.models.generateContent({
       model: AI_MODEL,
       contents: prompt,
       config: {
-        systemInstruction: "Har doim faqat JSON formatida javob bering. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi majburiydir. 'uz' maydoni bo'sh qolishi taqiqlanadi.",
+        systemInstruction: "Har doim faqat JSON formatida javob bering. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi majburiydir. 'detectedBrand' va 'detectedCategory' aniq ko'rsatilishi shart.",
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
           properties: {
+            detectedBrand: {
+              type: 'STRING',
+              description: 'Ishlab chiqaruvchi brend nomi (masalan: WIKA, Danfoss)'
+            },
+            detectedCategory: {
+              type: 'STRING',
+              description: 'Uskuna toifasi (masalan: Датчики давления)'
+            },
             name: {
               type: 'OBJECT',
               properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
@@ -300,6 +311,8 @@ QAT'IY TALABLAR:
             }
           },
           required: [
+            'detectedBrand',
+            'detectedCategory',
             'name',
             'tagline',
             'description',
@@ -354,7 +367,11 @@ QAT'IY TALABLAR:
       return NextResponse.json({
         success: true,
         message: 'Mahsulot AI orqali 2 tilda muvaffaqiyatli to‘ldirildi',
-        data: updatedProduct
+        data: {
+          ...updatedProduct,
+          detectedBrand: enriched.detectedBrand || '',
+          detectedCategory: enriched.detectedCategory || ''
+        }
       });
     }
 
@@ -366,6 +383,8 @@ QAT'IY TALABLAR:
         model: currentModel,
         brandId: currentBrandId,
         category: currentCategoryId,
+        detectedBrand: enriched.detectedBrand || '',
+        detectedCategory: enriched.detectedCategory || '',
         name: enriched.name,
         tagline: enriched.tagline,
         description: enriched.description,

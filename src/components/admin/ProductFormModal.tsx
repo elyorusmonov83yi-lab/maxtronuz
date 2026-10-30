@@ -363,7 +363,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
 
-  // AI BILAN TO'LDIRISH HANDLERI (YANGI VA MAVJUD TOVARLAR UCHUN 2 TILLI)
+  // AI BILAN TO'LDIRISH HANDLERI (YANGI VA MAVJUD TOVARLAR UCHUN 2 TILLI + AVTO BREND/KATEGORIYA)
   const handleAiAutoFill = async () => {
     if (!formData.model?.trim()) {
       alert(activeLang === 'ru' ? 'Сначала введите артикул или модель оборудования!' : 'Avval uskuna modeli yoki artikulini kiriting!');
@@ -409,12 +409,36 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       const parsedSpecs = normalizeSpecs(incomingSpecs);
 
       setFormData(prev => {
+        // 1. Agar brend hali tanlanmagan bo'lsa, AI aniqlagan nom bo'yicha mos brendni avtomatik topish:
+        let autoBrandId = prev.brandId;
+        if (!autoBrandId && updated.detectedBrand && brandsList.length > 0) {
+          const bMatch = brandsList.find(b => 
+            b.name.toLowerCase().includes(updated.detectedBrand.toLowerCase()) ||
+            updated.detectedBrand.toLowerCase().includes(b.name.toLowerCase())
+          );
+          if (bMatch) autoBrandId = bMatch.id;
+        }
+
+        // 2. Agar kategoriya tanlanmagan bo'lsa, AI aniqlagan toifa bo'yicha kategoriyani avtomatik topish:
+        let autoCatId = prev.category;
+        if (updated.detectedCategory && categories.length > 0) {
+          const cMatch = categories.find(c => {
+            const rName = typeof c.name === 'object' ? (c.name.ru || c.name.uz) : c.name;
+            const uName = typeof c.name === 'object' ? (c.name.uz || c.name.ru) : c.name;
+            const target = updated.detectedCategory.toLowerCase();
+            return rName?.toLowerCase().includes(target) || uName?.toLowerCase().includes(target);
+          });
+          if (cMatch) autoCatId = cMatch.id;
+        }
+
         const newNameRu = updated.name?.ru || (prev.name as LocalizedString)?.ru || formData.model;
         const newNameUz = updated.name?.uz || (prev.name as LocalizedString)?.uz || formData.model;
 
         return {
           ...prev,
           id: prev.id || targetId,
+          brandId: autoBrandId,
+          category: autoCatId || prev.category,
           name: {
             ru: newNameRu,
             uz: newNameUz
@@ -435,7 +459,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             ru: updated.standardCert?.ru || 'ГОСТ',
             uz: updated.standardCert?.uz || 'GOST'
           },
-          // Agar AI yangi xarakteristikalar qaytargan bo'lsa yangilanadi, aks holda oldingisi qoladi:
           specs: parsedSpecs.length > 0 ? parsedSpecs : prev.specs,
           features: {
             ru: Array.isArray(updated.features?.ru) ? updated.features.ru : (prev.features?.ru || []),
@@ -460,14 +483,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         };
       });
 
-      // Agar xarakteristikalar muvaffaqiyatli kelgan bo'lsa, foydalanuvchini to'g'ridan-to'g'ri 'specs' tabiga o'tkazish
       if (parsedSpecs.length > 0) {
         setActiveTab('specs');
       }
 
       alert(activeLang === 'ru' 
-        ? `✨ Сгенерировано: ${parsedSpecs.length} характеристик, описание и SEO на двух языках!` 
-        : `✨ 2 tilda muvaffaqiyatli yaratildi: ${parsedSpecs.length} ta xarakteristika, tavsif va SEO!`
+        ? `✨ Сгенерировано: ${parsedSpecs.length} характеристик, бренд, категория и SEO на двух языках!` 
+        : `✨ 2 tilda muvaffaqiyatli yaratildi: ${parsedSpecs.length} ta xarakteristika, brend, toifa va SEO!`
       );
     } catch (err: any) {
       alert(`AI xatolik: ${err.message || 'Server xatosi'}`);
