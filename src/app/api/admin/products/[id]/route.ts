@@ -9,7 +9,13 @@ if (!apiKey) {
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || '' });
-const AI_MODEL = 'gemini-3.8-flash';
+
+// 503 va yuklama xatolariga qarshi navbatma-navbat sinab ko'riladigan modellar
+const CANDIDATE_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-2.5-flash'
+];
 
 function parseIfJson(val: any, fallback: any = {}) {
   if (val === null || val === undefined) return fallback;
@@ -191,7 +197,6 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Uskuna modeli yoki artikuli kiritilmagan' }, { status: 400 });
     }
 
-    // "maxtron" yoki "b-maxtron" bo'lsa, uni tozalaymiz — bu tovarning haqiqiy ishlab chiqaruvchi brendi emas
     let rawBrand = current?.brand_id || body?.brandId || '';
     if (['maxtron', 'b-maxtron'].includes(rawBrand.toLowerCase())) {
       rawBrand = '';
@@ -235,116 +240,131 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
 7. Hech bir 'uz' maydoni bo'sh qolmasin.
 `;
 
-    const response = await ai.models.generateContent({
-      model: AI_MODEL,
-      contents: prompt,
-      config: {
-        systemInstruction: "Har doim faqat JSON formatida javob bering. Hech qachon tovar nomiga 'MAXTRON' so'zini qo'shmang. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi shart.",
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            detectedBrand: {
-              type: 'STRING',
-              description: 'Ishlab chiqaruvchi asl brend yoki Standart/GOST'
+    const aiConfig = {
+      systemInstruction: "Har doim faqat JSON formatida javob bering. Hech qachon tovar nomiga 'MAXTRON' so'zini qo'shmang. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi shart.",
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'OBJECT',
+        properties: {
+          detectedBrand: { type: 'STRING' },
+          detectedCategory: { type: 'STRING' },
+          name: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          },
+          tagline: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          },
+          description: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          },
+          standardCert: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          },
+          features: {
+            type: 'OBJECT',
+            properties: {
+              ru: { type: 'ARRAY', items: { type: 'STRING' } },
+              uz: { type: 'ARRAY', items: { type: 'STRING' } }
             },
-            detectedCategory: {
-              type: 'STRING',
-              description: 'Uskuna toifasi'
+            required: ['ru', 'uz']
+          },
+          applications: {
+            type: 'OBJECT',
+            properties: {
+              ru: { type: 'ARRAY', items: { type: 'STRING' } },
+              uz: { type: 'ARRAY', items: { type: 'STRING' } }
             },
-            name: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
-            },
-            tagline: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
-            },
-            description: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
-            },
-            standardCert: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
-            },
-            features: {
+            required: ['ru', 'uz']
+          },
+          specs: {
+            type: 'ARRAY',
+            items: {
               type: 'OBJECT',
               properties: {
-                ru: { type: 'ARRAY', items: { type: 'STRING' } },
-                uz: { type: 'ARRAY', items: { type: 'STRING' } }
-              },
-              required: ['ru', 'uz']
-            },
-            applications: {
-              type: 'OBJECT',
-              properties: {
-                ru: { type: 'ARRAY', items: { type: 'STRING' } },
-                uz: { type: 'ARRAY', items: { type: 'STRING' } }
-              },
-              required: ['ru', 'uz']
-            },
-            specs: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  name: {
-                    type: 'OBJECT',
-                    properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-                    required: ['ru', 'uz']
-                  },
-                  value: {
-                    type: 'OBJECT',
-                    properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-                    required: ['ru', 'uz']
-                  }
+                name: {
+                  type: 'OBJECT',
+                  properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+                  required: ['ru', 'uz']
                 },
-                required: ['name', 'value']
-              }
-            },
-            seoTitle: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
-            },
-            seoDescription: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
-            },
-            seoKeywords: {
-              type: 'OBJECT',
-              properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
-              required: ['ru', 'uz']
+                value: {
+                  type: 'OBJECT',
+                  properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+                  required: ['ru', 'uz']
+                }
+              },
+              required: ['name', 'value']
             }
           },
-          required: [
-            'detectedBrand',
-            'detectedCategory',
-            'name',
-            'tagline',
-            'description',
-            'standardCert',
-            'features',
-            'applications',
-            'specs',
-            'seoTitle',
-            'seoDescription',
-            'seoKeywords'
-          ]
+          seoTitle: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          },
+          seoDescription: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          },
+          seoKeywords: {
+            type: 'OBJECT',
+            properties: { ru: { type: 'STRING' }, uz: { type: 'STRING' } },
+            required: ['ru', 'uz']
+          }
         },
-        temperature: 0.2
+        required: [
+          'detectedBrand',
+          'detectedCategory',
+          'name',
+          'tagline',
+          'description',
+          'standardCert',
+          'features',
+          'applications',
+          'specs',
+          'seoTitle',
+          'seoDescription',
+          'seoKeywords'
+        ]
+      },
+      temperature: 0.2
+    };
+
+    // Fallback zanjiri: bitta model band (503) bo'lsa, to'xtamasdan keyingisiga o'tadi
+    let response: any = null;
+    let lastError: any = null;
+
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: aiConfig
+        });
+
+        if (response?.text) {
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AI Fallback] ${modelName} xatolik berdi (${err?.message || err}). Keyingisi tekshirilmoqda...`);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
-    });
+    }
+
+    if (!response?.text) {
+      throw lastError || new Error("Barcha zaxira AI modellar band, iltimos 10 soniyadan so'ng qayta urinib ko'ring.");
+    }
 
     const enriched = JSON.parse(response.text || '{}');
 
-    // Nomi yoki tavsifida tasodifan "MAXTRON" so'zi chiqib qolishiga qarshi qo'shimcha filtr
     if (enriched.name?.ru) enriched.name.ru = enriched.name.ru.replace(/MAXTRON\s*/gi, '').trim();
     if (enriched.name?.uz) enriched.name.uz = enriched.name.uz.replace(/MAXTRON\s*/gi, '').trim();
 
