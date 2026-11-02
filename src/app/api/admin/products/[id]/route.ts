@@ -191,8 +191,12 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Uskuna modeli yoki artikuli kiritilmagan' }, { status: 400 });
     }
 
-    // Mavjud yoki berilgan brend/kategoriya bo'lmasa, AI o'zi aniqlashi uchun ko'rsatma beramiz
-    const currentBrandId = current?.brand_id || body?.brandId || '';
+    // "maxtron" yoki "b-maxtron" bo'lsa, uni tozalaymiz — bu tovarning haqiqiy ishlab chiqaruvchi brendi emas
+    let rawBrand = current?.brand_id || body?.brandId || '';
+    if (['maxtron', 'b-maxtron'].includes(rawBrand.toLowerCase())) {
+      rawBrand = '';
+    }
+
     const currentCategoryId = current?.categoryId || current?.category || body?.category || '';
 
     const rawName = current ? (current.name || current.title) : body?.name;
@@ -201,31 +205,32 @@ export async function POST(
     const rawDesc = current ? current.description : body?.description;
     const currentDesc = parseIfJson(rawDesc, { ru: '', uz: '' });
 
-  // route.ts ichidagi prompt qismida:
-const prompt = `
-Siz sanoat uskunalari, KIPiA va avtomatika bo'yicha yetakchi muhandissiz.
-Foydalanuvchi quyidagi uskunani kiritdi:
+    const prompt = `
+Siz sanoat uskunalari, KIPiA va elektrotexnika bo'yicha mustaqil bosh muhandissiz.
+
+QAT'IY CHEKLOV VA TALAB:
+1. "MAXTRON" so'zini tovar nomiga (name), modeliga, brendiga (detectedBrand) yoki tavsifiga (description) ISHLAB CHIQARUVCHI BREND SIFATIDA ASLO QO'SHMANG! MAXTRON mahsulot ishlab chiqarmaydi.
+2. XATO: "Кабельные наконечники MAXTRON TA 120"
+   TO'G'RI: "Кабельные наконечники ТА-120" (yoki "Медно-алюминиевые наконечники ТА 120").
+3. Agar haqiqiy zavod brendi noma'lum bo'lsa yoki tovar standart GOST/DIN bo'lsa, "detectedBrand" maydoniga "Standart / GOST" yoki "Universal" deb yozing, o'zingizdan brend to'qimang.
+
+BERILGAN MA'LUMOTLAR:
 - Model / Artikul: "${currentModel}"
-${currentBrandId ? `- Ko'rsatilgan brend: ${currentBrandId}` : "- Brend: Noma'lum (Model nomidan o'zingiz aniqlang)"}
-${currentCategoryId ? `- Ko'rsatilgan toifa: ${currentCategoryId}` : "- Toifa: Noma'lum (Uskuna turiga qarab o'zingiz aniqlang)"}
-- Mavjud ruscha nomi: ${currentName.ru || currentModel}
-- Mavjud o'zbekcha nomi: ${currentName.uz || ''}
-- Mavjud tavsif: ${currentDesc.ru || ''}
+${rawBrand ? `- Ko'rsatilgan brend: ${rawBrand}` : "- Ishlab chiqaruvchi brend: Noma'lum (Modeldan o'zingiz aniqlang yoki GOST/Universal deb belgilang)"}
+${currentCategoryId ? `- Toifa: ${currentCategoryId}` : "- Toifa: Uskunaga qarab o'zingiz aniqlang"}
+- Mavjud nomi: ${currentName.ru || currentModel}
+- Mavjud tavsifi: ${currentDesc.ru || ''}
 
 VAZIFANGIZ:
-Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin imlosida) qilib to'liq to'ldiring:
-1. "detectedBrand": Ishlab chiqaruvchi brendning aniq nomi.
-2. "detectedCategory": Uskuna toifasi.
-3. "name": Uskunaning to'liq professional nomi (RU va UZ).
-
-4. "description" — JUDA BATAFSIL VA KENGAYTIRILGAN BO'LSIN (kamida 300-400 so'z, 3-4 ta to'liq abzas). HTML formatida (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin va quyidagi tarkibiy qismlarni o'z ichiga olsin:
-   - 1-abzas: Uskunaning vazifasi, qaysi sanoat jarayonlarida qo'llanilishi va uning asosiy maqsadi.
-   - 2-abzas: Ishlash prinsipi, qanday datchik/mexanizm ishlatilgani, o'lchash aniqligi va barqarorligi.
-   - 3-abzas: Korpusning himoyalanganligi (IP klassi), og'ir muhitlarga (vibratsiya, harorat, agressiv muhitlar) chidamliligi va ulanish qulayligi.
-   - 4-blok: Asosiy texnik afzalliklari bo'yicha qisqa xulosa.
-   Qisqa 1-2 ta gap bilan cheklanib qolish qat'iyan taqiqlanadi!
-
-5. "specs": 8-12 tagacha aniq texnik parametr (diapazon, chiqish signali, ta'minot kuchlanishi, xatolik klassi, korpus materiali, ishchi harorat va h.k.).
+Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin imlosida) qilib to'liq to'ldiring:
+1. "detectedBrand": Ishlab chiqaruvchi asl brend nomi (masalan: WIKA, Siemens, ABB, Danfoss yoki "Standart / GOST").
+2. "detectedCategory": Uskuna toifasi (masalan: "Кабельные наконечники", "Датчики давления").
+3. "name": Uskunaning toza texnik nomi (RU va UZ).
+4. "description": JUDA BATAFSIL VA KENGAYTIRILGAN (kamida 250-350 so'z, 3 ta to'liq abzas). HTML formatida (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin:
+   - 1-abzas: Uskunaning vazifasi, materiali va asosiy qo'llanish sohasi.
+   - 2-abzas: Texnik ishlash prinsipi, montaj xususiyatlari, o'tkazuvchanligi yoki chidamliligi.
+   - 3-abzas: Ishchi harorat, IP himoya darajasi va standartlarga muvofiqligi.
+5. "specs": 8-12 tagacha aniq texnik parametr (kesim yuzasi, kuchlanish, tok, material, himoya klassi va h.k.).
 6. "features" va "applications": Kamida 4-6 tadan aniq band.
 7. Hech bir 'uz' maydoni bo'sh qolmasin.
 `;
@@ -234,18 +239,18 @@ Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha 
       model: AI_MODEL,
       contents: prompt,
       config: {
-        systemInstruction: "Har doim faqat JSON formatida javob bering. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi majburiydir. 'detectedBrand' va 'detectedCategory' aniq ko'rsatilishi shart.",
+        systemInstruction: "Har doim faqat JSON formatida javob bering. Hech qachon tovar nomiga 'MAXTRON' so'zini qo'shmang. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi shart.",
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
           properties: {
             detectedBrand: {
               type: 'STRING',
-              description: 'Ishlab chiqaruvchi brend nomi (masalan: WIKA, Danfoss)'
+              description: 'Ishlab chiqaruvchi asl brend yoki Standart/GOST'
             },
             detectedCategory: {
               type: 'STRING',
-              description: 'Uskuna toifasi (masalan: Датчики давления)'
+              description: 'Uskuna toifasi'
             },
             name: {
               type: 'OBJECT',
@@ -338,6 +343,11 @@ Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha 
     });
 
     const enriched = JSON.parse(response.text || '{}');
+
+    // Nomi yoki tavsifida tasodifan "MAXTRON" so'zi chiqib qolishiga qarshi qo'shimcha filtr
+    if (enriched.name?.ru) enriched.name.ru = enriched.name.ru.replace(/MAXTRON\s*/gi, '').trim();
+    if (enriched.name?.uz) enriched.name.uz = enriched.name.uz.replace(/MAXTRON\s*/gi, '').trim();
+
     const normalizedSpecs = parseSpecs(enriched.specs);
 
     if (existsInDb) {
@@ -389,7 +399,7 @@ Ushbu uskunaning barcha parametrlarini to'liq aniqlang va AYNAN 2 TILLI (Ruscha 
       data: {
         id: identifier,
         model: currentModel,
-        brandId: currentBrandId,
+        brandId: rawBrand || null,
         category: currentCategoryId,
         detectedBrand: enriched.detectedBrand || '',
         detectedCategory: enriched.detectedCategory || '',
