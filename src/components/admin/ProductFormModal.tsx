@@ -186,6 +186,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [isQuickCatOpen, setIsQuickCatOpen] = useState(false);
   const [quickCatNameRu, setQuickCatNameRu] = useState('');
   const [quickCatNameUz, setQuickCatNameUz] = useState('');
+  const [quickCatParentId, setQuickCatParentId] = useState<string>('');
   const [isSavingQuickCat, setIsSavingQuickCat] = useState(false);
 
   // --- TEZKOR BREND QO'SHISH STATELARI ---
@@ -194,12 +195,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [quickBrandCountry, setQuickBrandCountry] = useState('');
   const [isSavingQuickBrand, setIsSavingQuickBrand] = useState(false);
 
-  const [quickCatParentId, setQuickCatParentId] = useState<string>('');
-
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const additionalImagesInputRef = useRef<HTMLInputElement>(null);
 
-  // Kategoriya va uning ichki podkategoriyalarini daraxtsimon tartibda chiqarish
+  // Kategoriya va uning ichki podkategoriyalarini (2-3 sathli) daraxtsimon chiqarish
   const renderCategoryOptions = (parentId: string | null = null, level: number = 0) => {
     const filteredCats = categories.filter(c => {
       const pId = (c as any).parentId || (c as any).parent_id || null;
@@ -210,14 +209,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
     return filteredCats.flatMap(c => {
       const catName = typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name;
-      // Bo'shliqlar brauzerda qisqarib ketmasligi uchun \u00A0 (ajralmas bo'shliq) ishlatiladi
       const prefix = level === 0 ? '' : '\u00A0\u00A0\u00A0\u00A0'.repeat(level) + '└─ ';
 
       return [
         <option 
           key={c.id} 
           value={c.id} 
-          className={level === 0 ? "font-bold text-blue-400 bg-gray-900" : "text-gray-200 bg-gray-950"}
+          className={
+            level === 0 
+              ? "font-bold text-blue-400 bg-gray-900" 
+              : level === 1 
+              ? "text-gray-200 bg-gray-950 font-medium" 
+              : "text-gray-400 bg-gray-950 text-[11px]"
+          }
         >
           {prefix}{catName}
         </option>,
@@ -390,7 +394,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
 
-  // AI BILAN TO'LDIRISH HANDLERI (YANGI VA MAVJUD TOVARLAR UCHUN 2 TILLI + AVTO BREND/KATEGORIYA)
   const handleAiAutoFill = async () => {
     if (!formData.model?.trim()) {
       alert(activeLang === 'ru' ? 'Сначала введите артикул или модель оборудования!' : 'Avval uskuna modeli yoki artikulini kiriting!');
@@ -430,7 +433,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       }
 
       const updated = result.data;
-
       const incomingSpecs = updated.specs || updated.specifications || [];
       const parsedSpecs = normalizeSpecs(incomingSpecs);
 
@@ -522,32 +524,40 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
-  // Tezkor Kategoriya saqlash
+  // Tezkor Kategoriya saqlash (2 va 3 darajalarni to'liq qo'llab-quvvatlaydi)
   const handleQuickAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickCatNameRu.trim() && !quickCatNameUz.trim()) return;
+    const ruName = quickCatNameRu.trim();
+    const uzName = quickCatNameUz.trim();
+    if (!ruName && !uzName) return;
 
     try {
       setIsSavingQuickCat(true);
-      const catId = `cat-${Date.now()}`;
+      const catId = `cat-${Date.now().toString().slice(-6)}`;
+      const finalRuSlug = generateSlug(ruName || uzName || catId);
+      const finalUzSlug = generateSlug(uzName || ruName || catId);
+
       const newCat: any = {
         id: catId,
         parentId: quickCatParentId || null,
+        parent_id: quickCatParentId || null,
         name: {
-          ru: quickCatNameRu.trim() || quickCatNameUz.trim(),
-          uz: quickCatNameUz.trim() || quickCatNameRu.trim()
+          ru: ruName || uzName,
+          uz: uzName || ruName
         },
         slug: {
-          ru: (quickCatNameRu.trim() || catId).toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-'),
-          uz: (quickCatNameUz.trim() || catId).toLowerCase().replace(/[^a-z0-9]/gi, '-')
+          ru: finalRuSlug,
+          uz: finalUzSlug
         },
         icon: 'Layers',
         description: { ru: '', uz: '' }
       };
 
       await ApiService.saveCategory(newCat);
+
       categories.push(newCat);
       setFormData(prev => ({ ...prev, category: catId }));
+
       setQuickCatNameRu('');
       setQuickCatNameUz('');
       setQuickCatParentId('');
@@ -559,7 +569,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
-  // Tezkor Brend saqlash
   const handleQuickAddBrand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickBrandName.trim()) return;
@@ -729,7 +738,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
-  // Specs boshqaruvi
   const addSpec = () => {
     setFormData(prev => ({
       ...prev,
@@ -767,7 +775,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }));
   };
 
-  // Features boshqaruvi
   const addFeature = () => {
     const val = featureInput[activeLang]?.trim();
     if (!val) return;
@@ -797,7 +804,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     });
   };
 
-  // Applications boshqaruvi
   const addApplication = () => {
     const val = applicationInput[activeLang]?.trim();
     if (!val) return;
@@ -1092,23 +1098,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
                       <div>
                         <label className="block text-[10px] text-gray-400 mb-1">
-                          {activeLang === 'ru' ? 'Родительская категория (необязательно)' : 'Ota kategoriya (ixtiyoriy)'}
+                          {activeLang === 'ru' ? 'Родительская категория (Иерархия)' : 'Ota toifa (Ierarxiya)'}
                         </label>
                         <select
                           value={quickCatParentId}
                           onChange={(e) => setQuickCatParentId(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-white focus:outline-none focus:border-emerald-500 cursor-pointer font-sans"
                         >
                           <option value="">
-                            {activeLang === 'ru' ? '— Без родителя (Главная категория) —' : '— Ota kategoriyasiz (Asosiy toifa) —'}
+                            {activeLang === 'ru' 
+                              ? '📁 — Без родителя (Главная категория) —' 
+                              : '📁 — Ota kategoriyasiz (Asosiy toifa) —'}
                           </option>
-                          {categories
-                            .filter(c => !(c as any).parentId && !(c as any).parent_id)
-                            .map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name}
-                              </option>
-                            ))}
+                          {/* 1-darajali yoki 2-darajali toifani ota qilib tanlash imkoniyati */}
+                          {renderCategoryOptions(null, 0)}
                         </select>
                       </div>
 
