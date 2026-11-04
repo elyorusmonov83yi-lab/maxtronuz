@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   Plus, 
@@ -12,7 +12,12 @@ import {
   ChevronDown, 
   ChevronUp, 
   Upload, 
-  Loader2 
+  Loader2,
+  Folder,
+  FolderOpen,
+  CornerDownRight,
+  FolderTree,
+  Tag
 } from 'lucide-react';
 import { CategoryInfo, Product } from '../../../types';
 import { getLocalizedText } from '../../../utils/formatters';
@@ -35,6 +40,7 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
   triggerDeleteCategory
 }) => {
   const [categorySearch, setCategorySearch] = useState('');
+  const [viewMode, setViewMode] = useState<'tree' | 'grid'>('tree');
   
   // --- KATALOG DINAMIK SEO STATELARI ---
   const [isSeoOpen, setIsSeoOpen] = useState(false);
@@ -128,22 +134,206 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     }
   };
 
-  const filtered = categories.filter((c) => {
-    const nameRu = getLocalizedText(c.name, 'ru', '').toLowerCase();
-    const nameUz = getLocalizedText(c.name, 'uz', '').toLowerCase();
+  // Har bir toifaning ota yo'lini (Breadcrumb) topish
+  const getCategoryPath = (cat: CategoryInfo): string[] => {
+    const path: string[] = [];
+    let currentParentId = (cat as any).parentId || (cat as any).parent_id;
+    
+    while (currentParentId) {
+      const parent = categories.find(c => String(c.id) === String(currentParentId));
+      if (!parent || path.includes(getLocalizedText(parent.name, 'uz', parent.id))) break;
+      path.unshift(getLocalizedText(parent.name, 'uz', parent.id));
+      currentParentId = (parent as any).parentId || (parent as any).parent_id;
+    }
+    return path;
+  };
 
-    const slugRu = (typeof c.slug === 'object' ? c.slug?.ru : c.slug || '').toLowerCase();
-    const slugUz = (typeof c.slug === 'object' ? c.slug?.uz : c.id || '').toLowerCase();
+  // Kategoriyalarni 2-3 darajali daraxt tartibida yig'ish
+  const categoryTree = useMemo(() => {
+    const buildTree = (parentId: string | null = null, level: number = 0): (CategoryInfo & { level: number; breadcrumbs: string[] })[] => {
+      const children = categories.filter(c => {
+        const pId = (c as any).parentId || (c as any).parent_id || null;
+        return parentId === null 
+          ? (!pId || pId === '' || pId === '0') 
+          : String(pId) === String(parentId);
+      });
+
+      return children.flatMap(c => [
+        { ...c, level, breadcrumbs: getCategoryPath(c) },
+        ...buildTree(c.id, level + 1)
+      ]);
+    };
+
+    return buildTree(null, 0);
+  }, [categories]);
+
+  // Qidiruv bo'yicha filtrlash
+  const filteredTree = useMemo(() => {
+    if (!categorySearch.trim()) return categoryTree;
     const q = categorySearch.toLowerCase().trim();
 
+    return categoryTree.filter(c => {
+      const nameRu = getLocalizedText(c.name, 'ru', '').toLowerCase();
+      const nameUz = getLocalizedText(c.name, 'uz', '').toLowerCase();
+      const slugRu = (typeof c.slug === 'object' ? c.slug?.ru : c.slug || '').toLowerCase();
+      const slugUz = (typeof c.slug === 'object' ? c.slug?.uz : c.id || '').toLowerCase();
+
+      return (
+        nameRu.includes(q) ||
+        nameUz.includes(q) ||
+        slugRu.includes(q) ||
+        slugUz.includes(q) ||
+        String(c.id).toLowerCase().includes(q)
+      );
+    });
+  }, [categoryTree, categorySearch]);
+
+  // Toifa kartochkasi komponenti
+  const renderCategoryCard = (cat: CategoryInfo & { level: number; breadcrumbs: string[] }) => {
+    const catNameRu = getLocalizedText(cat.name, 'ru', '');
+    const catNameUz = getLocalizedText(cat.name, 'uz', cat.id);
+    const productCount = products.filter(p => String(p.category) === String(cat.id)).length;
+
+    const slugRu = typeof cat.slug === 'object' ? cat.slug?.ru || cat.id : cat.slug || cat.id;
+    const slugUz = typeof cat.slug === 'object' ? cat.slug?.uz : undefined;
+
+    const descText = (
+      getLocalizedText(cat.description, 'ru', '') || 
+      getLocalizedText(cat.description, 'uz', '')
+    ).replace(/<[^>]*>/g, '');
+
+    const isRoot = cat.level === 0;
+    const isLevel2 = cat.level === 1;
+    const isLevel3 = cat.level >= 2;
+
     return (
-      nameRu.includes(q) ||
-      nameUz.includes(q) ||
-      slugRu.includes(q) ||
-      slugUz.includes(q) ||
-      String(c.id).toLowerCase().includes(q)
+      <div 
+        key={cat.id} 
+        style={{ marginLeft: viewMode === 'tree' ? `${cat.level * 24}px` : '0px' }}
+        className={`p-4 sm:p-5 rounded-3xl border transition-all duration-150 flex flex-col justify-between relative group ${
+          isRoot
+            ? 'bg-gray-900 border-gray-800 shadow-md hover:border-blue-500/50'
+            : isLevel2
+            ? 'bg-gray-900/80 border-gray-800/80 hover:border-cyan-500/50'
+            : 'bg-gray-950/60 border-gray-800/60 hover:border-emerald-500/50'
+        }`}
+      >
+        {/* Daraxt shoxi belgisi */}
+        {viewMode === 'tree' && !isRoot && (
+          <div className="absolute -left-5 top-7 text-gray-700 flex items-center">
+            <CornerDownRight className="w-4 h-4 text-gray-600" />
+          </div>
+        )}
+
+        <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center p-2 border ${
+                isRoot 
+                  ? 'bg-blue-600/10 text-blue-400 border-blue-500/20' 
+                  : isLevel2 
+                  ? 'bg-cyan-600/10 text-cyan-400 border-cyan-500/20' 
+                  : 'bg-emerald-600/10 text-emerald-400 border-emerald-500/20'
+              }`}>
+                <DynamicIcon name={cat.icon} className="w-5 h-5" />
+              </div>
+
+              <div>
+                {/* Ierarxiya daraja nishoni */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider ${
+                    isRoot
+                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      : isLevel2
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  }`}>
+                    {isRoot ? '📁 Asosiy toifa' : isLevel2 ? '📂 2-daraja' : '📄 3-daraja'}
+                  </span>
+
+                  {/* Ota yo'li (Breadcrumb) */}
+                  {cat.breadcrumbs.length > 0 && (
+                    <span className="text-[10px] text-gray-500 flex items-center gap-1 truncate max-w-xs">
+                      <span>({cat.breadcrumbs.join(' / ')})</span>
+                    </span>
+                  )}
+                </div>
+
+                <h4 className="font-bold text-white text-sm sm:text-base mt-1 leading-tight">
+                  {catNameRu || catNameUz}
+                </h4>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              {/* Yangi ichki toifa qo'shish tugmasi */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryToEdit({
+                    id: '',
+                    parentId: cat.id,
+                    slug: { uz: '', ru: '' },
+                    name: { uz: '', ru: '' },
+                    description: { uz: '', ru: '' },
+                    icon: 'Layers',
+                    count: 0
+                  } as any);
+                  setIsCategoryModalOpen(true);
+                }}
+                className="p-2 rounded-xl text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition cursor-pointer"
+                title="Shu toifa ichiga yangi podkategoriya qo'shish"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setCategoryToEdit(cat); setIsCategoryModalOpen(true); }}
+                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition cursor-pointer"
+                title="Tahrirlash"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => triggerDeleteCategory(cat)}
+                className="p-2 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                title="O'chirish"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 pl-1">
+            {catNameRu && catNameUz && (
+              <p className="text-xs text-blue-400/80 font-medium">
+                UZ: {catNameUz}
+              </p>
+            )}
+            
+            {descText && (
+              <p className="text-[11px] text-gray-400 line-clamp-2 mt-1.5 leading-relaxed">
+                {descText}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-3 mt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] font-mono text-gray-500">
+          <div className="flex items-center gap-2 truncate">
+            <span className="text-gray-400 truncate">/{slugRu}</span>
+            {slugUz && <span className="text-gray-600 truncate">| /{slugUz}</span>}
+          </div>
+          <span className="px-2.5 py-0.5 rounded-full bg-blue-950/60 border border-blue-800/40 text-blue-400 font-semibold shrink-0">
+            {productCount} ta mahsulot
+          </span>
+        </div>
+      </div>
     );
-  });
+  };
 
   return (
     <div className="space-y-6">
@@ -154,7 +344,7 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
           <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Nomi yoki slug bo'yicha qidiruv..."
+            placeholder="Nomi, id yoki slug bo'yicha qidiruv..."
             value={categorySearch}
             onChange={(e) => setCategorySearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-gray-900 border border-gray-800 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
@@ -162,6 +352,32 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {/* Ko'rinish rejimini almashtirgich (Daraxt / To'r) */}
+          <div className="flex items-center bg-gray-900 border border-gray-800 p-1 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('tree')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'tree' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+              title="Ierarxik daraxt ko'rinishi"
+            >
+              <FolderTree className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Ierarxiya</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'grid' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+              title="Katak ko'rinishi"
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Katak</span>
+            </button>
+          </div>
+
           {/* Katalog SEO ochish/yopish tugmasi */}
           <button
             type="button"
@@ -203,7 +419,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
               </p>
             </div>
 
-            {/* Til almashtirgich (UZ / RU) */}
             <div className="flex items-center gap-1 p-1 bg-gray-950 rounded-xl border border-gray-800 self-start sm:self-auto">
               <button
                 type="button"
@@ -292,7 +507,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
                 </label>
                 
                 <div className="flex items-center gap-2">
-                  {/* Kompyuterdan tanlash tugmasi */}
                   <label className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold transition border border-gray-700 flex items-center gap-2 cursor-pointer shrink-0">
                     {isUploadingImage ? (
                       <>
@@ -323,7 +537,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
                   />
                 </div>
 
-                {/* Yuklangan rasmni ko'rsatish (Prevyu) */}
                 {catalogSeo.ogImageUrl && (
                   <div className="mt-2 flex items-center gap-2">
                     <img
@@ -362,84 +575,20 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
         </form>
       )}
 
-      {/* 3. Kategoriyalar ro'yxati (Grid) */}
-      {filtered.length === 0 ? (
+      {/* 3. Kategoriyalar ro'yxati (Daraxtsimon yoki Katak ko'rinish) */}
+      {filteredTree.length === 0 ? (
         <div className="text-center py-16 bg-gray-900/40 rounded-3xl border border-gray-800 text-gray-400 text-sm">
           Kategoriyalar topilmadi.
         </div>
+      ) : viewMode === 'tree' ? (
+        /* IERARXIK DARAXTSIMON TARTIB */
+        <div className="space-y-3">
+          {filteredTree.map(cat => renderCategoryCard(cat))}
+        </div>
       ) : (
+        /* KATAK (GRID) TARTIBI */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((cat) => {
-            const catNameRu = getLocalizedText(cat.name, 'ru', '');
-            const catNameUz = getLocalizedText(cat.name, 'uz', cat.id);
-            const productCount = products.filter(p => String(p.category) === String(cat.id)).length;
-
-            const slugRu = typeof cat.slug === 'object' ? cat.slug?.ru || cat.id : cat.slug || cat.id;
-            const slugUz = typeof cat.slug === 'object' ? cat.slug?.uz : undefined;
-
-            const descText = (
-              getLocalizedText(cat.description, 'ru', '') || 
-              getLocalizedText(cat.description, 'uz', '')
-            ).replace(/<[^>]*>/g, '');
-
-            return (
-              <div 
-                key={cat.id} 
-                className="p-5 rounded-3xl bg-gray-900 border border-gray-800 space-y-4 hover:border-gray-700 transition flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-600/10 text-blue-400 border border-blue-500/20 flex items-center justify-center p-2">
-                      <DynamicIcon name={cat.icon} className="w-6 h-6" />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => { setCategoryToEdit(cat); setIsCategoryModalOpen(true); }}
-                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition cursor-pointer"
-                        title="Tahrirlash"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => triggerDeleteCategory(cat)}
-                        className="p-2 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
-                        title="O'chirish"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <h4 className="font-bold text-white text-sm">
-                      {catNameRu || catNameUz}
-                    </h4>
-                    {catNameRu && catNameUz && (
-                      <p className="text-xs text-blue-400/80 mt-0.5 font-medium">
-                        UZ: {catNameUz}
-                      </p>
-                    )}
-                    
-                    {descText && (
-                      <p className="text-[11px] text-gray-400 line-clamp-2 mt-2 leading-relaxed">
-                        {descText}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-gray-800 space-y-1 text-[11px] font-mono text-gray-500">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">RU: /{slugRu}</span>
-                    <span className="text-blue-400 font-semibold">{productCount} ta mahsulot</span>
-                  </div>
-                  {slugUz && <div>UZ: /{slugUz}</div>}
-                </div>
-              </div>
-            );
-          })}
+          {filteredTree.map(cat => renderCategoryCard(cat))}
         </div>
       )}
     </div>
