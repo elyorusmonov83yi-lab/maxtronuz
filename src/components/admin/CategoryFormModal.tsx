@@ -211,9 +211,44 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
     }
   }, [categoryToEdit, isOpen]);
 
-  const availableParentCategories = categories.filter(
-    (c) => (!categoryToEdit || c.id !== categoryToEdit.id) && !c.parentId
-  );
+  // Siklik bog'lanishni oldini olish: toifaning barcha avlodlari (bolalari) IDlarini topish
+  const getDescendantIds = useCallback((parentId: string): string[] => {
+    const children = categories.filter(c => {
+      const pId = (c as any).parentId || (c as any).parent_id || null;
+      return String(pId) === String(parentId);
+    });
+    return children.reduce<string[]>((acc, child) => {
+      return [...acc, child.id, ...getDescendantIds(child.id)];
+    }, []);
+  }, [categories]);
+
+  // Ota toifani tanlash uchun 2 va 3 darajali rekursiv daraxt tuzish
+  const renderParentOptions = (parentId: string | null = null, level: number = 0) => {
+    // Tahrirlanayotgan toifaning o'zi va uning hamma ichki bolalarini taqiqlash
+    const forbiddenIds = categoryToEdit ? [categoryToEdit.id, ...getDescendantIds(categoryToEdit.id)] : [];
+
+    const filtered = categories.filter(c => {
+      const pId = (c as any).parentId || (c as any).parent_id || null;
+      const matchesParent = parentId === null ? (!pId || pId === '' || pId === '0') : String(pId) === String(parentId);
+      return matchesParent && !forbiddenIds.includes(c.id);
+    });
+
+    return filtered.flatMap(c => {
+      const catName = typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name;
+      const prefix = level === 0 ? '📁 ' : '\u00A0\u00A0\u00A0\u00A0'.repeat(level) + '└─ 📄 ';
+
+      return [
+        <option 
+          key={c.id} 
+          value={c.id}
+          className={level === 0 ? "font-bold text-blue-400 bg-gray-900" : "text-gray-200 bg-gray-950"}
+        >
+          {prefix}{catName}
+        </option>,
+        ...renderParentOptions(c.id, level + 1)
+      ];
+    });
+  };
 
   const handleNameChange = (lang: 'uz' | 'ru', value: string) => {
     const updatedName = { ...formData.name, [lang]: value };
@@ -414,27 +449,19 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                 <select
                   value={formData.parentId || ''}
                   onChange={(e) => setFormData({ ...formData, parentId: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-500 cursor-pointer font-sans"
                 >
                   <option value="">
                     {activeLang === 'ru' 
                       ? '📁 — Главная категория (Без родителя / Верхний уровень) —' 
                       : '📁 — Asosiy toifa (Otasi yo‘q / Yuqori daraja) —'}
                   </option>
-                  {availableParentCategories.map((pCat) => {
-                    const nameRu = getLocalizedText(pCat.name, 'ru', '');
-                    const nameUz = getLocalizedText(pCat.name, 'uz', pCat.id);
-                    return (
-                      <option key={pCat.id} value={pCat.id}>
-                        ↳ 📄 {activeLang === 'ru' ? (nameRu || nameUz) : (nameUz || nameRu)}
-                      </option>
-                    );
-                  })}
+                  {renderParentOptions(null, 0)}
                 </select>
                 <p className="text-[11px] text-gray-500">
                   {activeLang === 'ru' 
-                    ? 'Если оставить "Главная категория", то этот раздел будет отображаться как основной в меню' 
-                    : 'Agar "Asosiy toifa" qoldirilsa, ushbu bo‘lim menyuda ota toifa sifatida chiqadi'}
+                    ? 'Выберите родителя любого уровня (1-й или 2-й уровень) для создания многоуровневой структуры' 
+                    : 'Ko‘p bosqichli tuzilma hosil qilish uchun istalgan darajadagi toifani (1 yoki 2-daraja) ota sifatida tanlashingiz mumkin'}
                 </p>
               </div>
 
@@ -738,7 +765,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                         }
                       })
                     }
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm text-white focus:outline-none focus:border-cyan-500 font-mono transition"
                   />
                 </div>
 
