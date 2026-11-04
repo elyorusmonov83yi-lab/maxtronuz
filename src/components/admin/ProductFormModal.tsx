@@ -199,6 +199,33 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const additionalImagesInputRef = useRef<HTMLInputElement>(null);
 
+  // Kategoriya va uning ichki podkategoriyalarini daraxtsimon tartibda chiqarish
+  const renderCategoryOptions = (parentId: string | null = null, level: number = 0) => {
+    const filteredCats = categories.filter(c => {
+      const pId = (c as any).parentId || (c as any).parent_id || null;
+      return parentId === null 
+        ? (!pId || pId === '' || pId === '0') 
+        : String(pId) === String(parentId);
+    });
+
+    return filteredCats.flatMap(c => {
+      const catName = typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name;
+      // Bo'shliqlar brauzerda qisqarib ketmasligi uchun \u00A0 (ajralmas bo'shliq) ishlatiladi
+      const prefix = level === 0 ? '' : '\u00A0\u00A0\u00A0\u00A0'.repeat(level) + '└─ ';
+
+      return [
+        <option 
+          key={c.id} 
+          value={c.id} 
+          className={level === 0 ? "font-bold text-blue-400 bg-gray-900" : "text-gray-200 bg-gray-950"}
+        >
+          {prefix}{catName}
+        </option>,
+        ...renderCategoryOptions(c.id, level + 1)
+      ];
+    });
+  };
+
   const [formData, setFormData] = useState<Product & { brandId?: string; documents?: ProductDocument[] }>({
     id: '',
     slug: { uz: '', ru: '' },
@@ -404,12 +431,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
       const updated = result.data;
 
-      // Xarakteristikalarni to'g'ri ajratib olish (specs yoki specifications bo'lishi mumkin)
       const incomingSpecs = updated.specs || updated.specifications || [];
       const parsedSpecs = normalizeSpecs(incomingSpecs);
 
       setFormData(prev => {
-        // 1. Agar brend hali tanlanmagan bo'lsa, AI aniqlagan nom bo'yicha mos brendni avtomatik topish:
         let autoBrandId = prev.brandId;
         if (!autoBrandId && updated.detectedBrand && brandsList.length > 0) {
           const bMatch = brandsList.find(b => 
@@ -419,7 +444,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           if (bMatch) autoBrandId = bMatch.id;
         }
 
-        // 2. Agar kategoriya tanlanmagan bo'lsa, AI aniqlagan toifa bo'yicha kategoriyani avtomatik topish:
         let autoCatId = prev.category;
         if (updated.detectedCategory && categories.length > 0) {
           const cMatch = categories.find(c => {
@@ -935,7 +959,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           </div>
 
           <button 
-            type="button"
+            type="button" 
             onClick={onClose} 
             className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition cursor-pointer"
           >
@@ -1042,13 +1066,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     required
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                    className="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
                   >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name}
-                      </option>
-                    ))}
+                    <option value="" disabled className="text-gray-500">
+                      {activeLang === 'ru' ? '— Выберите категорию —' : '— Toifani tanlang —'}
+                    </option>
+                    {renderCategoryOptions(null, 0)}
                   </select>
 
                   {/* Kategoriya tezkor qo'shish popover */}
@@ -1079,11 +1102,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                           <option value="">
                             {activeLang === 'ru' ? '— Без родителя (Главная категория) —' : '— Ota kategoriyasiz (Asosiy toifa) —'}
                           </option>
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name}
-                            </option>
-                          ))}
+                          {categories
+                            .filter(c => !(c as any).parentId && !(c as any).parent_id)
+                            .map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {typeof c.name === 'object' ? (c.name[activeLang] || c.name.ru || c.name.uz) : c.name}
+                              </option>
+                            ))}
                         </select>
                       </div>
 
