@@ -13,11 +13,11 @@ import {
   ChevronUp, 
   Upload, 
   Loader2,
-  Folder,
-  FolderOpen,
   CornerDownRight,
   FolderTree,
-  Tag
+  Tag,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { CategoryInfo, Product } from '../../../types';
 import { getLocalizedText } from '../../../utils/formatters';
@@ -42,6 +42,15 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
   const [categorySearch, setCategorySearch] = useState('');
   const [viewMode, setViewMode] = useState<'tree' | 'grid'>('tree');
   
+  // --- ПАГИНАЦИЯ ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  // Сброс страницы при поиске
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categorySearch]);
+
   // --- KATALOG DINAMIK SEO STATELARI ---
   const [isSeoOpen, setIsSeoOpen] = useState(false);
   const [seoLang, setSeoLang] = useState<'uz' | 'ru'>('uz');
@@ -55,7 +64,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [seoSaveStatus, setSeoSaveStatus] = useState<string | null>(null);
 
-  // Bazadagi catalog_seo sozlamasini yuklab olish
   useEffect(() => {
     async function loadCatalogSeo() {
       try {
@@ -78,7 +86,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     loadCatalogSeo();
   }, []);
 
-  // Kompyuterdan rasm yuklash funksiyasi
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -91,13 +98,12 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
         ogImageUrl: uploadedUrl
       }));
     } catch (err: any) {
-      alert("Rasmni yuklashda xatolik yuz berdi: " + (err.message || 'Server xatosi'));
+      alert("Rasmni yuklashda xatolik: " + (err.message || 'Server xatosi'));
     } finally {
       setIsUploadingImage(false);
     }
   };
 
-  // SEO sozlamalarini bazaga saqlash
   const handleSaveCatalogSeo = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingSeo(true);
@@ -134,7 +140,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     }
   };
 
-  // Har bir toifaning ota yo'lini (Breadcrumb) topish
   const getCategoryPath = (cat: CategoryInfo): string[] => {
     const path: string[] = [];
     let currentParentId = (cat as any).parentId || (cat as any).parent_id;
@@ -148,7 +153,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     return path;
   };
 
-  // Kategoriyalarni 2-3 darajali daraxt tartibida yig'ish
   const categoryTree = useMemo(() => {
     const buildTree = (parentId: string | null = null, level: number = 0): (CategoryInfo & { level: number; breadcrumbs: string[] })[] => {
       const children = categories.filter(c => {
@@ -167,7 +171,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     return buildTree(null, 0);
   }, [categories]);
 
-  // Qidiruv bo'yicha filtrlash
   const filteredTree = useMemo(() => {
     if (!categorySearch.trim()) return categoryTree;
     const q = categorySearch.toLowerCase().trim();
@@ -188,7 +191,13 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     });
   }, [categoryTree, categorySearch]);
 
-  // Toifa kartochkasi komponenti
+  // Расчет среза элементов для текущей страницы
+  const totalPages = Math.ceil(filteredTree.length / itemsPerPage) || 1;
+  const paginatedCategories = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredTree.slice(start, start + itemsPerPage);
+  }, [filteredTree, currentPage, itemsPerPage]);
+
   const renderCategoryCard = (cat: CategoryInfo & { level: number; breadcrumbs: string[] }) => {
     const catNameRu = getLocalizedText(cat.name, 'ru', '');
     const catNameUz = getLocalizedText(cat.name, 'uz', cat.id);
@@ -200,11 +209,10 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
     const descText = (
       getLocalizedText(cat.description, 'ru', '') || 
       getLocalizedText(cat.description, 'uz', '')
-    ).replace(/<[^>]*>/g, '');
+    ).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
 
     const isRoot = cat.level === 0;
     const isLevel2 = cat.level === 1;
-    const isLevel3 = cat.level >= 2;
 
     return (
       <div 
@@ -218,7 +226,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
             : 'bg-gray-950/60 border-gray-800/60 hover:border-emerald-500/50'
         }`}
       >
-        {/* Daraxt shoxi belgisi */}
         {viewMode === 'tree' && !isRoot && (
           <div className="absolute -left-5 top-7 text-gray-700 flex items-center">
             <CornerDownRight className="w-4 h-4 text-gray-600" />
@@ -239,7 +246,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
               </div>
 
               <div>
-                {/* Ierarxiya daraja nishoni */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider ${
                     isRoot
@@ -251,7 +257,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
                     {isRoot ? '📁 Asosiy toifa' : isLevel2 ? '📂 2-daraja' : '📄 3-daraja'}
                   </span>
 
-                  {/* Ota yo'li (Breadcrumb) */}
                   {cat.breadcrumbs.length > 0 && (
                     <span className="text-[10px] text-gray-500 flex items-center gap-1 truncate max-w-xs">
                       <span>({cat.breadcrumbs.join(' / ')})</span>
@@ -266,7 +271,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              {/* Yangi ichki toifa qo'shish tugmasi */}
               <button
                 type="button"
                 onClick={() => {
@@ -338,7 +342,7 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* 1. Yuqori boshqaruv paneli */}
+      {/* 1. Верхняя панель управления */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -352,7 +356,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          {/* Ko'rinish rejimini almashtirgich (Daraxt / To'r) */}
           <div className="flex items-center bg-gray-900 border border-gray-800 p-1 rounded-2xl">
             <button
               type="button"
@@ -378,7 +381,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
             </button>
           </div>
 
-          {/* Katalog SEO ochish/yopish tugmasi */}
           <button
             type="button"
             onClick={() => setIsSeoOpen(!isSeoOpen)}
@@ -393,7 +395,6 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
             {isSeoOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Yangi toifa qo'shish tugmasi */}
           <button
             type="button"
             onClick={() => { setCategoryToEdit(null); setIsCategoryModalOpen(true); }}
@@ -405,7 +406,7 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
         </div>
       </div>
 
-      {/* 2. Katalog Sahifasi Ikki Tilli Dinamik SEO Formasi */}
+      {/* 2. Блок SEO каталога */}
       {isSeoOpen && (
         <form onSubmit={handleSaveCatalogSeo} className="p-6 rounded-3xl bg-gray-900/90 border border-emerald-500/40 backdrop-blur-md space-y-5 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-800">
@@ -575,22 +576,106 @@ export const AdminCategories: React.FC<AdminCategoriesProps> = ({
         </form>
       )}
 
-      {/* 3. Kategoriyalar ro'yxati (Daraxtsimon yoki Katak ko'rinish) */}
-      {filteredTree.length === 0 ? (
+      {/* 3. Список категорий */}
+      {paginatedCategories.length === 0 ? (
         <div className="text-center py-16 bg-gray-900/40 rounded-3xl border border-gray-800 text-gray-400 text-sm">
           Kategoriyalar topilmadi.
         </div>
       ) : viewMode === 'tree' ? (
-        /* IERARXIK DARAXTSIMON TARTIB */
         <div className="space-y-3">
-          {filteredTree.map(cat => renderCategoryCard(cat))}
+          {paginatedCategories.map(cat => renderCategoryCard(cat))}
         </div>
       ) : (
-        /* KATAK (GRID) TARTIBI */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTree.map(cat => renderCategoryCard(cat))}
+          {paginatedCategories.map(cat => renderCategoryCard(cat))}
         </div>
       )}
+
+      {/* 4. Блок пагинации */}
+      {filteredTree.length > 0 && (
+        <div className="p-4 rounded-3xl bg-gray-900/80 border border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <span>
+              Jami: <strong className="text-white">{filteredTree.length}</strong> ta toifa
+            </span>
+            <span className="text-gray-700">|</span>
+            <div className="flex items-center gap-2">
+              <span>Har bir sahifada:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1 rounded-xl bg-gray-950 border border-gray-800 text-white text-xs focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={12}>12</option>
+                <option value={24}>24</option>
+                <option value={48}>48</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              className="p-2 rounded-xl bg-gray-950 border border-gray-800 text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              title="Oldingi sahifa"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  // Показываем первую, последнюю и соседние страницы
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - currentPage) <= 1
+                  );
+                })
+                .map((page, idx, arr) => {
+                  const prevPage = arr[idx - 1];
+                  const showEllipsis = prevPage && page - prevPage > 1;
+
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsis && (
+                        <span className="px-2 text-xs text-gray-600">...</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-950 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              className="p-2 rounded-xl bg-gray-950 border border-gray-800 text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              title="Keyingi sahifa"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
