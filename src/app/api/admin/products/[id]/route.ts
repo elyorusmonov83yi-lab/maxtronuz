@@ -8,7 +8,6 @@ type LangList = { ru: string[]; uz: string[] };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-
 // 503 yuklama vaqtida darhol javob beradigan eng tezkor va barqaror tartib:
 const CANDIDATE_MODELS = [
   'gemini-3.5-flash-lite',
@@ -403,9 +402,10 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
     let response: any = null;
     let lastError: any = null;
 
-    for (const modelName of CANDIDATE_MODELS) {
+    for (let i = 0; i < CANDIDATE_MODELS.length; i++) {
+      const modelName = CANDIDATE_MODELS[i];
       try {
-        console.log(`[AI Request] ${modelName} modeliga so'rov yuborilmoqda...`);
+        console.log(`[AI Request ${i + 1}/${CANDIDATE_MODELS.length}] ${modelName} modeliga so'rov yuborilmoqda...`);
         response = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
@@ -413,7 +413,7 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
         });
 
         if (response?.text) {
-          console.log(`[AI Success] ${modelName} muvaffaqiyatli javob berdi.`);
+          console.log(`[AI Success] ${modelName} muvaffaqiyatli javob qaytardi.`);
           break;
         }
       } catch (err: any) {
@@ -427,8 +427,11 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
           break;
         }
 
-        // 503 (High demand) yoki 429 xatolarida keyingi modelga o'tishdan oldin 1.2 soniya kutish
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        // 503 (High demand) yoki 429 xatolarida Google cheklovi yechilishi uchun aniq 5 soniya kutish
+        if (i < CANDIDATE_MODELS.length - 1) {
+          console.log(`[AI Retry] Google limiti tiklanishi uchun 5 soniya kutilmoqda...`);
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
       }
     }
 
