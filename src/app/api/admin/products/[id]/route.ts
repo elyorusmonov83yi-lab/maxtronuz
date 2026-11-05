@@ -3,47 +3,112 @@ import { db } from '@/server/db';
 import { verifyAdminToken } from '@/server/auth';
 import { GoogleGenAI } from '@google/genai';
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  console.error("DIQQAT: GEMINI_API_KEY .env.local faylida topilmadi!");
-}
+type LangText = { ru: string; uz: string };
+type LangList = { ru: string[]; uz: string[] };
 
-const ai = new GoogleGenAI({ apiKey: apiKey || '' });
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// 503 va yuklama xatolariga qarshi navbatma-navbat sinab ko'riladigan modellar
+// Mavjud va qo'llab-quvvatlanadigan modellar ro'yxati
 const CANDIDATE_MODELS = [
+  'gemini-3.5-flash',
   'gemini-3.8-flash',
   'gemini-3.5-flash-lite',
- 
 ];
 
-function parseIfJson(val: any, fallback: any = {}) {
-  if (val === null || val === undefined) return fallback;
-  if (typeof val === 'object') return val;
-  try {
-    const parsed = JSON.parse(val);
-    return parsed ?? fallback;
-  } catch {
-    return val || fallback;
+const DEFAULT_LANG_TEXT: LangText = { ru: '', uz: '' };
+const DEFAULT_LANG_LIST: LangList = { ru: [], uz: [] };
+
+function parseIfJson<T = any>(value: any, fallback: T): any {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'object') return value;
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
   }
+
+  return value;
 }
 
-function parseArray(val: any): any[] {
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  if (typeof val === 'string') {
+function parseArray(value: any): any[] {
+  const parsed = parseIfJson(value, []);
+  if (Array.isArray(parsed)) return parsed;
+
+  if (typeof parsed === 'string') {
     try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) return parsed;
-      if (typeof parsed === 'string' && parsed.startsWith('[')) {
-        const doubleParsed = JSON.parse(parsed);
-        if (Array.isArray(doubleParsed)) return doubleParsed;
-      }
+      const twiceParsed = JSON.parse(parsed);
+      return Array.isArray(twiceParsed) ? twiceParsed : [];
     } catch {
       return [];
     }
   }
+
   return [];
+}
+
+function toBoolean(value: any, fallback = false): boolean {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off', ''].includes(normalized)) return false;
+  }
+
+  return Boolean(value);
+}
+
+function toNumber(value: any, fallback = 0): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function localizedText(value: any, fallback: LangText = DEFAULT_LANG_TEXT): LangText {
+  const parsed = parseIfJson(value, fallback);
+
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const ru = String(parsed.ru ?? parsed.uz ?? fallback.ru ?? '').trim();
+    const uz = String(parsed.uz ?? parsed.ru ?? fallback.uz ?? '').trim();
+    return {
+      ru: ru || uz || fallback.ru || '',
+      uz: uz || ru || fallback.uz || '',
+    };
+  }
+
+  const text = parsed === null || parsed === undefined ? '' : String(parsed);
+  return {
+    ru: text || fallback.ru || '',
+    uz: text || fallback.uz || '',
+  };
+}
+
+function localizedList(value: any): LangList {
+  const parsed = parseIfJson(value, DEFAULT_LANG_LIST);
+
+  if (Array.isArray(parsed)) {
+    const items = parsed.map((item) => String(item ?? '').trim()).filter(Boolean);
+    return { ru: items, uz: items };
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    const ruRaw = Array.isArray(parsed.ru) ? parsed.ru : [];
+    const uzRaw = Array.isArray(parsed.uz) ? parsed.uz : [];
+
+    const ru = ruRaw.map((item: any) => String(item ?? '').trim()).filter(Boolean);
+    const uz = uzRaw.map((item: any) => String(item ?? '').trim()).filter(Boolean);
+
+    return {
+      ru: ru.length ? ru : uz,
+      uz: uz.length ? uz : ru,
+    };
+  }
+
+  return DEFAULT_LANG_LIST;
 }
 
 function cleanIdArray(val: any): string[] {
@@ -59,35 +124,33 @@ function parseSpecs(rawSpecs: any) {
   return parsed.map((s: any) => {
     let name = s?.name;
     let value = s?.value;
+
     if (typeof name === 'string') {
       try { name = JSON.parse(name); } catch {}
     }
     if (typeof value === 'string') {
       try { value = JSON.parse(value); } catch {}
     }
+
     return {
-      name: typeof name === 'object' && name !== null 
-        ? { uz: String(name.uz || name.ru || ''), ru: String(name.ru || name.uz || '') } 
-        : { uz: String(name || ''), ru: String(name || '') },
-      value: typeof value === 'object' && value !== null 
-        ? { uz: String(value.uz || value.ru || ''), ru: String(value.ru || value.uz || '') } 
-        : { uz: String(value || ''), ru: String(value || '') }
+      name: localizedText(name),
+      value: localizedText(value),
     };
-  });
+  }).filter(s => s.name.ru || s.name.uz || s.value.ru || s.value.uz);
 }
 
 function transformProductRow(p: any) {
-  const slug = parseIfJson(p.slug, { uz: p.id, ru: p.id });
-  const name = parseIfJson(p.name || p.title, { uz: p.id, ru: p.id });
-  const tagline = parseIfJson(p.tagline, { uz: '', ru: '' });
-  const description = parseIfJson(p.description, { uz: '', ru: '' });
-  const priceFormatted = parseIfJson(p.priceFormatted, { uz: "So'rov bo'yicha", ru: 'По запросу' });
-  const features = parseIfJson(p.features, { uz: [], ru: [] });
-  const applications = parseIfJson(p.applications, { uz: [], ru: [] });
-  const standardCert = parseIfJson(p.standardCert, { uz: 'GOST / O‘zstandart', ru: 'ГОСТ / Узстандарт' });
-  const seoTitle = parseIfJson(p.seoTitle, { uz: '', ru: '' });
-  const seoDescription = parseIfJson(p.seoDescription, { uz: '', ru: '' });
-  const seoKeywords = parseIfJson(p.seoKeywords, { uz: '', ru: '' });
+  const slug = localizedText(p.slug, { uz: String(p.id), ru: String(p.id) });
+  const name = localizedText(p.name || p.title, { uz: String(p.id), ru: String(p.id) });
+  const tagline = localizedText(p.tagline);
+  const description = localizedText(p.description);
+  const priceFormatted = localizedText(p.priceFormatted, { uz: "So'rov bo'yicha", ru: 'По запросу' });
+  const features = localizedList(p.features);
+  const applications = localizedList(p.applications);
+  const standardCert = localizedText(p.standardCert, { uz: 'GOST / O‘zstandart', ru: 'ГОСТ / Узстандарт' });
+  const seoTitle = localizedText(p.seoTitle, name);
+  const seoDescription = localizedText(p.seoDescription);
+  const seoKeywords = localizedText(p.seoKeywords);
   const images = parseArray(p.images || p.additionalImages);
 
   const inds = cleanIdArray(p.industryIds ?? p.industries);
@@ -95,42 +158,42 @@ function transformProductRow(p: any) {
 
   return {
     id: p.id,
-    slug: typeof slug === 'object' ? slug : { uz: p.id, ru: p.id },
+    slug,
     brandId: p.brand_id || null,
     model: p.model || '',
     category: p.category || p.categoryId || 'sensors',
     categoryId: p.categoryId || p.category || 'sensors',
-    name: typeof name === 'object' ? name : { uz: name, ru: name },
-    tagline: typeof tagline === 'object' ? tagline : { uz: '', ru: '' },
-    description: typeof description === 'object' ? description : { uz: description, ru: description },
-    price: Number(p.price) || 0,
-    oldPrice: Number(p.oldPrice) || 0,
-    priceFormatted: typeof priceFormatted === 'object' ? priceFormatted : { uz: "So'rov bo'yicha", ru: 'По запросу' },
-    inStock: Boolean(p.inStock ?? p.isActive ?? 1),
-    isActive: Boolean(p.isActive ?? 1),
-    isPopular: Boolean(p.isPopular ?? 0),
-    isNew: Boolean(p.isNew ?? 0),
+    name,
+    tagline,
+    description,
+    price: toNumber(p.price, 0),
+    oldPrice: toNumber(p.oldPrice, 0),
+    priceFormatted,
+    inStock: toBoolean(p.inStock ?? p.isActive, true),
+    isActive: toBoolean(p.isActive, true),
+    isPopular: toBoolean(p.isPopular, false),
+    isNew: toBoolean(p.isNew, false),
     image: p.image || p.imageUrl || '',
     imageUrl: p.imageUrl || p.image || '',
     additionalImages: images,
     pdfCatalogUrl: p.pdfCatalogUrl || '',
     specs: parseSpecs(p.specs),
-    features: typeof features === 'object' ? features : { uz: [], ru: [] },
-    applications: typeof applications === 'object' ? applications : { uz: [], ru: [] },
-    standardCert: typeof standardCert === 'object' ? standardCert : { uz: standardCert, ru: standardCert },
-    warrantyMonths: Number(p.warrantyMonths) || 12,
+    features,
+    applications,
+    standardCert,
+    warrantyMonths: toNumber(p.warrantyMonths, 12),
     industryIds: inds,
     industryTaskIds: tasks,
     industries: inds,
     tasks: tasks,
-    seoTitle: typeof seoTitle === 'object' ? seoTitle : { uz: '', ru: '' },
-    seoDescription: typeof seoDescription === 'object' ? seoDescription : { uz: '', ru: '' },
-    seoKeywords: typeof seoKeywords === 'object' ? seoKeywords : { uz: '', ru: '' },
-    ogImage: p.ogImage || p.image || ''
+    seoTitle,
+    seoDescription,
+    seoKeywords,
+    ogImage: p.ogImage || p.image || '',
   };
 }
 
-// 1. GET: Bitta mahsulotni ID yoki ko'p tilli Slug bo'yicha olish
+// 1. GET: Bitta tovar ma'lumotlarini olish
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -165,7 +228,7 @@ export async function GET(
   }
 }
 
-// 2. POST: AI yordamida tovar parametrlarini avtomatik to'ldirish (🔒 Faqat Admin)
+// 2. POST: AI yordamida tovar parametrlarini avtomatik to'ldirish
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -175,6 +238,13 @@ export async function POST(
     const isAdmin = await verifyAdminToken(authHeader);
     if (!isAdmin) {
       return NextResponse.json({ success: false, message: 'Ruxsat berilmagan' }, { status: 401 });
+    }
+
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json(
+        { success: false, error: 'GEMINI_API_KEY kaliti topilmadi' },
+        { status: 500 }
+      );
     }
 
     const { id: identifier } = await params;
@@ -203,21 +273,15 @@ export async function POST(
     }
 
     const currentCategoryId = current?.categoryId || current?.category || body?.category || '';
-
-    const rawName = current ? (current.name || current.title) : body?.name;
-    const currentName = parseIfJson(rawName, { ru: currentModel, uz: currentModel });
-
-    const rawDesc = current ? current.description : body?.description;
-    const currentDesc = parseIfJson(rawDesc, { ru: '', uz: '' });
+    const currentName = localizedText(current ? (current.name || current.title) : body?.name, { ru: currentModel, uz: currentModel });
+    const currentDesc = localizedText(current ? current.description : body?.description);
 
     const prompt = `
 Siz sanoat uskunalari, KIPiA va elektrotexnika bo'yicha mustaqil bosh muhandissiz.
 
 QAT'IY CHEKLOV VA TALAB:
-1. "MAXTRON" so'zini tovar nomiga (name), modeliga, brendiga (detectedBrand) yoki tavsifiga (description) ISHLAB CHIQARUVCHI BREND SIFATIDA ASLO QO'SHMANG! MAXTRON mahsulot ishlab chiqarmaydi.
-2. XATO: "Кабельные наконечники MAXTRON TA 120"
-   TO'G'RI: "Кабельные наконечники ТА-120" (yoki "Медно-алюминиевые наконечники ТА 120").
-3. Agar haqiqiy zavod brendi noma'lum bo'lsa yoki tovar standart GOST/DIN bo'lsa, "detectedBrand" maydoniga "Standart / GOST" yoki "Universal" deb yozing, o'zingizdan brend to'qimang.
+1. "MAXTRON" so'zini tovar nomiga (name), modeliga, brendiga (detectedBrand) yoki tavsifiga (description) ISHLAB CHIQARUVCHI BREND SIFATIDA ASLO QO'SHMANG! MAXTRON ishlab chiqaruvchi emas.
+2. Agar haqiqiy brend noma'lum bo'lsa yoki standart GOST/DIN bo'lsa, "detectedBrand" maydoniga "Standart / GOST" yoki "Universal" deb yozing.
 
 BERILGAN MA'LUMOTLAR:
 - Model / Artikul: "${currentModel}"
@@ -231,17 +295,15 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
 1. "detectedBrand": Ishlab chiqaruvchi asl brend nomi (masalan: WIKA, Siemens, ABB, Danfoss yoki "Standart / GOST").
 2. "detectedCategory": Uskuna toifasi (masalan: "Кабельные наконечники", "Датчики давления").
 3. "name": Uskunaning toza texnik nomi (RU va UZ).
-4. "description": JUDA BATAFSIL VA KENGAYTIRILGAN (kamida 250-350 so'z, 3 ta to'liq abzas). HTML formatida (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin:
-   - 1-abzas: Uskunaning vazifasi, materiali va asosiy qo'llanish sohasi.
-   - 2-abzas: Texnik ishlash prinsipi, montaj xususiyatlari, o'tkazuvchanligi yoki chidamliligi.
-   - 3-abzas: Ishchi harorat, IP himoya darajasi va standartlarga muvofiqligi.
+4. "description": JUDA BATAFSIL (kamida 250-350 so'z, 3 ta to'liq abzas). HTML formatida (<p>, <strong>, <ul>, <li>) har ikki tilda yozilsin.
 5. "specs": 8-12 tagacha aniq texnik parametr (kesim yuzasi, kuchlanish, tok, material, himoya klassi va h.k.).
 6. "features" va "applications": Kamida 4-6 tadan aniq band.
 7. Hech bir 'uz' maydoni bo'sh qolmasin.
 `;
 
-    const aiConfig = {
-      systemInstruction: "Har doim faqat JSON formatida javob bering. Hech qachon tovar nomiga 'MAXTRON' so'zini qo'shmang. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi shart.",
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const aiConfig: any = {
+      systemInstruction: "Har doim faqat toza JSON formatida javob bering. Hech qachon tovar nomiga 'MAXTRON' so'zini qo'shmang. Har bir matnli maydonda 'ru' va 'uz' (o'zbekcha lotin imlosida) to'liq to'ldirilishi shart.",
       responseMimeType: 'application/json',
       responseSchema: {
         type: 'OBJECT',
@@ -337,7 +399,6 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
       temperature: 0.2
     };
 
-    // Fallback zanjiri: bitta model band (503) bo'lsa, to'xtamasdan keyingisiga o'tadi
     let response: any = null;
     let lastError: any = null;
 
@@ -354,16 +415,23 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
         }
       } catch (err: any) {
         lastError = err;
-        console.warn(`[AI Fallback] ${modelName} xatolik berdi (${err?.message || err}). Keyingisi tekshirilmoqda...`);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        console.warn(`[AI Fallback] ${modelName} ishlamadi (${err?.message || err}). Keyingi model sinab ko'rilmoqda...`);
       }
     }
 
     if (!response?.text) {
-      throw lastError || new Error("Barcha zaxira AI modellar band, iltimos 10 soniyadan so'ng qayta urinib ko'ring.");
+      const errStr = lastError?.message || (typeof lastError === 'string' ? lastError : JSON.stringify(lastError));
+      throw new Error(errStr || "AI modellar bilan bog'lanishda xatolik yuz berdi.");
     }
 
-    const enriched = JSON.parse(response.text || '{}');
+    let cleanJson = response.text.trim();
+    if (cleanJson.startsWith('```json')) {
+      cleanJson = cleanJson.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanJson.startsWith('```')) {
+      cleanJson = cleanJson.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+
+    const enriched = JSON.parse(cleanJson || '{}');
 
     if (enriched.name?.ru) enriched.name.ru = enriched.name.ru.replace(/MAXTRON\s*/gi, '').trim();
     if (enriched.name?.uz) enriched.name.uz = enriched.name.uz.replace(/MAXTRON\s*/gi, '').trim();
@@ -444,7 +512,7 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
   }
 }
 
-// 3. DELETE: Mahsulotni o'chirish (🔒 Faqat Admin)
+// 3. DELETE: Mahsulotni o'chirish
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
