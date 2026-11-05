@@ -8,11 +8,12 @@ type LangList = { ru: string[]; uz: string[] };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// 503 va yuklama xatolariga qarshi sinovdan o'tgan modellar zanjiri
+
+// 503 yuklama vaqtida darhol javob beradigan eng tezkor va barqaror tartib:
 const CANDIDATE_MODELS = [
-  'gemini-3.8-flash',
-  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-3.8-flash',
 ];
 
 const DEFAULT_LANG_TEXT: LangText = { ru: '', uz: '' };
