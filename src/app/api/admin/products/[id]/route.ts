@@ -8,11 +8,10 @@ type LangList = { ru: string[]; uz: string[] };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// 503 yuklama vaqtida darhol javob beradigan eng tezkor va barqaror tartib:
+// 20 RPD limitiga ega 3.8-flash olib tashlandi; eng ko'p limitli barqaror modellar qoldirildi:
 const CANDIDATE_MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-3.5-flash',
-  'gemini-3.8-flash',
 ];
 
 const DEFAULT_LANG_TEXT: LangText = { ru: '', uz: '' };
@@ -427,10 +426,10 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
           break;
         }
 
-        // 503 (High demand) yoki 429 xatolarida Google cheklovi yechilishi uchun aniq 5 soniya kutish
+        // 503 (High demand) yoki 429 xatolarida keyingi modelga o'tishdan oldin 2 soniya kutish
         if (i < CANDIDATE_MODELS.length - 1) {
-          console.log(`[AI Retry] Google limiti tiklanishi uchun 5 soniya kutilmoqda...`);
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+          console.log(`[AI Retry] 2 soniya kutilmoqda...`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }
     }
