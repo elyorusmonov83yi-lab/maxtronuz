@@ -8,10 +8,10 @@ type LangList = { ru: string[]; uz: string[] };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// Mavjud va qo'llab-quvvatlanadigan modellar ro'yxati
+// 503 va yuklama xatolariga qarshi sinovdan o'tgan modellar zanjiri
 const CANDIDATE_MODELS = [
-  'gemini-3.5-flash',
   'gemini-3.8-flash',
+  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
 ];
 
@@ -404,6 +404,7 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
 
     for (const modelName of CANDIDATE_MODELS) {
       try {
+        console.log(`[AI Request] ${modelName} modeliga so'rov yuborilmoqda...`);
         response = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
@@ -411,11 +412,22 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
         });
 
         if (response?.text) {
+          console.log(`[AI Success] ${modelName} muvaffaqiyatli javob berdi.`);
           break;
         }
       } catch (err: any) {
         lastError = err;
-        console.warn(`[AI Fallback] ${modelName} ishlamadi (${err?.message || err}). Keyingi model sinab ko'rilmoqda...`);
+        const errMsg = err?.message || String(err);
+        console.warn(`[AI Fallback] ${modelName} xatolik berdi: ${errMsg}`);
+
+        // Agar so'rov formati xato bo'lsa (400), keyingi modellarni sinash befoyda
+        if (errMsg.includes('400') || err?.status === 400) {
+          console.error('[AI Fatal Error 400] So‘rov formati xato, zanjir to‘xtatildi.');
+          break;
+        }
+
+        // 503 (High demand) yoki 429 xatolarida keyingi modelga o'tishdan oldin 1.2 soniya kutish
+        await new Promise((resolve) => setTimeout(resolve, 1200));
       }
     }
 
