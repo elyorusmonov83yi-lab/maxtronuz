@@ -394,13 +394,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setApplicationInput({ uz: '', ru: '' });
   }, [isOpen, productToEdit, categories]);
 
+  // AI BILAN TO'LDIRISH HANDLERI
   const handleAiAutoFill = async () => {
     if (!formData.model?.trim()) {
       alert(activeLang === 'ru' ? 'Сначала введите артикул или модель оборудования!' : 'Avval uskuna modeli yoki artikulini kiriting!');
       return;
     }
 
-    const targetId = formData.id || `mx-${Date.now().toString().slice(-6)}`;
+    const cleanModelSlug = generateSlug(formData.model.trim()) || 'item';
+    const targetId = formData.id && !formData.id.startsWith('mx-') ? formData.id : cleanModelSlug;
 
     setIsAiLoading(true);
     try {
@@ -423,8 +425,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("API xatosi:", res.status, errorText);
-        throw new Error(`Server xatolik qaytardi (${res.status})`);
+        let parsedErr = errorText;
+        try {
+          const errJson = JSON.parse(errorText);
+          parsedErr = errJson.error || errJson.message || errorText;
+        } catch {}
+        console.error("API xatosi:", res.status, parsedErr);
+        throw new Error(`Server xatosi (${res.status}): ${typeof parsedErr === 'string' ? parsedErr : JSON.stringify(parsedErr)}`);
       }
 
       const result = await res.json();
@@ -1110,7 +1117,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                               ? '📁 — Без родителя (Главная категория) —' 
                               : '📁 — Ota kategoriyasiz (Asosiy toifa) —'}
                           </option>
-                          {/* 1-darajali yoki 2-darajali toifani ota qilib tanlash imkoniyati */}
                           {renderCategoryOptions(null, 0)}
                         </select>
                       </div>
