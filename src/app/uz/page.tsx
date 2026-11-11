@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from '@/app/HomePageClient';
+import { ClientsSlider } from '@/components/ClientsSlider'; // <-- ClientsSlider import qilindi
 
 // Sahifani chaqmoqdek tez ochish va server yuklamasini kamaytirish uchun ISR (30 sekund)
 export const revalidate = 30;
@@ -177,9 +178,9 @@ export default async function UzbekHomePage() {
       description: safeParse(cat.description),
     }));
 
-    // 2. SELECT * o'rniga faqat kerakli ustunlarni olib kelamiz
+    // 2. COALESCE yordamida imageUrl yoki image qaysi biri borligini tekshirib olamiz
     const [prodRows]: any = await db.query(
-      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
+      'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
     products = (prodRows || []).map((prod: any) => ({
       ...prod,
@@ -243,6 +244,13 @@ export default async function UzbekHomePage() {
           homeContent: home,
         }}
       />
+
+      {/* 🌟 Hamkorlar va mijozlar slayderi (ClientsSlider) */}
+      <div className="py-16 bg-gray-950 border-t border-gray-800/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ClientsSlider currentLang={lang} />
+        </div>
+      </div>
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from './HomePageClient';
+import { ClientsSlider } from '@/components/ClientsSlider'; // <-- ClientsSlider import qilindi
 
 // Саҳифани чақмоқдек тез очиш ва сервер юкламасини камайтириш учун ISR кэшни ёқамиз (ҳар 30 секундда янгиланади)
 export const revalidate = 30;
@@ -182,7 +183,7 @@ export default async function HomePage({ params }: Props) {
       description: safeParse(cat.description),
     }));
 
-   // 3. COALESCE yordamida imageUrl yoki image qaysi biri borligini tekshirib olamiz
+    // 2. COALESCE yordamida imageUrl yoki image qaysi biri borligini tekshirib olamiz
     const [prodRows]: any = await db.query(
       'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
@@ -247,6 +248,13 @@ export default async function HomePage({ params }: Props) {
           homeContent: home,
         }}
       />
+
+      {/* 🌟 Hamkorlar va mijozlar slayderi (ClientsSlider) */}
+      <div className="py-16 bg-gray-950 border-t border-gray-800/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ClientsSlider currentLang={lang} />
+        </div>
+      </div>
     </>
   );
 }
