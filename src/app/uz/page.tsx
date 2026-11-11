@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from '@/app/HomePageClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Sahifani chaqmoqdek tez ochish va server yuklamasini kamaytirish uchun ISR (30 sekund)
+export const revalidate = 30;
 
 // Xavfsiz JSON parser
 function safeParse(val: any): Record<string, any> {
@@ -167,8 +167,9 @@ export default async function UzbekHomePage() {
   let categories: any[] = [];
 
   try {
+    // 1. Faqat ota kategoriyalarni tanlab olamiz (parentId IS NULL)
     const [catRows]: any = await db.query(
-      'SELECT * FROM categories ORDER BY id ASC'
+      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 8'
     );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
@@ -176,8 +177,9 @@ export default async function UzbekHomePage() {
       description: safeParse(cat.description),
     }));
 
+    // 2. SELECT * o'rniga faqat kerakli ustunlarni olib kelamiz
     const [prodRows]: any = await db.query(
-      'SELECT * FROM products ORDER BY id DESC LIMIT 20'
+      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 20'
     );
     products = (prodRows || []).map((prod: any) => ({
       ...prod,

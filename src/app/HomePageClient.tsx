@@ -1,5 +1,4 @@
 'use client';
-"use client";
 
 import { HomeView } from '@/components/views/HomeView';
 import { Product, Language } from '@/types';
@@ -28,6 +27,9 @@ export default function HomePageClient({
   return (
     <HomeView
       currentLang={currentLang}
+      initialProducts={initialProducts}
+      initialCategories={initialCategories}
+      homeContent={siteSettings?.home}
       onOpenQuote={handleOpenQuote}
       comparedProducts={[]}
       onToggleCompare={handleToggleCompare}
