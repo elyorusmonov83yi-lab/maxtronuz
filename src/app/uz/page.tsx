@@ -1,12 +1,10 @@
 import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from '@/app/HomePageClient';
-import { ClientsSlider } from '@/components/ClientsSlider'; // <-- ClientsSlider import qilindi
+import { ClientsSlider } from '@/components/ClientsSlider';
 
-// Sahifani chaqmoqdek tez ochish va server yuklamasini kamaytirish uchun ISR (30 sekund)
 export const revalidate = 30;
 
-// Xavfsiz JSON parser
 function safeParse(val: any): Record<string, any> {
   if (!val) return {};
   if (typeof val === 'object') return val;
@@ -20,7 +18,6 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Domenni dinamik va to'g'ri aniqlash
 function getBaseUrl(canonicalFromDb?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
@@ -37,7 +34,6 @@ function getBaseUrl(canonicalFromDb?: string): string {
   return 'https://maxtron.uz';
 }
 
-// Baza orqali sozlamalarni olish
 async function getSettingsBundle() {
   try {
     const [rows]: any = await db.query(
@@ -168,7 +164,6 @@ export default async function UzbekHomePage() {
   let categories: any[] = [];
 
   try {
-    // 1. Faqat ota kategoriyalarni tanlab olamiz (parentId IS NULL)
     const [catRows]: any = await db.query(
       'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
     );
@@ -178,7 +173,6 @@ export default async function UzbekHomePage() {
       description: safeParse(cat.description),
     }));
 
-    // 2. COALESCE yordamida imageUrl yoki image qaysi biri borligini tekshirib olamiz
     const [prodRows]: any = await db.query(
       'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
@@ -244,8 +238,6 @@ export default async function UzbekHomePage() {
           homeContent: home,
         }}
       />
-
-      {/* 🌟 Hamkorlar va mijozlar slayderi (ClientsSlider) */}
       <div className="py-16 bg-gray-950 border-t border-gray-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ClientsSlider currentLang={lang} />

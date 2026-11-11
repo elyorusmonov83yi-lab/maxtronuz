@@ -1,9 +1,8 @@
 import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from './HomePageClient';
-import { ClientsSlider } from '@/components/ClientsSlider'; // <-- ClientsSlider import qilindi
+import { ClientsSlider } from '@/components/ClientsSlider';
 
-// Саҳифани чақмоқдек тез очиш ва сервер юкламасини камайтириш учун ISR кэшни ёқамиз (ҳар 30 секундда янгиланади)
 export const revalidate = 30;
 
 type Props = {
@@ -23,7 +22,6 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Домени динамик ва тўғри аниқлаш
 function getBaseUrl(canonicalFromDb?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
@@ -172,7 +170,6 @@ export default async function HomePage({ params }: Props) {
   let categories: any[] = [];
 
   try {
-    // 1. База тўлиқ тозалангани учун фақат parentId IS NULL орқали ота категорияларни оламиз
     const [catRows]: any = await db.query(
       'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
     );
@@ -183,7 +180,6 @@ export default async function HomePage({ params }: Props) {
       description: safeParse(cat.description),
     }));
 
-    // 2. COALESCE yordamida imageUrl yoki image qaysi biri borligini tekshirib olamiz
     const [prodRows]: any = await db.query(
       'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
@@ -248,8 +244,6 @@ export default async function HomePage({ params }: Props) {
           homeContent: home,
         }}
       />
-
-      {/* 🌟 Hamkorlar va mijozlar slayderi (ClientsSlider) */}
       <div className="py-16 bg-gray-950 border-t border-gray-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ClientsSlider currentLang={lang} />
