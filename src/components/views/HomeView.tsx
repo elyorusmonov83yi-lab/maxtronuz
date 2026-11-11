@@ -21,6 +21,7 @@ import { getLocalizedText, getSafeProductSlug, getSafeCategorySlug } from '../..
 import { ClientsSlider } from '../ClientsSlider';
 import { DynamicIcon } from '../DynamicIcon';
 
+
 export interface HomeViewProps {
   currentLang: Language;
   homeContent?: HomeContent;
@@ -37,8 +38,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   currentLang = 'ru',
   homeContent: initialHomeContent,
   aboutContent: initialAboutContent,
-  initialProducts = [],
-  initialCategories = [],
+  initialProducts,
+  initialCategories,
   translations: dbTranslations,
   onOpenQuote,
   comparedProducts,
@@ -53,8 +54,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return `/uz${cleanPath === '/' ? '' : cleanPath}`;
   };
   
-  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
-  const [categoriesList, setCategoriesList] = useState<CategoryInfo[]>(initialCategories);
+  const [allProducts, setAllProducts] = useState<Product[]>(() => {
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) return initialProducts;
+    return StorageService.getProducts();
+  });
+
+  const [categoriesList, setCategoriesList] = useState<CategoryInfo[]>(() => {
+    if (Array.isArray(initialCategories) && initialCategories.length > 0) return initialCategories;
+    return StorageService.getCategories();
+  });
 
   const [homeCms, setHomeCms] = useState<HomeContent>(() => {
     if (initialHomeContent) return initialHomeContent;
@@ -68,9 +76,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   useEffect(() => {
     if (initialHomeContent) setHomeCms(initialHomeContent);
+    else setHomeCms(StorageService.getHomeContent());
+
     if (initialAboutContent) setAboutCms(initialAboutContent);
+    else setAboutCms(StorageService.getAboutContent());
+
     if (Array.isArray(initialProducts) && initialProducts.length > 0) setAllProducts(initialProducts);
+    else setAllProducts(StorageService.getProducts());
+
     if (Array.isArray(initialCategories) && initialCategories.length > 0) setCategoriesList(initialCategories);
+    else setCategoriesList(StorageService.getCategories());
 
     const handleProducts = (e: any) => { if (e.detail) setAllProducts(e.detail); };
     const handleCategories = (e: any) => { if (e.detail) setCategoriesList(e.detail); };
@@ -90,13 +105,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
     };
   }, [currentLang, initialHomeContent, initialAboutContent, initialProducts, initialCategories]);
 
-  // isPopular bo'yicha filter qilish, bo'lmasa oxirgi mahsulotlardan 6 tasini olish
   const featuredProducts = (allProducts.filter((p) => p.isPopular).length > 0
     ? allProducts.filter((p) => p.isPopular)
     : allProducts
   ).slice(0, 6);
 
-  // parentId si NULL bo'lgan haqiqiy ota kategoriyalar (bazadan toza keladi)
   const mainParentCategories = categoriesList.filter(c => !c.parentId);
 
   const heroBadgeText = getLocalizedText(homeCms?.heroBadge, currentLang, 'Zavod ta’minoti');
@@ -130,6 +143,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div>
+
       {/* 1. Hero Section */}
       <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden border-b border-gray-800/50 pt-12 pb-20">
         <div className="absolute inset-0 pointer-events-none">
@@ -211,12 +225,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section className="py-24 bg-gray-900/50 border-b border-gray-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl font-extrabold text-white mb-4">{whyUsTitleText}</h2>
-            <p className="text-gray-400 text-sm sm:text-base">{whyUsSubtitleText}</p>
+            <h2 className="text-3xl font-extrabold text-white mb-4">
+              {whyUsTitleText}
+            </h2>
+            <p className="text-gray-400 text-sm sm:text-base">
+              {whyUsSubtitleText}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 group">
+            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 group">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
                 <Zap className="w-6 h-6" />
               </div>
@@ -224,7 +242,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <p className="text-gray-400 text-sm leading-relaxed">{adv1DescText}</p>
             </div>
 
-            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 group">
+            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 group">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-6 h-6" />
               </div>
@@ -232,7 +250,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <p className="text-gray-400 text-sm leading-relaxed">{adv2DescText}</p>
             </div>
 
-            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 group">
+            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 group">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
                 <Award className="w-6 h-6" />
               </div>
@@ -240,7 +258,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <p className="text-gray-400 text-sm leading-relaxed">{adv3DescText}</p>
             </div>
 
-            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 group">
+            <div className="p-8 bg-gray-900 rounded-2xl border border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 group">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
                 <Activity className="w-6 h-6" />
               </div>
@@ -256,9 +274,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
             <div>
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block mb-1">MAXTRON Catalog</span>
-              <h2 className="text-3xl font-extrabold text-white mb-3">{catSectionTitleText}</h2>
-              <p className="text-gray-400 text-sm max-w-xl">{catSectionSubtitleText}</p>
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block mb-1">
+                MAXTRON Catalog
+              </span>
+              <h2 className="text-3xl font-extrabold text-white mb-3">
+                {catSectionTitleText}
+              </h2>
+              <p className="text-gray-400 text-sm max-w-xl">
+                {catSectionSubtitleText}
+              </p>
             </div>
             <Link
               href={getLocalizedUrl('/catalog')}
@@ -280,7 +304,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <Link
                   key={cat.id}
                   href={getLocalizedUrl(`/catalog/${catSlug}`)}
-                  className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col justify-between hover:border-blue-500/50 transition duration-300 group cursor-pointer"
+                  className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col justify-between hover:border-blue-500/50 transition duration-300 hover:shadow-xl hover:shadow-blue-500/5 group cursor-pointer"
                 >
                   <div>
                     <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
@@ -332,9 +356,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
             <div>
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block mb-1">TOP SELECTION</span>
-              <h2 className="text-3xl font-extrabold text-white mb-3">{featuredTitleText}</h2>
-              <p className="text-gray-400 text-sm max-w-xl">{featuredSubtitleText}</p>
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block mb-1">
+                TOP SELECTION
+              </span>
+              <h2 className="text-3xl font-extrabold text-white mb-3">
+                {featuredTitleText}
+              </h2>
+              <p className="text-gray-400 text-sm max-w-xl">
+                {featuredSubtitleText}
+              </p>
             </div>
             <Link
               href={getLocalizedUrl('/catalog')}
@@ -373,8 +403,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <Sparkles className="w-3.5 h-3.5" /> 
                 <span>{currentLang === 'ru' ? '3-минутный тест' : '3 daqiqali test'}</span>
               </span>
-              <h3 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight">{quizTitleText}</h3>
-              <p className="text-sm text-gray-300 leading-relaxed">{quizSubtitleText}</p>
+              <h3 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight">
+                {quizTitleText}
+              </h3>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {quizSubtitleText}
+              </p>
             </div>
 
             <Link
