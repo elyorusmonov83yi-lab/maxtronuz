@@ -178,7 +178,7 @@ export default async function HomePage({ params }: Props) {
 
   try {
     const [catRows]: any = await db.query(
-      'SELECT * FROM categories ORDER BY id ASC'
+      'SELECT * FROM categories ORDER BY id ASC LIMIT 8'
     );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
