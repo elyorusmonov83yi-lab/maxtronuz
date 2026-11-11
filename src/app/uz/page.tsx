@@ -169,7 +169,7 @@ export default async function UzbekHomePage() {
   try {
     // 1. Faqat ota kategoriyalarni tanlab olamiz (parentId IS NULL)
     const [catRows]: any = await db.query(
-      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 8'
+      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
     );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
@@ -179,7 +179,7 @@ export default async function UzbekHomePage() {
 
     // 2. SELECT * o'rniga faqat kerakli ustunlarni olib kelamiz
     const [prodRows]: any = await db.query(
-      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 20'
+      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
     products = (prodRows || []).map((prod: any) => ({
       ...prod,

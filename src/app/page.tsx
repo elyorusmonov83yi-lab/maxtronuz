@@ -173,7 +173,7 @@ export default async function HomePage({ params }: Props) {
   try {
     // 1. База тўлиқ тозалангани учун фақат parentId IS NULL орқали ота категорияларни оламиз
     const [catRows]: any = await db.query(
-      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 8'
+      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
     );
     
     categories = (catRows || []).map((cat: any) => ({
@@ -182,9 +182,9 @@ export default async function HomePage({ params }: Props) {
       description: safeParse(cat.description),
     }));
 
-    // 2. Маҳсулотларни SELECT * ўрнига фақат керакли устунлар бўйича тезкор сўров орқали оламиз
+   // 3. COALESCE yordamida imageUrl yoki image qaysi biri borligini tekshirib olamiz
     const [prodRows]: any = await db.query(
-      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 20'
+      'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
     
     products = (prodRows || []).map((prod: any) => ({
