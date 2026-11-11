@@ -23,7 +23,8 @@ export async function GET() {
 
     const categories = rows.map((c: any) => ({
       id: c.id,
-      parentId: c.parentId && c.parentId !== 'none' && c.parentId !== '' ? c.parentId : null,
+      // parentId ni toza holatda qaytaramiz ('none', '', '0', 'null' larni null ga o'tkazib)
+      parentId: c.parentId && c.parentId !== 'none' && c.parentId !== '' && c.parentId !== '0' && c.parentId !== 'null' ? c.parentId : null,
       slug: parseIfJson(c.slug, { uz: c.id, ru: c.id }),
       name: parseIfJson(c.name, { uz: c.id, ru: c.id }),
       description: parseIfJson(c.description, { uz: '', ru: '' }),
@@ -66,16 +67,42 @@ export async function POST(req: NextRequest) {
     }
 
     const catId = cat.id || `cat-${Date.now().toString().slice(-6)}`;
-    const parentId = cat.parentId && cat.parentId !== 'none' && cat.parentId !== '' ? cat.parentId : null;
+    
+    // 🔥 parentId ni har qanday xato qiymatlardan ('none', '', '0', 'null', 'h') tozalab NULL qilamiz
+    const parentId = 
+      cat.parentId && 
+      cat.parentId !== 'none' && 
+      cat.parentId !== '' && 
+      cat.parentId !== '0' && 
+      cat.parentId !== 'null' && 
+      cat.parentId !== 'h' 
+        ? cat.parentId 
+        : null;
 
-    const slug = typeof cat.slug === 'object' ? JSON.stringify(cat.slug) : JSON.stringify({ uz: catId, ru: catId });
-    const name = typeof cat.name === 'object' ? JSON.stringify(cat.name) : JSON.stringify({ uz: cat.name || '', ru: cat.name || '' });
-    const description = typeof cat.description === 'object' ? JSON.stringify(cat.description) : JSON.stringify({ uz: '', ru: '' });
+    // JSON formatga xavfsiz o'tkazish yordamchisi
+    const toJsonString = (val: any, fallback: any = {}) => {
+      if (!val) return JSON.stringify(fallback);
+      if (typeof val === 'string') {
+        try {
+          // Agar allaqachon JSON string bo'lsa, tekshirib ko'ramiz
+          JSON.parse(val);
+          return val;
+        } catch {
+          // Oddiy matn bo'lsa, uni uz va ru tillariga o'раб beramiz
+          return JSON.stringify({ uz: val, ru: val });
+        }
+      }
+      return JSON.stringify(val);
+    };
+
+    const slug = toJsonString(cat.slug, { uz: catId, ru: catId });
+    const name = toJsonString(cat.name, { uz: '', ru: '' });
+    const description = toJsonString(cat.description, { uz: '', ru: '' });
     const icon = cat.icon || 'Layers';
     const image = cat.image || '';
-    const seoTitle = typeof cat.seoTitle === 'object' ? JSON.stringify(cat.seoTitle) : JSON.stringify({});
-    const seoDescription = typeof cat.seoDescription === 'object' ? JSON.stringify(cat.seoDescription) : JSON.stringify({});
-    const seoKeywords = typeof cat.seoKeywords === 'object' ? JSON.stringify(cat.seoKeywords) : JSON.stringify({});
+    const seoTitle = toJsonString(cat.seoTitle, { uz: '', ru: '' });
+    const seoDescription = toJsonString(cat.seoDescription, { uz: '', ru: '' });
+    const seoKeywords = toJsonString(cat.seoKeywords, { uz: '', ru: '' });
     const ogImage = cat.ogImage || cat.image || '';
 
     await db.query(

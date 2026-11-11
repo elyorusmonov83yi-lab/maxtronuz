@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import { db } from '@/server/db';
 import HomePageClient from './HomePageClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Саҳифани чақмоқдек тез очиш ва сервер юкламасини камайтириш учун ISR кэшни ёқамиз (ҳар 30 секундда янгиланади)
+export const revalidate = 30;
 
 type Props = {
   params?: Promise<{ locale?: string }>;
@@ -22,21 +22,17 @@ function safeParse(val: any): Record<string, any> {
   return {};
 }
 
-// Domenni dinamik va to'g'ri aniqlash
+// Домени динамик ва тўғри аниқлаш
 function getBaseUrl(canonicalFromDb?: string): string {
-  // Agar ataylab .env o'rnatilgan bo'lsa
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
   }
-  // Vercel Production domeni
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
-  // Vercel joriy domeni (masalan maxtronuz.vercel.app)
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  // Agar bazada bor bo'lsa va yuqoridagilar bo'lmasa
   if (canonicalFromDb && canonicalFromDb.trim().startsWith('http')) {
     return canonicalFromDb.trim().replace(/\/+$/, '');
   }
@@ -58,7 +54,7 @@ async function getSettingsBundle() {
     }
     return bundle;
   } catch (err) {
-    console.error('Sozlamalarni yuklashda xatolik:', err);
+    console.error('Созламаларни юклашда хатолик:', err);
     return {};
   }
 }
@@ -90,7 +86,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     home.heroSubtitle?.[lang] ||
     'Поставки промышленного и измерительного оборудования в Ташкенте';
 
-  // OG rasmni aniqlash
   let rawImage =
     home.ogImage?.[lang] ||
     home.ogImage?.[lang === 'ru' ? 'uz' : 'ru'] ||
@@ -108,7 +103,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? rawImage
       : `${baseUrl}/${rawImage.replace(/^\/+/, '')}`;
   } else {
-    // Agar bazada rasm belgilanmagan bo'lsa, zaxiradagi default rasm
     imageUrl = `${baseUrl}/og-image.jpg`;
   }
 
@@ -177,18 +171,22 @@ export default async function HomePage({ params }: Props) {
   let categories: any[] = [];
 
   try {
+    // 1. База тўлиқ тозалангани учун фақат parentId IS NULL орқали ота категорияларни оламиз
     const [catRows]: any = await db.query(
-      'SELECT * FROM categories ORDER BY id ASC LIMIT 8'
+      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 8'
     );
+    
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
       name: safeParse(cat.name),
       description: safeParse(cat.description),
     }));
 
+    // 2. Маҳсулотларни SELECT * ўрнига фақат керакли устунлар бўйича тезкор сўров орқали оламиз
     const [prodRows]: any = await db.query(
-      'SELECT * FROM products ORDER BY id DESC LIMIT 20'
+      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 20'
     );
+    
     products = (prodRows || []).map((prod: any) => ({
       ...prod,
       name: safeParse(prod.name),
