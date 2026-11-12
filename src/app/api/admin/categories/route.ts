@@ -23,13 +23,12 @@ export async function GET() {
 
     const categories = rows.map((c: any) => ({
       id: c.id,
-      // parentId ni toza holatda qaytaramiz ('none', '', '0', 'null' larni null ga o'tkazib)
       parentId: c.parentId && c.parentId !== 'none' && c.parentId !== '' && c.parentId !== '0' && c.parentId !== 'null' ? c.parentId : null,
       slug: parseIfJson(c.slug, { uz: c.id, ru: c.id }),
       name: parseIfJson(c.name, { uz: c.id, ru: c.id }),
       description: parseIfJson(c.description, { uz: '', ru: '' }),
       icon: c.icon || 'Layers',
-      image: c.image || '',
+      imageUrl: c.imageUrl || '',
       seoTitle: parseIfJson(c.seoTitle, { uz: '', ru: '' }),
       seoDescription: parseIfJson(c.seoDescription, { uz: '', ru: '' }),
       seoKeywords: parseIfJson(c.seoKeywords, { uz: '', ru: '' }),
@@ -68,7 +67,6 @@ export async function POST(req: NextRequest) {
 
     const catId = cat.id || `cat-${Date.now().toString().slice(-6)}`;
     
-    // 🔥 parentId ni har qanday xato qiymatlardan ('none', '', '0', 'null', 'h') tozalab NULL qilamiz
     const parentId = 
       cat.parentId && 
       cat.parentId !== 'none' && 
@@ -79,16 +77,13 @@ export async function POST(req: NextRequest) {
         ? cat.parentId 
         : null;
 
-    // JSON formatga xavfsiz o'tkazish yordamchisi
     const toJsonString = (val: any, fallback: any = {}) => {
       if (!val) return JSON.stringify(fallback);
       if (typeof val === 'string') {
         try {
-          // Agar allaqachon JSON string bo'lsa, tekshirib ko'ramiz
           JSON.parse(val);
           return val;
         } catch {
-          // Oddiy matn bo'lsa, uni uz va ru tillariga o'раб beramiz
           return JSON.stringify({ uz: val, ru: val });
         }
       }
@@ -99,15 +94,15 @@ export async function POST(req: NextRequest) {
     const name = toJsonString(cat.name, { uz: '', ru: '' });
     const description = toJsonString(cat.description, { uz: '', ru: '' });
     const icon = cat.icon || 'Layers';
-    const image = cat.image || '';
+    const imageUrl = cat.imageUrl || cat.image || '';
     const seoTitle = toJsonString(cat.seoTitle, { uz: '', ru: '' });
     const seoDescription = toJsonString(cat.seoDescription, { uz: '', ru: '' });
     const seoKeywords = toJsonString(cat.seoKeywords, { uz: '', ru: '' });
-    const ogImage = cat.ogImage || cat.image || '';
+    const ogImage = cat.ogImage || imageUrl || '';
 
     await db.query(
       `INSERT INTO categories 
-        (id, parentId, slug, name, description, icon, image, seoTitle, seoDescription, seoKeywords, ogImage)
+        (id, parentId, slug, name, description, icon, imageUrl, seoTitle, seoDescription, seoKeywords, ogImage)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE 
         parentId = VALUES(parentId),
@@ -115,12 +110,12 @@ export async function POST(req: NextRequest) {
         name = VALUES(name),
         description = VALUES(description),
         icon = VALUES(icon),
-        image = VALUES(image),
+        imageUrl = VALUES(imageUrl),
         seoTitle = VALUES(seoTitle),
         seoDescription = VALUES(seoDescription),
         seoKeywords = VALUES(seoKeywords),
         ogImage = VALUES(ogImage)`,
-      [catId, parentId, slug, name, description, icon, image, seoTitle, seoDescription, seoKeywords, ogImage]
+      [catId, parentId, slug, name, description, icon, imageUrl, seoTitle, seoDescription, seoKeywords, ogImage]
     );
 
     return NextResponse.json({ success: true, id: catId, message: 'Kategoriya muvaffaqiyatli saqlandi' });
