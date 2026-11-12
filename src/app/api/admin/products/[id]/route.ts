@@ -8,7 +8,6 @@ type LangList = { ru: string[]; uz: string[] };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// 20 RPD limitiga ega 3.8-flash olib tashlandi; eng ko'p limitli barqaror modellar qoldirildi:
 const CANDIDATE_MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-3.5-flash',
@@ -155,6 +154,9 @@ function transformProductRow(p: any) {
   const inds = cleanIdArray(p.industryIds ?? p.industries);
   const tasks = cleanIdArray(p.industryTaskIds ?? p.tasks);
 
+  // Faqat imageUrl ishlatiladi
+  const resolvedImageUrl = p.imageUrl || p.image || '';
+
   return {
     id: p.id,
     slug,
@@ -172,8 +174,7 @@ function transformProductRow(p: any) {
     isActive: toBoolean(p.isActive, true),
     isPopular: toBoolean(p.isPopular, false),
     isNew: toBoolean(p.isNew, false),
-    image: p.image || p.imageUrl || '',
-    imageUrl: p.imageUrl || p.image || '',
+    imageUrl: resolvedImageUrl,
     additionalImages: images,
     pdfCatalogUrl: p.pdfCatalogUrl || '',
     specs: parseSpecs(p.specs),
@@ -188,7 +189,7 @@ function transformProductRow(p: any) {
     seoTitle,
     seoDescription,
     seoKeywords,
-    ogImage: p.ogImage || p.image || '',
+    ogImage: p.ogImage || resolvedImageUrl,
   };
 }
 
@@ -420,15 +421,12 @@ Ushbu uskunaning barcha parametrlarini AYNAN 2 TILLI (Ruscha va O'zbekcha Lotin 
         const errMsg = err?.message || String(err);
         console.warn(`[AI Fallback] ${modelName} xatolik berdi: ${errMsg}`);
 
-        // Agar so'rov formati xato bo'lsa (400), keyingi modellarni sinash befoyda
         if (errMsg.includes('400') || err?.status === 400) {
           console.error('[AI Fatal Error 400] So‘rov formati xato, zanjir to‘xtatildi.');
           break;
         }
 
-        // 503 (High demand) yoki 429 xatolarida keyingi modelga o'tishdan oldin 2 soniya kutish
         if (i < CANDIDATE_MODELS.length - 1) {
-          console.log(`[AI Retry] 2 soniya kutilmoqda...`);
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }

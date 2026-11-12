@@ -110,7 +110,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
     : allProducts
   ).slice(0, 6);
 
-  const mainParentCategories = categoriesList.filter(c => !c.parentId);
+  // Faqat asosiy (parentId bo'lmagan) kategoriyalarni olib, qat'iy 9 та билан чеклаш:
+const mainParentCategories = categoriesList
+  .filter(c => !c.parentId || c.parentId === 'null' || c.parentId === '')
+  .slice(0, 9);
 
   const heroBadgeText = getLocalizedText(homeCms?.heroBadge, currentLang, 'Zavod ta’minoti');
   const heroTitleText = getLocalizedText(homeCms?.heroTitle, currentLang, 'MAXTRON — Sanoat va O\'lchov Uskunalari');

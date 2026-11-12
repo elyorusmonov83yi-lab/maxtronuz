@@ -169,9 +169,9 @@ export default async function HomePage({ params }: Props) {
   let products: any[] = [];
   let categories: any[] = [];
 
-  try {
+ try {
     const [catRows]: any = await db.query(
-      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
+      'SELECT id, name, parentId, icon, imageUrl, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
     );
     
     categories = (catRows || []).map((cat: any) => ({
@@ -181,7 +181,7 @@ export default async function HomePage({ params }: Props) {
     }));
 
     const [prodRows]: any = await db.query(
-      'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
+      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
     );
     
     products = (prodRows || []).map((prod: any) => ({
@@ -244,11 +244,7 @@ export default async function HomePage({ params }: Props) {
           homeContent: home,
         }}
       />
-      <div className="py-16 bg-gray-950 border-t border-gray-800/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ClientsSlider currentLang={lang} />
-        </div>
-      </div>
+      
     </>
   );
 }

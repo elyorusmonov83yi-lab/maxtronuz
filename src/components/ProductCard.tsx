@@ -73,12 +73,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* 1. Rasm va Belgilar (Top Media & Badges) */}
       <div className="relative aspect-[4/3] w-full bg-gray-950/80 overflow-hidden">
         <Link href={productHref} className="block w-full h-full">
-          <img
-            src={product.image || ''}
-            alt={productName}
-            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
-            loading="lazy"
-          />
+         <img
+  src={product.imageUrl || '/placeholder.png'}
+  alt={productName}
+  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+  loading="lazy"
+/>
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80" />
         </Link>
 

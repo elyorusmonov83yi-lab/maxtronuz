@@ -98,6 +98,9 @@ function transformProductRow(p: any) {
   const inds = cleanIdArray(p.industryIds ?? p.industries);
   const tasks = cleanIdArray(p.industryTaskIds ?? p.tasks);
 
+  // Faqat imageUrl ishlatiladi (agar bazada eskidan image bo'lsa ham o'qib oladi)
+  const resolvedImageUrl = p.imageUrl || p.image || '';
+
   return {
     id: p.id,
     slug: typeof slug === 'object' ? slug : { uz: p.id, ru: p.id },
@@ -115,8 +118,7 @@ function transformProductRow(p: any) {
     isActive: Boolean(p.isActive ?? 1),
     isPopular: Boolean(p.isPopular ?? 0),
     isNew: Boolean(p.isNew ?? 0),
-    image: p.image || p.imageUrl || '',
-    imageUrl: p.imageUrl || p.image || '',
+    imageUrl: resolvedImageUrl,
     additionalImages: images,
     pdfCatalogUrl: p.pdfCatalogUrl || '',
     specs: parseSpecs(p.specs),
@@ -132,7 +134,7 @@ function transformProductRow(p: any) {
     seoTitle: typeof seoTitle === 'object' ? seoTitle : { uz: '', ru: '' },
     seoDescription: typeof seoDescription === 'object' ? seoDescription : { uz: '', ru: '' },
     seoKeywords: typeof seoKeywords === 'object' ? seoKeywords : { uz: '', ru: '' },
-    ogImage: p.ogImage || p.image || ''
+    ogImage: p.ogImage || resolvedImageUrl
   };
 }
 
@@ -194,7 +196,7 @@ export async function POST(req: NextRequest) {
     const isNew = prod.isNew ? 1 : 0;
     const warrantyMonths = Number(prod.warrantyMonths) || 12;
 
-    const imageUrl = prod.image || prod.imageUrl || '';
+    const imageUrl = prod.imageUrl || prod.image || '';
     const images = JSON.stringify(parseArray(prod.additionalImages || prod.images || []));
     const pdfCatalogUrl = prod.pdfCatalogUrl || prod.pdfFile || '';
 
@@ -214,8 +216,8 @@ export async function POST(req: NextRequest) {
 
     await db.query(
       `INSERT INTO products 
-        (id, brand_id, slug, title, description, categoryId, imageUrl, images, pdfCatalogUrl, specs, documents, features, isActive, model, category, name, tagline, price, oldPrice, priceFormatted, inStock, isPopular, image, applications, isNew, standardCert, warrantyMonths, seoTitle, seoDescription, seoKeywords, ogImage, industryIds, industryTaskIds)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, brand_id, slug, title, description, categoryId, imageUrl, images, pdfCatalogUrl, specs, documents, features, isActive, model, category, name, tagline, price, oldPrice, priceFormatted, inStock, isPopular, applications, isNew, standardCert, warrantyMonths, seoTitle, seoDescription, seoKeywords, ogImage, industryIds, industryTaskIds)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE 
         brand_id = VALUES(brand_id),
         slug = VALUES(slug),
@@ -238,7 +240,6 @@ export async function POST(req: NextRequest) {
         priceFormatted = VALUES(priceFormatted),
         inStock = VALUES(inStock),
         isPopular = VALUES(isPopular),
-        image = VALUES(image),
         applications = VALUES(applications),
         isNew = VALUES(isNew),
         standardCert = VALUES(standardCert),
@@ -252,7 +253,7 @@ export async function POST(req: NextRequest) {
       [
         prodId, brandId, slug, name, description, categoryId, imageUrl, images, pdfCatalogUrl,
         specs, documents, features, inStock, model, categoryId, name, tagline, price, oldPrice,
-        priceFormatted, inStock, isPopular, imageUrl, applications, isNew, standardCert,
+        priceFormatted, inStock, isPopular, applications, isNew, standardCert,
         warrantyMonths, seoTitle, seoDescription, seoKeywords, ogImage,
         industryIds, industryTaskIds
       ]
