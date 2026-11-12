@@ -95,8 +95,9 @@ async function getProduct(rawSlug: string) {
 }
 
 // Telegram va OpenGraph uchun mutlaq va toza rasm URL'ini aniqlash
+// Telegram va OpenGraph uchun mutlaq va toza rasm URL'ini aniqlash
 function resolveImageUrl(product: any, baseUrl: string, defaultImage = ''): string {
-  let img = product?.image;
+  let img = product?.imageUrl || product?.image; // imageUrl birinchi olinadi
 
   if (typeof img === 'string' && img.startsWith('[')) {
     try {
