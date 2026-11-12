@@ -133,7 +133,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? rawKeys.split(',').map((k: string) => k.trim()).filter(Boolean)
     : [];
 
-  let imageUrl = category.ogImage || category.image || category.imageUrl || site.defaultOgImage || '/og-image.jpg';
+  
+  let imageUrl = category.ogImage || category.imageUrl || site.defaultOgImage || '/og-image.jpg';
   if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
     imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
   }
@@ -244,7 +245,7 @@ export default async function CategoryPage({ params }: Props) {
       ru: catDesc,
       uz: getText(category.seoDescription, 'uz', getText(category.description, 'uz', '')),
     },
-    ogImageUrl: category.ogImage || category.image || category.imageUrl || '',
+    ogImageUrl: category.ogImage || category.imageUrl || '',
   };
 
   return (

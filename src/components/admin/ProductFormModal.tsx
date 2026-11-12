@@ -926,11 +926,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         ru: (formData.seoKeywords as LocalizedString).ru?.trim() || '',
         uz: (formData.seoKeywords as LocalizedString).uz?.trim() || ''
       },
-      ogImage: formData.ogImage || formData.image,
-      image: formData.image || '',
-      imageUrl: formData.image || '',
+      ogImage: formData.ogImage || formData.imageUrl || formData.image || '',
+      imageUrl: formData.imageUrl || formData.image || '',
       additionalImages: formData.additionalImages || [],
-      images: formData.additionalImages || [],
       industries: cleanIndustries,
       tasks: cleanTasks,
       industryIds: cleanIndustries,
