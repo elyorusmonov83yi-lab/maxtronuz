@@ -187,7 +187,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                   const titleRu = getProductTitleRu(p);
                   const titleUz = getProductTitleUz(p);
                   const categoryRu = getCategoryTitleRu(p.category);
-                  const imgSrc = p.image || (Array.isArray(p.additionalImages) ? p.additionalImages[0] : '');
+                  const imgSrc = p.imageUrl || (Array.isArray(p.additionalImages) ? p.additionalImages[0] : '');
 
                   const descRu = typeof p.description === 'object' ? p.description?.ru : p.description;
                   const descUz = typeof p.description === 'object' ? p.description?.uz : '';
