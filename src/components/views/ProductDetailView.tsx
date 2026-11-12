@@ -274,9 +274,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         {/* Chap tomon: Rasm va Nishonlar */}
         <div className="lg:col-span-6 space-y-4">
           <div className="relative aspect-[4/3] rounded-3xl overflow-hidden bg-gray-900 border border-gray-800 shadow-2xl group flex items-center justify-center">
-            {product.image && !imageError ? (
+            {product.imageUrl && !imageError ? (
               <img
-                src={product.image}
+                src={product.imageUrl}
                 alt={getLocalizedText(product.name || (product as any).title, currentLang, '')}
                 onError={() => setImageError(true)}
                 className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-105"
