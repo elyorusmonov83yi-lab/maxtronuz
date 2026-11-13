@@ -95,6 +95,7 @@ export interface CategoryInfo {
   description: LocalizedString;
   icon?: string;
   image?: string;
+  imageUrl?: string; // <-- MANA BU QATORNI QO'SHIB QUYING
   count?: number;
   seoTitle?: {
     uz: string;

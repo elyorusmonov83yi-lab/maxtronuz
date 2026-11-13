@@ -129,7 +129,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
     parentId: null,
     slug: { uz: '', ru: '' },
     icon: 'Layers',
-    image: '',
+    imageUrl: '',
     name: { uz: '', ru: '' },
     description: { uz: '', ru: '' },
     count: 0,
@@ -166,7 +166,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           parentId: categoryToEdit.parentId || null,
           slug: { uz: slugUz, ru: slugRu },
           icon: categoryToEdit.icon || 'Layers',
-          image: categoryToEdit.image || '',
+          imageUrl: categoryToEdit.imageUrl || categoryToEdit.image || '',
           name: {
             uz: typeof categoryToEdit.name === 'object' ? (categoryToEdit.name.uz || '') : (categoryToEdit.name || ''),
             ru: typeof categoryToEdit.name === 'object' ? (categoryToEdit.name.ru || '') : (categoryToEdit.name || '')
@@ -197,7 +197,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           parentId: null,
           slug: { uz: '', ru: '' },
           icon: 'Layers',
-          image: '',
+          imageUrl: '',
           name: { uz: '', ru: '' },
           description: { uz: '', ru: '' },
           count: 0,
@@ -211,7 +211,6 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
     }
   }, [categoryToEdit, isOpen]);
 
-  // Siklik bog'lanishni oldini olish: toifaning barcha avlodlari (bolalari) IDlarini topish
   const getDescendantIds = useCallback((parentId: string): string[] => {
     const children = categories.filter(c => {
       const pId = (c as any).parentId || (c as any).parent_id || null;
@@ -222,9 +221,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
     }, []);
   }, [categories]);
 
-  // Ota toifani tanlash uchun 2 va 3 darajali rekursiv daraxt tuzish
   const renderParentOptions = (parentId: string | null = null, level: number = 0) => {
-    // Tahrirlanayotgan toifaning o'zi va uning hamma ichki bolalarini taqiqlash
     const forbiddenIds = categoryToEdit ? [categoryToEdit.id, ...getDescendantIds(categoryToEdit.id)] : [];
 
     const filtered = categories.filter(c => {
@@ -293,7 +290,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
       const url = await ApiService.uploadFile(file);
       setFormData((prev) => ({ 
         ...prev, 
-        image: url,
+        imageUrl: url,
         ogImage: prev.ogImage || url
       }));
     } catch (err: any) {
@@ -366,7 +363,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
         ru: formData.seoKeywords?.ru?.trim() || '',
         uz: formData.seoKeywords?.uz?.trim() || ''
       },
-      ogImage: formData.ogImage || formData.image
+      ogImage: formData.ogImage || formData.imageUrl
     };
 
     onSave(finalCategory);
@@ -639,9 +636,9 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                   <div className="sm:col-span-4 flex justify-center">
                     <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-700 bg-gray-900 overflow-hidden flex items-center justify-center">
-                      {formData.image ? (
+                      {formData.imageUrl ? (
                         <img 
-                          src={formData.image} 
+                          src={formData.imageUrl} 
                           alt="Category" 
                           className="w-full h-full object-cover"
                         />
@@ -673,8 +670,8 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                     <input
                       type="url"
                       placeholder={activeLang === 'ru' ? 'Или URL ссылка на фото...' : 'Yoki rasm URL havolasi...'}
-                      value={formData.image || ''}
-                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                      value={formData.imageUrl || ''}
+                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                       className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500 font-mono transition"
                     />
                   </div>
