@@ -45,7 +45,7 @@ export async function GET(
       name: parseIfJson(c.name, { uz: c.id, ru: c.id }),
       description: parseIfJson(c.description, { uz: '', ru: '' }),
       icon: c.icon || 'Layers',
-      imageUrl: c.imageUrl || c.image || '', // <-- TO'G'RILANDI: imageUrl ishlatildi
+      imageUrl: c.imageUrl || c.image || '',
       seoTitle: parseIfJson(c.seoTitle, { uz: '', ru: '' }),
       seoDescription: parseIfJson(c.seoDescription, { uz: '', ru: '' }),
       seoKeywords: parseIfJson(c.seoKeywords, { uz: '', ru: '' }),
@@ -62,7 +62,72 @@ export async function GET(
   }
 }
 
-// 2. DELETE: Toifani o'chirish (Admin talab qilinadi)
+// 2. PUT: Kategoriyani tahrirlash va rasmni saqlash (Admin talab qilinadi)
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = req.headers.get('authorization');
+    const isAdmin = await verifyAdminToken(authHeader);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, message: 'Ruxsat berilmagan' },
+        { status: 401 }
+      );
+    }
+
+    const { id: identifier } = await params;
+    const cat = await req.json();
+    if (!cat) {
+      return NextResponse.json(
+        { success: false, message: "Ma'lumotlar bo'sh yuborildi" },
+        { status: 400 }
+      );
+    }
+
+    const toJsonString = (val: any, fallback: any = {}) => {
+      if (!val) return JSON.stringify(fallback);
+      if (typeof val === 'string') {
+        try {
+          JSON.parse(val);
+          return val;
+        } catch {
+          return JSON.stringify({ uz: val, ru: val });
+        }
+      }
+      return JSON.stringify(val);
+    };
+
+    const parentId = cat.parentId && cat.parentId !== 'none' && cat.parentId !== '' && cat.parentId !== '0' ? cat.parentId : null;
+    const slug = toJsonString(cat.slug, { uz: identifier, ru: identifier });
+    const name = toJsonString(cat.name, { uz: '', ru: '' });
+    const description = toJsonString(cat.description, { uz: '', ru: '' });
+    const icon = cat.icon || 'Layers';
+    const imageUrl = cat.imageUrl || cat.image || '';
+    const seoTitle = toJsonString(cat.seoTitle, { uz: '', ru: '' });
+    const seoDescription = toJsonString(cat.seoDescription, { uz: '', ru: '' });
+    const seoKeywords = toJsonString(cat.seoKeywords, { uz: '', ru: '' });
+    const ogImage = cat.ogImage || imageUrl || '';
+
+    await db.query(
+      `UPDATE categories 
+       SET parentId = ?, slug = ?, name = ?, description = ?, icon = ?, imageUrl = ?, seoTitle = ?, seoDescription = ?, seoKeywords = ?, ogImage = ?
+       WHERE id = ? OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.uz')) = ? OR JSON_UNQUOTE(JSON_EXTRACT(slug, '$.ru')) = ?`,
+      [parentId, slug, name, description, icon, imageUrl, seoTitle, seoDescription, seoKeywords, ogImage, identifier, identifier, identifier]
+    );
+
+    return NextResponse.json({ success: true, message: 'Kategoriya muvaffaqiyatli yangilandi' });
+  } catch (error: any) {
+    console.error('Category DB update error:', error.message);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Server xatosi' },
+      { status: 500 }
+    );
+  }
+}
+
+// 3. DELETE: Toifani o'chirish (Admin talab qilinadi)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
