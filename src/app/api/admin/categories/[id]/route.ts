@@ -45,11 +45,11 @@ export async function GET(
       name: parseIfJson(c.name, { uz: c.id, ru: c.id }),
       description: parseIfJson(c.description, { uz: '', ru: '' }),
       icon: c.icon || 'Layers',
-      image: c.image || '',
+      imageUrl: c.imageUrl || c.image || '', // <-- TO'G'RILANDI: imageUrl ishlatildi
       seoTitle: parseIfJson(c.seoTitle, { uz: '', ru: '' }),
       seoDescription: parseIfJson(c.seoDescription, { uz: '', ru: '' }),
       seoKeywords: parseIfJson(c.seoKeywords, { uz: '', ru: '' }),
-      ogImage: c.ogImage || ''
+      ogImage: c.ogImage || c.imageUrl || c.image || ''
     };
 
     return NextResponse.json({ success: true, data: category });

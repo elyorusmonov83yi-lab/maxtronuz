@@ -165,7 +165,7 @@ export default async function UzbekHomePage() {
 
   try {
     const [catRows]: any = await db.query(
-      'SELECT id, name, parentId, icon, image, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
+      'SELECT id, name, parentId, icon, imageUrl, description, slug FROM categories WHERE parentId IS NULL ORDER BY id ASC LIMIT 9'
     );
     categories = (catRows || []).map((cat: any) => ({
       ...cat,
@@ -174,8 +174,8 @@ export default async function UzbekHomePage() {
     }));
 
     const [prodRows]: any = await db.query(
-      'SELECT id, slug, name, price, oldPrice, COALESCE(imageUrl, image) as imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
-    );
+      'SELECT id, slug, name, price, oldPrice, imageUrl, isPopular, category FROM products ORDER BY id DESC LIMIT 18'
+    );  
     products = (prodRows || []).map((prod: any) => ({
       ...prod,
       name: safeParse(prod.name),
